@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mfi_server.config import load_settings
+from mfi_server.config import load_settings, supervisor_mqtt
 
 
 def _load(environ: dict[str, str], folder: str):
@@ -115,6 +115,110 @@ class TestValidation(unittest.TestCase):
             with self.assertRaises(ValueError) as cm:
                 _load({}, d)
             self.assertIn("inform_port", str(cm.exception))
+
+
+class _FakeResponse:
+    """Stands in for the object urlopen returns: a context manager with status and read()."""
+
+    def __init__(self, status: int, body: bytes):
+        self.status = status
+        self._body = body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def read(self):
+        return self._body
+
+
+def _opener_answering(status: int, body: bytes):
+    """Return an opener that answers every request with the given status and body; no network."""
+
+    def opener(request, timeout=None):
+        return _FakeResponse(status, body)
+
+    return opener
+
+
+class TestMqttSettings(unittest.TestCase):
+    def test_mqtt_defaults(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = _load({}, d)
+            self.assertEqual(s.mqtt_host, "")
+            self.assertEqual(s.mqtt_port, 1883)
+            self.assertEqual(s.mqtt_topic_prefix, "mfi")
+            self.assertEqual(s.mqtt_discovery_prefix, "homeassistant")
+
+    def test_mqtt_environment_is_read(self):
+        with tempfile.TemporaryDirectory() as d:
+            environ = {
+                "MFI_MQTT_HOST": "core-mosquitto",
+                "MFI_MQTT_PORT": "1884",
+                "MFI_MQTT_TOPIC_PREFIX": "casa",
+            }
+            s = _load(environ, d)
+            self.assertEqual(s.mqtt_host, "core-mosquitto")
+            self.assertEqual(s.mqtt_port, 1884)
+            self.assertEqual(s.mqtt_topic_prefix, "casa")
+
+    def test_mqtt_port_out_of_range_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError) as cm:
+                _load({"MFI_MQTT_PORT": "70000"}, d)
+            self.assertIn("mqtt_port", str(cm.exception))
+
+
+class TestSupervisorMqtt(unittest.TestCase):
+    def test_no_token_means_no_broker(self):
+        with self.assertLogs("mfi_server.config", level="INFO") as cm:
+            self.assertIsNone(supervisor_mqtt({}, _opener_answering(200, b"{}")))
+        self.assertIn("MQTT disabled", cm.output[0])
+
+    def test_addon_answer_sets_host_port_and_credentials_without_logging_password(self):
+        body = json.dumps(
+            {
+                "result": "ok",
+                "data": {"host": "core-mosquitto", "port": 1883, "username": "addon", "password": "pw-test"},
+            }
+        ).encode("utf-8")
+        seen = {}
+
+        def fake_opener(request, timeout=None):
+            seen["authorization"] = request.get_header("Authorization")
+            seen["timeout"] = timeout
+            return _FakeResponse(200, body)
+
+        with self.assertLogs("mfi_server.config", level="INFO") as cm:
+            broker = supervisor_mqtt({"SUPERVISOR_TOKEN": "tok"}, fake_opener)
+        self.assertEqual(
+            broker,
+            {"host": "core-mosquitto", "port": 1883, "username": "addon", "password": "pw-test"},
+        )
+        self.assertEqual(seen["authorization"], "Bearer tok")
+        self.assertEqual(seen["timeout"], 10)
+        for line in cm.output:
+            self.assertNotIn("pw-test", line)
+
+    def test_non_200_status_means_no_broker(self):
+        self.assertIsNone(supervisor_mqtt({"SUPERVISOR_TOKEN": "tok"}, _opener_answering(503, b"{}")))
+
+    def test_answer_without_data_means_no_broker(self):
+        body = json.dumps({"result": "error", "message": "not running"}).encode("utf-8")
+        self.assertIsNone(supervisor_mqtt({"SUPERVISOR_TOKEN": "tok"}, _opener_answering(200, body)))
+
+    def test_answer_without_host_means_no_broker(self):
+        body = json.dumps({"result": "ok", "data": {"port": 1883}}).encode("utf-8")
+        self.assertIsNone(supervisor_mqtt({"SUPERVISOR_TOKEN": "tok"}, _opener_answering(200, body)))
+
+    def test_unreachable_supervisor_means_no_broker(self):
+        def failing_opener(request, timeout=None):
+            raise OSError("no route to host")
+
+        with self.assertLogs("mfi_server.config", level="INFO"):
+            self.assertIsNone(supervisor_mqtt({"SUPERVISOR_TOKEN": "tok"}, failing_opener))
 
 
 if __name__ == "__main__":
