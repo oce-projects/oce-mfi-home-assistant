@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import mfi_server
-from mfi_server.api import make_api_server
+from mfi_server.api import STATIC_CSP, make_api_server
 from mfi_server.auth import LoginLimiter, Sessions, hash_password, save_password_hash
 from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings
@@ -202,6 +202,35 @@ class TestApi(unittest.TestCase):
         status, _, body = self._request("GET", ADDON_DEVICES_PATH, server=server)
         self.assertEqual(status, 403)
         self.assertEqual(json.loads(body), {"error": "forbidden"})
+
+    def test_root_serves_index_with_csp(self):
+        status, headers, body = self._request("GET", "/")
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", headers["content-type"])
+        self.assertEqual(headers["content-security-policy"], STATIC_CSP)
+        self.assertEqual(int(headers["content-length"]), len(body))
+        self.assertIn(b"<!DOCTYPE html>", body)
+
+    def test_ingress_root_serves_index(self):
+        status, headers, _ = self._request("GET", "/api/hassio_ingress/abc/")
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", headers["content-type"])
+
+    def test_app_js_is_javascript(self):
+        status, headers, _ = self._request("GET", "/app.js")
+        self.assertEqual(status, 200)
+        self.assertIn("text/javascript", headers["content-type"])
+
+    def test_traversal_is_404(self):
+        for path in ("/../config.py", "/%2e%2e/config.py"):
+            status, _, body = self._request("GET", path)
+            self.assertEqual(status, 404, path)
+            self.assertEqual(json.loads(body), {"error": "not_found"})
+
+    def test_unknown_static_file_is_404(self):
+        status, _, body = self._request("GET", "/nonexistent.js")
+        self.assertEqual(status, 404)
+        self.assertEqual(json.loads(body), {"error": "not_found"})
 
 
 if __name__ == "__main__":
