@@ -49,7 +49,7 @@ flowchart LR
 | 2026-11-15 | Repository files in English; offline stdlib tests |
 | 2026-11-15 | mfi-server uses the Python standard library only (own AES-128 and BSON reader) |
 | 2026-11-15 | mfi-server is a full controller: the same code runs as a Home Assistant add-on and as a standalone program |
-| 2026-11-15 | Home Assistant entities will come through MQTT discovery (next epic) |
+| 2026-11-15 | Home Assistant entities come through MQTT discovery; the server exposes its data over MQTT by default, and MQTT is optional when no broker is configured |
 
 ## Existing work (checked 2026-11-15)
 

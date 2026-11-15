@@ -7,23 +7,43 @@ Precedence: environment variable, then file, then default.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import logging
+import urllib.request
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 ADDON_OPTIONS_PATH = Path("/data/options.json")
 LOG_LEVELS = ("debug", "info", "warning", "error")
-FILE_KEYS = ("inform_port", "wakeup_port", "bind_address", "backup_file", "log_level")
+FILE_KEYS = (
+    "inform_port",
+    "wakeup_port",
+    "bind_address",
+    "backup_file",
+    "log_level",
+    "mqtt_host",
+    "mqtt_port",
+    "mqtt_username",
+    "mqtt_password",
+    "mqtt_topic_prefix",
+    "mqtt_discovery_prefix",
+)
 ENV_NAMES = {
     "inform_port": "MFI_INFORM_PORT",
     "wakeup_port": "MFI_WAKEUP_PORT",
     "bind_address": "MFI_BIND_ADDRESS",
     "backup_file": "MFI_BACKUP_FILE",
     "log_level": "MFI_LOG_LEVEL",
+    "mqtt_host": "MFI_MQTT_HOST",
+    "mqtt_port": "MFI_MQTT_PORT",
+    "mqtt_username": "MFI_MQTT_USERNAME",
+    "mqtt_password": "MFI_MQTT_PASSWORD",
+    "mqtt_topic_prefix": "MFI_MQTT_TOPIC_PREFIX",
+    "mqtt_discovery_prefix": "MFI_MQTT_DISCOVERY_PREFIX",
 }
 
 
@@ -40,6 +60,12 @@ class Settings:
     mode: str = "standalone"
     request_timeout_s: float = 10.0
     max_body_bytes: int = 65536
+    mqtt_host: str = ""
+    mqtt_port: int = 1883
+    mqtt_username: str = ""
+    mqtt_password: str = field(default="", repr=False)
+    mqtt_topic_prefix: str = "mfi"
+    mqtt_discovery_prefix: str = "homeassistant"
 
 
 def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Path = ADDON_OPTIONS_PATH) -> Settings:
@@ -72,9 +98,61 @@ def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Pat
         mode=mode,
         request_timeout_s=base.request_timeout_s,
         max_body_bytes=base.max_body_bytes,
+        mqtt_host=_text("mqtt_host", values.get("mqtt_host", base.mqtt_host)),
+        mqtt_port=_port("mqtt_port", values.get("mqtt_port", base.mqtt_port)),
+        mqtt_username=_text("mqtt_username", values.get("mqtt_username", base.mqtt_username)),
+        mqtt_password=_text("mqtt_password", values.get("mqtt_password", base.mqtt_password)),
+        mqtt_topic_prefix=_text("mqtt_topic_prefix", values.get("mqtt_topic_prefix", base.mqtt_topic_prefix)),
+        mqtt_discovery_prefix=_text(
+            "mqtt_discovery_prefix", values.get("mqtt_discovery_prefix", base.mqtt_discovery_prefix)
+        ),
     )
     logger.debug("settings loaded: mode=%s data_dir=%s", mode, data_dir)
     return settings
+
+
+SUPERVISOR_MQTT_URL = "http://supervisor/services/mqtt"
+SUPERVISOR_TIMEOUT_S = 10
+
+
+def supervisor_mqtt(environ: Mapping[str, str], opener=urllib.request.urlopen) -> dict | None:
+    """Ask the Supervisor for the MQTT broker; None when it is not available.
+
+    The password is returned to the caller and is never logged.
+    """
+    token = environ.get("SUPERVISOR_TOKEN", "")
+    if not token:
+        logger.info("MQTT disabled")
+        return None
+    request = urllib.request.Request(SUPERVISOR_MQTT_URL, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with opener(request, timeout=SUPERVISOR_TIMEOUT_S) as response:
+            if response.status != 200:
+                logger.info("MQTT disabled")
+                return None
+            body = json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError, http.client.HTTPException) as exc:
+        logger.info("MQTT disabled: Supervisor request failed (%s)", type(exc).__name__)
+        return None
+    data = body.get("data") if isinstance(body, dict) else None
+    if not isinstance(data, dict):
+        logger.info("MQTT disabled")
+        return None
+    try:
+        host = data["host"]
+        if not isinstance(host, str) or not host:
+            raise ValueError("host")
+        port = _port("port", data["port"])
+    except (KeyError, ValueError):
+        logger.info("MQTT disabled: Supervisor answer has no usable host or port")
+        return None
+    logger.info("MQTT broker from the Supervisor: %s:%d", host, port)
+    return {
+        "host": host,
+        "port": port,
+        "username": data.get("username", ""),
+        "password": data.get("password", ""),
+    }
 
 
 def _read_file(path: Path) -> dict[str, object]:

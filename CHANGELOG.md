@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.4.0 - 2026-11-15
+
+- `mfi-server` 0.2.0 (phase 2): MQTT client in pure Python, Home Assistant MQTT discovery for the outlets and their measurements, and an MQTT bridge for states and output commands. The broker comes from the Supervisor in add-on mode or from the `MFI_MQTT_*` settings.
+- Versions aligned: `mfi-server` 0.2.0 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`.
+
 ## 0.3.0 - 2026-11-15
 
 - New add-on `mfi-server` 0.1.0 (phase 2): pure Python inform core (AES-128, inform packets, `.unf` key import, device store, states, `mfi-output` commands, measurements, HTTP server, command line), standard library only, tested offline in `mfi-server/tests/`; never sends a factory reset.
