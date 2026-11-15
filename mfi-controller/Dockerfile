@@ -10,6 +10,7 @@
 #   0.1.0 - 2026-11-15 - first version: two stages (download + run),
 #           Debian 8 jessie with OpenJDK 7 and MongoDB 2.4, data in /data.
 #   0.1.2 - 2026-11-15 - BUILD_VERSION default aligned with config.yaml; version line removed from the header.
+#   0.1.3 - 2026-11-15 - BUILD_VERSION 0.1.3 (security notes in DOCS.md).
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -41,7 +42,7 @@ RUN curl -fsSL --retry 3 -o /tmp/mFi.unix.zip "${MFI_URL}" \
 # -----------------------------------------------------------------------------
 FROM debian/eol:jessie@sha256:81cc60273fcd009665b917085e8edb4a44af01130e42a9349545bcaaf05236a2
 
-ARG BUILD_VERSION="0.1.2"
+ARG BUILD_VERSION="0.1.3"
 ARG BUILD_ARCH="amd64"
 
 RUN apt-get update \
