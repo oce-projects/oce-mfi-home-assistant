@@ -109,6 +109,13 @@ class TestValidation(unittest.TestCase):
             with self.assertRaises(ValueError):
                 _load({}, d)
 
+    def test_float_port_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"inform_port": 80.7}', encoding="utf-8")
+            with self.assertRaises(ValueError) as cm:
+                _load({}, d)
+            self.assertIn("inform_port", str(cm.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

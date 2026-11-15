@@ -120,7 +120,7 @@ def _try_key(key: bytes, header: InformHeader, payload: bytes) -> dict | None:
             return None
     try:
         message = json.loads(body.decode("utf-8"))
-    except ValueError:
+    except (ValueError, RecursionError):
         logger.debug("one key did not give valid JSON")
         return None
     if not isinstance(message, dict):

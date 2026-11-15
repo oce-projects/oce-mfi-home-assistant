@@ -73,6 +73,8 @@ class TestWakeupTarget(unittest.TestCase):
             {"connect_request_ip": "127.0.0.1", "connect_request_port": "abc"},
             {"connect_request_ip": "127.0.0.1", "connect_request_port": None},
             {"connect_request_ip": "", "connect_request_port": "40000"},
+            {"connect_request_ip": "127.0.0.1", "connect_request_port": float("inf")},
+            {"connect_request_ip": "127.0.0.1", "connect_request_port": True},
         ]
         for payload in bad:
             with self.subTest(payload=payload):

@@ -23,9 +23,12 @@ def wakeup_target(payload: dict) -> tuple[str, int] | None:
     ip = payload.get("connect_request_ip")
     if not isinstance(ip, str) or not ip:
         return None
+    raw = payload.get("connect_request_port")
+    if isinstance(raw, bool):
+        return None
     try:
-        port = int(payload.get("connect_request_port"))
-    except (TypeError, ValueError) as exc:
+        port = int(raw)
+    except (TypeError, ValueError, OverflowError) as exc:
         logger.debug("no valid wake-up port in payload: %s", exc)
         return None
     if not 1 <= port <= 65535:

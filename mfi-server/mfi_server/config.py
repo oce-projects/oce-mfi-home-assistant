@@ -107,6 +107,8 @@ def _port(field: str, value: object) -> int:
     """Return a port number, or raise ValueError naming the field."""
     if isinstance(value, bool):
         raise ValueError(f"{field} must be 1-65535")
+    if isinstance(value, float):
+        raise ValueError(f"{field} must be 1-65535")
     try:
         port = int(value)
     except (TypeError, ValueError) as exc:
