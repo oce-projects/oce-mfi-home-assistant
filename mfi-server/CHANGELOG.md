@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 - 2026-11-15
+
+- Automation engine in the Home Assistant format (level 1), in pure Python, standard library only:
+  - `yaml_lite.py`: reduced YAML reader for automation files (block mappings and lists, simple scalars, quoted strings, inline lists, comments). Anchors, tags, block scalars, inline maps and duplicate keys are rejected with the line number.
+  - `automation_model.py`: normalizes the old Home Assistant keys (`trigger`, `condition`, `action`, `platform`, `service`), validates each automation with the path in every error message, and parses durations.
+  - `automation_engine.py`: triggers `state`, `numeric_state`, `time` and `time_pattern`, with `for`; conditions `state`, `numeric_state`, `time`, `and`, `or` and `not`; actions `switch.turn_on`, `switch.turn_off`, `switch.toggle`, `delay`, `if` and `choose`; modes `single`, `restart`, `queued` and `parallel`; traces of the last 5 runs. The engine has no thread of its own: the caller ticks it once a second.
+  - `automation_store.py`: `automations.json` in the data folder, written atomically with mode 0600; a damaged file is never overwritten.
+- Web API routes `api/v1/automations*`: list, get, create, replace, delete, trigger, enable, traces, validate and import.
+- Wiring in `__main__.py`: measurements become entity changes (`switch.mfi_<mac>_<port>`, `sensor.mfi_<mac>_<port>_<tag>`), and the engine ticks every second. Without automations the engine does nothing.
+- Not supported yet (levels 2 and 3): `template` (`{{ }}`), `sun`, `mqtt`, `repeat`, `wait_*`, `variables` and `event`; they are rejected with `not supported yet`.
+
 ## 0.4.0 - 2026-11-15
 
 - Web page of `mfi-server`, served by the same HTTP server as the API: `web/index.html`, `app.js`, `style.css` and the English and Italian texts in `web/i18n/`. It works inside the Home Assistant ingress (the "mFi" entry in the sidebar) and in standalone mode, with the login of 0.3.0.

@@ -5,7 +5,7 @@
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "mFi Server"
-version: "0.4.0"
+version: "0.5.0"
 slug: "mfi_server"
 description: >-
   Our own mFi controller in pure Python: speaks the inform protocol with already
