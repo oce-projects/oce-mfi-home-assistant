@@ -96,6 +96,10 @@ switch:
 
 The controller is from 2015 and gets no updates: Java 7 and MongoDB 2.4 are out of support. Use the app **only on the local network**, ideally with the devices on an isolated network. Never open ports 6080 and 6443 to the internet.
 
+- The controller 2.1.11 has a published authentication bypass (published 2015-09-03, UNVERIFIED: date not checked against the original advisory) that lets an attacker skip the login and read the administrator password. Ubiquiti never released a fix. An unofficial patch of the class `com/ubnt/ace/view/AuthFilter` exists (https://github.com/ikkisoft/mFiPatchMe); **this app does not apply it**. Anyone who can reach port 6443 can take over the controller and, through it, the devices.
+- The controller stores the administrator password in clear text and gives the same user name and password to every adopted device for SSH and its web page (source: decompiled `ace.jar` 2.1.11, analysis done outside this repository; UNVERIFIED with this app). Use a dedicated password that is not used anywhere else.
+- Devices are adopted over SSH with the factory user `ubnt` / `ubnt` and the controller does not check the SSH host key (same source, UNVERIFIED with this app).
+
 ## Data
 
 | Path in the container | Content |

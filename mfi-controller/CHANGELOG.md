@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3 - 2026-11-15
+
+- Security section of `DOCS.md` now describes the unpatched 2015 authentication bypass, the clear-text administrator password and the SSH adoption with factory credentials; image content unchanged.
+
 ## 0.1.2 - 2026-11-15
 
 - `BUILD_VERSION` default in `Dockerfile` aligned with `config.yaml`: it was

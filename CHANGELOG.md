@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.2.4 - 2026-11-15
+
+- `docs/DEVAGENTAI.md` now lists the settings actually used in DevAgentAi; `mfi-controller` 0.1.3 (security notes in `DOCS.md`).
+
 ## 0.2.3 - 2026-11-15
 
 - private data scan covers every private IPv4 range (10/8, 172.16/12, 192.168/16) instead of three home addresses; documented exceptions in ALLOWED_MATCHES.
