@@ -86,7 +86,9 @@ class InformHandler(BaseHTTPRequestHandler):
             was_connected = self.server.states.state(mac) == "connected"
             self.server.states.seen(mac)
             target = wakeup_target(payload)
-            if target is not None:
+            # Trust the address only when it is the device's own inform source, so a
+            # device cannot aim the wake-up packets at an unrelated host (reflection).
+            if target is not None and target[0] == self.client_address[0]:
                 self.server.states.set_wakeup_target(mac, target[0], target[1])
             self.server.measurements.ingest(mac, payload, now_ms)
             cmd = self.server.queue.pop(mac) if was_connected else None

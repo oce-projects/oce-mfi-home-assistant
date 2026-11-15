@@ -81,6 +81,16 @@ class TestOutputControl(unittest.TestCase):
             self.control.set_output(MAC, 1, 2)
         self.assertIsNone(self.queue.pop(MAC))
 
+    def test_bool_value_raises_valueerror_and_queues_nothing(self):
+        with self.assertRaises(ValueError):
+            self.control.set_output(MAC, 1, True)
+        self.assertIsNone(self.queue.pop(MAC))
+
+    def test_float_value_raises_valueerror_and_queues_nothing(self):
+        with self.assertRaises(ValueError):
+            self.control.set_output(MAC, 1, 1.0)
+        self.assertIsNone(self.queue.pop(MAC))
+
 
 if __name__ == "__main__":
     unittest.main()

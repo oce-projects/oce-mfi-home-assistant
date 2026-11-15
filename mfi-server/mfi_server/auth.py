@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import secrets
+import threading
 from collections.abc import Callable
 from pathlib import Path
 
@@ -93,23 +94,27 @@ class Sessions:
         self._clock = clock
         self._ttl_s = ttl_s
         self._tokens: dict[str, float] = {}
+        self._lock = threading.Lock()
 
     def create(self) -> str:
         token = secrets.token_urlsafe(32)
-        self._tokens[token] = self._clock()
+        with self._lock:
+            self._tokens[token] = self._clock()
         return token
 
     def valid(self, token: str) -> bool:
-        created = self._tokens.get(token)
-        if created is None:
-            return False
-        if self._clock() - created > self._ttl_s:
-            self._tokens.pop(token, None)
-            return False
-        return True
+        with self._lock:
+            created = self._tokens.get(token)
+            if created is None:
+                return False
+            if self._clock() - created > self._ttl_s:
+                self._tokens.pop(token, None)
+                return False
+            return True
 
     def drop(self, token: str) -> None:
-        self._tokens.pop(token, None)
+        with self._lock:
+            self._tokens.pop(token, None)
 
 
 class LoginLimiter:
@@ -118,6 +123,7 @@ class LoginLimiter:
     def __init__(self, clock: Callable[[], float]) -> None:
         self._clock = clock
         self._failures: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
 
     def _prune(self, ip: str, now: float) -> list[float]:
         recent = [t for t in self._failures.get(ip, []) if now - t < LIMIT_WINDOW_S]
@@ -128,11 +134,13 @@ class LoginLimiter:
         return recent
 
     def failure(self, ip: str) -> None:
-        now = self._clock()
-        recent = self._prune(ip, now)
-        recent.append(now)
-        self._failures[ip] = recent
+        with self._lock:
+            now = self._clock()
+            recent = self._prune(ip, now)
+            recent.append(now)
+            self._failures[ip] = recent
 
     def blocked(self, ip: str) -> bool:
-        now = self._clock()
-        return len(self._prune(ip, now)) >= MAX_FAILURES
+        with self._lock:
+            now = self._clock()
+            return len(self._prune(ip, now)) >= MAX_FAILURES
