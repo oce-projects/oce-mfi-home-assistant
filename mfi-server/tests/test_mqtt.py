@@ -8,6 +8,7 @@ import unittest
 from mfi_server.mqtt import (
     CONNECT,
     DISCONNECT,
+    MAX_PACKET_BYTES,
     PUBLISH,
     MqttClient,
     MqttError,
@@ -180,6 +181,45 @@ class ClientWithFakeBrokerTest(unittest.TestCase):
             client.connect()
         broker.close()
         self.assertEqual(context.exception.code, 5)
+
+    def test_loop_callback_exception_does_not_kill_the_loop(self):
+        broker = FakeBroker()
+        broker.start()
+        client = MqttClient(
+            "127.0.0.1",
+            broker.port,
+            "user-test",
+            PASSWORD,
+            "mfi-test",
+            on_message=lambda topic, payload: None,
+            keepalive=0,
+        )
+        stop = threading.Event()
+        calls = []
+
+        def boom():
+            calls.append(1)
+            stop.set()
+            raise KeyError("device")
+
+        client.loop_forever(stop, on_connect=boom)
+        broker.close()
+        self.assertEqual(calls, [1])
+
+
+class IncomingPacketLimitTest(unittest.TestCase):
+    def test_oversized_declared_length_is_refused(self):
+        client = MqttClient(
+            "127.0.0.1",
+            1,
+            "user-test",
+            PASSWORD,
+            "mfi-test",
+            on_message=lambda topic, payload: None,
+        )
+        client._buffer = b"\x30" + encode_remaining_length(MAX_PACKET_BYTES + 1)
+        with self.assertRaises(ValueError):
+            client._read_once()
 
 
 if __name__ == "__main__":

@@ -105,6 +105,11 @@ class BridgeTest(unittest.TestCase):
         self.bridge.on_message("mfi/02aabbccdd01/1/output/set", b"FOO")
         self.assertIsNone(self.queue.pop(MAC))
 
+    def test_non_utf8_and_empty_payload_queue_nothing_and_do_not_raise(self):
+        self.bridge.on_message("mfi/02aabbccdd01/1/output/set", b"\xff")
+        self.bridge.on_message("mfi/02aabbccdd01/1/output/set", b"")
+        self.assertIsNone(self.queue.pop(MAC))
+
     def test_unknown_device_or_port_queues_nothing(self):
         self.bridge.on_message("mfi/02aabbccdd01/9/output/set", b"ON")
         self.bridge.on_message("mfi/02aabbccdd02/1/output/set", b"ON")

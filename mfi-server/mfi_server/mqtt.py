@@ -19,6 +19,7 @@ PROTOCOL_NAME = b"\x00\x04MQTT"
 PROTOCOL_LEVEL = 4
 MAX_REMAINING_LENGTH = 268435455
 MAX_STRING_BYTES = 65535
+MAX_PACKET_BYTES = 1048576
 
 CONNECT = 1
 CONNACK = 2
@@ -283,7 +284,7 @@ class MqttClient:
                     self.connect()
                     delay = RECONNECT_FIRST_S
                     if on_connect is not None:
-                        on_connect()
+                        self._run_callback(on_connect)
                     elif self._subscriptions:
                         self._send(build_subscribe(self._next_packet_id(), self._subscriptions))
                 self._pump(stop_event, on_tick, tick_interval_s)
@@ -313,7 +314,7 @@ class MqttClient:
                 self._send(build_pingreq())
                 last_ping = now
             if on_tick is not None and tick_interval_s > 0 and now - last_tick >= tick_interval_s:
-                on_tick()
+                self._run_callback(on_tick)
                 last_tick = time.monotonic()
 
     def _deliver_inbox(self) -> None:
@@ -324,6 +325,13 @@ class MqttClient:
                 self.on_message(topic, payload)
             except Exception as exc:
                 logger.error("message handler failed: %s", type(exc).__name__)
+
+    def _run_callback(self, callback: Callable[[], None]) -> None:
+        """Run a loop callback (on_connect/on_tick); a failing callback is logged, the loop goes on."""
+        try:
+            callback()
+        except Exception as exc:
+            logger.error("MQTT loop callback failed: %s", type(exc).__name__)
 
     def _wait_for(self, packet_type: int, timeout_s: float, packet_id: int | None = None) -> bytes:
         """Read until the wanted packet arrives; other packets are queued or ignored."""
@@ -340,6 +348,7 @@ class MqttClient:
 
     def _read_once(self) -> tuple[int, int, bytes] | None:
         """Return the next complete packet, or None if the socket timed out first."""
+        self._reject_oversized_packet()
         packet = parse_packet(self._buffer)
         if packet is None:
             if self._sock is None:
@@ -357,6 +366,19 @@ class MqttClient:
         ptype, flags, body, consumed = packet
         self._buffer = self._buffer[consumed:]
         return ptype, flags, body
+
+    def _reject_oversized_packet(self) -> None:
+        """Refuse an incoming packet whose declared length is over MAX_PACKET_BYTES."""
+        if len(self._buffer) < 2:
+            return
+        decoded = _read_remaining_length(self._buffer, 1)
+        if decoded is None:
+            return
+        length, used = decoded
+        if 1 + used + length > MAX_PACKET_BYTES:
+            raise ValueError(
+                f"incoming packet of {length} bytes is over the {MAX_PACKET_BYTES}-byte limit"
+            )
 
     def _dispatch(self, ptype: int, flags: int, body: bytes) -> None:
         """Queue an inbound QoS 0 PUBLISH; other packets need no action here."""
