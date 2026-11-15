@@ -17,6 +17,7 @@ Home Assistant OS.
 - Never sends a factory reset to a device.
 - MQTT discovery for Home Assistant (optional in standalone mode).
 - JSON web API on port 8099, and measurement history in `history.sqlite3` (30 days by default).
+- Web page on port 8099, served by the same server: hand-written HTML, CSS and JavaScript, English and Italian, no build tools.
 
 ### Home Assistant entities
 
