@@ -182,6 +182,35 @@ class TestMqttSettings(unittest.TestCase):
             self.assertEqual(s.mqtt_discovery_prefix, "ha")
 
 
+class TestWebAndHistorySettings(unittest.TestCase):
+    def test_web_defaults(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = _load({}, d)
+            self.assertEqual(s.web_port, 8099)
+            self.assertEqual(s.history_days, 30)
+
+    def test_from_settings_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"web_port": 9000, "history_days": 7}', encoding="utf-8")
+            s = _load({}, d)
+            self.assertEqual(s.web_port, 9000)
+            self.assertEqual(s.history_days, 7)
+
+    def test_from_environment(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = _load({"MFI_WEB_PORT": "9001", "MFI_HISTORY_DAYS": "14"}, d)
+            self.assertEqual(s.web_port, 9001)
+            self.assertEqual(s.history_days, 14)
+
+    def test_history_days_out_of_range_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            for value in ("0", "4000"):
+                with self.subTest(value=value):
+                    with self.assertRaises(ValueError) as cm:
+                        _load({"MFI_HISTORY_DAYS": value}, d)
+                    self.assertIn("history_days", str(cm.exception))
+
+
 class TestSupervisorMqtt(unittest.TestCase):
     def test_no_token_means_no_broker(self):
         with self.assertLogs("mfi_server.config", level="INFO") as cm:
