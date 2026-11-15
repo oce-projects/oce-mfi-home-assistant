@@ -1,8 +1,9 @@
 """Offline structure tests for the oce-mfi-home-assistant repository.
 
-Version: 1.1.0
+Version: 1.2.0
 
 Changelog:
+1.2.0 - 2026-11-15 - private data scan covers every private IPv4 range (10/8, 172.16/12, 192.168/16) instead of three home addresses; documented exceptions in ALLOWED_MATCHES.
 1.1.0 - 2026-11-15 - Dockerfile BUILD_VERSION must equal the add-on version; stale version headers in add-on files are reported.
 1.0.0 - 2026-11-15 - first version: versions vs changelogs, repository.yaml,
         add-on folder layout, AGENTS.md size, no vendor files, no private data.
@@ -29,13 +30,15 @@ VENDOR_SUFFIXES = {".jar", ".zip", ".deb", ".bin", ".unf", ".exe", ".dmg", ".pkg
 VENDOR_NAMES = {"db.gz", "ace.jar", "mfi.unix.zip", "firmware.bin"}
 
 PRIVATE_PATTERNS = {
-    "home LAN address of the maintainer": re.compile(r"\b192\.168\.1\.(9|120|228)\b"),
+    "private IPv4 address": re.compile(r"(?<![\d.])(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(?!\d|\.\d)"),
     "UNC path to a LAN share": re.compile(r"\\\\\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\\"),
     "local Windows drive path": re.compile(r"\b[A-Z]:\\[A-Za-z_]"),
     "personal name": re.compile(r"(?i)\boscar\b"),
     "e-mail address": re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}"),
     "MAC address": re.compile(r"(?i)\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b"),
 }
+
+ALLOWED_MATCHES = {"192.168.1.20": "factory default IP of mFi devices, official Quick Start Guides (docs/PROTOCOL.md)"}
 
 TEXT_SUFFIXES = {".md", ".yaml", ".yml", ".json", ".py", ".sh", ".txt", ".toml", ".cfg", ""}
 RULES_LIMIT = 12000  # DevAgentAi regole_max_car default
@@ -90,6 +93,8 @@ def private_hits(name: str, text: str) -> list[str]:
     hits = []
     for label, rx in PRIVATE_PATTERNS.items():
         for m in rx.finditer(text):
+            if m.group(0) in ALLOWED_MATCHES:
+                continue
             line = text.count("\n", 0, m.start()) + 1
             hits.append(f"{name}:{line}: {label}: {m.group(0)!r}")
     return hits
@@ -100,7 +105,7 @@ class TestScannersCatchPlantedSamples(unittest.TestCase):
 
     def test_private_scanner_flags_each_pattern(self):
         samples = {
-            "home LAN address of the maintainer": "host 192.168.1.228 here",
+            "private IPv4 address": "host 192.168.1.228 here",
             "UNC path to a LAN share": r"see \\10.0.0.5\share\x",
             "local Windows drive path": r"open W:\_FOLDER now",
             "personal name": "written by Oscar",
@@ -113,6 +118,28 @@ class TestScannersCatchPlantedSamples(unittest.TestCase):
 
     def test_private_scanner_allows_documented_factory_ip(self):
         self.assertEqual(private_hits("sample", "factory default IP 192.168.1.20"), [])
+
+    def test_private_ip_scanner_covers_all_ranges(self):
+        positive = [
+            "ip 10.1.2.3 here",
+            "ip 172.16.0.1 here",
+            "ip 172.31.255.1 here",
+            "ip 192.168.5.5 here",
+            "see http://192.168.1.5:6080/inform",
+            "server 192.168.1.9.",
+        ]
+        for text in positive:
+            with self.subTest(text=text):
+                self.assertTrue(any("private IPv4 address" in h for h in private_hits("sample", text)), text)
+        negative = [
+            "ip 172.32.0.1 here",
+            "dns 8.8.8.8 here",
+            "firmware 2.1.11.1309",
+            "multicast 233.89.188.1",
+        ]
+        for text in negative:
+            with self.subTest(text=text):
+                self.assertEqual(private_hits("sample", text), [], text)
 
     def test_vendor_scanner_flags_binaries(self):
         planted = [Path("x/ace.jar"), Path("x/mFi.unix.zip"), Path("x/backup.unf"), Path("x/firmware.bin")]
