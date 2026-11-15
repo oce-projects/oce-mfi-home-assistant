@@ -1,8 +1,9 @@
 """Offline structure tests for the oce-mfi-home-assistant repository.
 
-Version: 1.2.0
+Version: 1.3.0
 
 Changelog:
+1.3.0 - 2026-11-15 - private data scan allows 172.30.32.2 (Home Assistant ingress address used by mfi-server/mfi_server/api.py).
 1.2.0 - 2026-11-15 - private data scan covers every private IPv4 range (10/8, 172.16/12, 192.168/16) instead of three home addresses; documented exceptions in ALLOWED_MATCHES.
 1.1.0 - 2026-11-15 - Dockerfile BUILD_VERSION must equal the add-on version; stale version headers in add-on files are reported.
 1.0.0 - 2026-11-15 - first version: versions vs changelogs, repository.yaml,
@@ -38,7 +39,10 @@ PRIVATE_PATTERNS = {
     "MAC address": re.compile(r"(?i)\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b"),
 }
 
-ALLOWED_MATCHES = {"192.168.1.20": "factory default IP of mFi devices, official Quick Start Guides (docs/PROTOCOL.md)"}
+ALLOWED_MATCHES = {
+    "192.168.1.20": "factory default IP of mFi devices, official Quick Start Guides (docs/PROTOCOL.md)",
+    "172.30.32.2": "Home Assistant Supervisor ingress address, developers.home-assistant.io (mfi-server/mfi_server/api.py)",
+}
 
 TEXT_SUFFIXES = {".md", ".yaml", ".yml", ".json", ".py", ".sh", ".txt", ".toml", ".cfg", ""}
 RULES_LIMIT = 12000  # DevAgentAi regole_max_car default
