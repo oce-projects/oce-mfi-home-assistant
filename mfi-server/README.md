@@ -15,7 +15,7 @@ Home Assistant OS.
 - Device states and outlet commands.
 - Measurements.
 - Never sends a factory reset to a device.
-- MQTT discovery for Home Assistant (optional in standalone mode)
+- MQTT discovery for Home Assistant (optional in standalone mode).
 
 ### Home Assistant entities
 

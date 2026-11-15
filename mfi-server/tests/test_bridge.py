@@ -26,6 +26,8 @@ class FakeClient:
         self.published: list[tuple[str, bytes, int, bool]] = []
         self.subscribed: list[list[str]] = []
         self.calls: list[str] = []
+        self.on_connect = None
+        self.on_tick = None
 
     def publish(self, topic, payload, qos=0, retain=False):
         self.published.append((topic, payload, qos, retain))
@@ -37,8 +39,13 @@ class FakeClient:
     def connect(self):
         self.calls.append("connect")
 
-    def loop_forever(self, stop_event):
+    def loop_forever(self, stop_event, on_connect=None, on_tick=None, tick_interval_s=0.0):
+        # Simulates the real client: loop_forever connects first, then calls on_connect; on_tick is kept for the test.
         self.calls.append("loop_forever")
+        self.on_connect = on_connect
+        self.on_tick = on_tick
+        if on_connect is not None:
+            on_connect()
 
 
 class FakeClock:
@@ -137,15 +144,26 @@ class BridgeTest(unittest.TestCase):
         self.bridge.on_message("homeassistant/status", b"offline")
         self.assertEqual(self.client.published, [])
 
-    def test_run_connects_subscribes_publishes_and_loops_until_stopped(self):
+    def test_run_loops_and_on_connect_subscribes_and_publishes_discovery(self):
         stop = threading.Event()
         stop.set()
         self.bridge.run(stop)
-        self.assertEqual(self.client.calls[0], "connect")
-        self.assertEqual(self.client.calls[1], "subscribe")
+        self.assertIn("loop_forever", self.client.calls)
+        self.assertIn("subscribe", self.client.calls)
         self.assertEqual(self.client.subscribed[0], ["mfi/+/+/output/set", "homeassistant/status"])
-        self.assertEqual(self.client.calls[-1], "loop_forever")
         self.assertIn(("mfi/status", b"online", 0, True), self.client.published)
+
+    def test_tick_republishes_states_and_measurements_arrived_after_run(self):
+        stop = threading.Event()
+        stop.set()
+        self.bridge.run(stop)
+        self.client.published.clear()
+        self.states.seen(MAC)
+        self.measurements.ingest(MAC, {"alarm": [{"sId": "sensor-1", "tag": "active_pwr", "val": 12.5}]}, 0)
+        self.assertIsNotNone(self.client.on_tick)
+        self.client.on_tick()
+        self.assertIn((f"mfi/{MAC}/availability", b"online", 0, True), self.client.published)
+        self.assertIn((f"mfi/{MAC}/1/active_pwr", b"12.5", 0, True), self.client.published)
 
 
 if __name__ == "__main__":

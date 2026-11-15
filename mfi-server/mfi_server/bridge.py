@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 STATUS_ONLINE = b"online"
 STATUS_OFFLINE = b"offline"
 COMMAND_VALUES = {b"ON": 1, b"OFF": 0}
+REPUBLISH_INTERVAL_S = 15.0
 
 
 class MqttBridge:
@@ -125,11 +126,22 @@ class MqttBridge:
             return
         logger.info("queued output %d for %s port %d", value, mac, port_no)
 
-    def run(self, stop_event: threading.Event) -> None:
-        """Connect, subscribe, publish the discovery and the states, then serve until stop_event is set."""
+    def _on_connect(self) -> None:
+        """Subscribe, publish the discovery and the states; called after every (re)connection."""
         prefix = self.settings.mqtt_topic_prefix
-        self.client.connect()
         self.client.subscribe([f"{prefix}/+/+/output/set", f"{self.settings.mqtt_discovery_prefix}/status"])
         self.publish_discovery()
         self.publish_states()
-        self.client.loop_forever(stop_event)
+
+    def run(self, stop_event: threading.Event) -> None:
+        """Serve until stop_event is set.
+
+        loop_forever owns the connection and reconnects with a growing delay (the broker may start after
+        the add-on), calls _on_connect after every connection and publish_states every REPUBLISH_INTERVAL_S seconds.
+        """
+        self.client.loop_forever(
+            stop_event,
+            on_connect=self._on_connect,
+            on_tick=self.publish_states,
+            tick_interval_s=REPUBLISH_INTERVAL_S,
+        )

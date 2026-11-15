@@ -7,11 +7,12 @@ Precedence: environment variable, then file, then default.
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import logging
 import urllib.request
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ class Settings:
     mqtt_host: str = ""
     mqtt_port: int = 1883
     mqtt_username: str = ""
-    mqtt_password: str = ""
+    mqtt_password: str = field(default="", repr=False)
     mqtt_topic_prefix: str = "mfi"
     mqtt_discovery_prefix: str = "homeassistant"
 
@@ -130,7 +131,7 @@ def supervisor_mqtt(environ: Mapping[str, str], opener=urllib.request.urlopen) -
                 logger.info("MQTT disabled")
                 return None
             body = json.loads(response.read().decode("utf-8"))
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, http.client.HTTPException) as exc:
         logger.info("MQTT disabled: Supervisor request failed (%s)", type(exc).__name__)
         return None
     data = body.get("data") if isinstance(body, dict) else None
