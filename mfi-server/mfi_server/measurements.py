@@ -84,6 +84,10 @@ class Measurements:
         self._lock = threading.Lock()
         self._counter = EnergyCounter()
         self._latest: dict[str, dict[str, dict[str, float]]] = {}
+        self._listeners: list = []
+
+    def add_listener(self, callback) -> None:
+        self._listeners.append(callback)
 
     def ingest(self, mac: str, payload: dict, now_ms: int) -> None:
         items = flatten_alarm(payload.get("alarm", []))
@@ -101,6 +105,11 @@ class Measurements:
                         continue
                     val = float(self._counter.update(f"{mac}:{sensor_id}", float(val), int(time_ms)))
                 self._latest.setdefault(mac, {}).setdefault(sensor_id, {})[tag] = val
+                for callback in self._listeners:
+                    try:
+                        callback(mac, sensor_id, tag, float(val), int(now_ms))
+                    except Exception:
+                        logger.exception("measurement listener failed")
 
     def latest(self, mac: str) -> dict:
         with self._lock:

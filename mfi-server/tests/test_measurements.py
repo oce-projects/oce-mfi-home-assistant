@@ -201,6 +201,23 @@ class TestMeasurements(unittest.TestCase):
         self.assertEqual(m.latest(MAC)["shared"]["energy_sum"], 1000.0)
         self.assertEqual(m.latest(OTHER_MAC)["shared"]["energy_sum"], 10.0)
 
+    def test_listener_exception_does_not_stop_ingest_or_next_listener(self):
+        m = Measurements()
+        received = []
+
+        def boom(*args):
+            raise RuntimeError("boom")
+
+        def keep(mac, sensor_id, tag, value, time_ms):
+            received.append((mac, sensor_id, tag, value, time_ms))
+
+        m.add_listener(boom)
+        m.add_listener(keep)
+        with self.assertLogs("mfi_server.measurements", level="ERROR"):
+            m.ingest(MAC, {"alarm": [{"sId": "s1", "tag": "pf", "val": 0.9}]}, 5000)
+        self.assertEqual(m.latest(MAC), {"s1": {"pf": 0.9}})
+        self.assertEqual(received, [(MAC, "s1", "pf", 0.9, 5000)])
+
 
 if __name__ == "__main__":
     unittest.main()
