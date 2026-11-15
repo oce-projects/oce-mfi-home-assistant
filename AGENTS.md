@@ -44,7 +44,7 @@ before touching anything that talks to devices.
 | `repository.yaml` | Home Assistant add-on repository manifest |
 | `mfi-controller/` | Phase 1 add-on: original mFi Controller 2.1.11 in a container (tested with Docker, not yet on HAOS) |
 | `tools/` | scripts run by a human (Docker test bench); never part of the offline tests |
-| `mfi-server/` | Phase 2 add-on: our own server speaking the inform protocol (not started) |
+| `mfi-server/` | Phase 2 add-on: our own server speaking the inform protocol (in progress, standard library only) |
 | `docs/ARCHITECTURE.md` | phases, components, decisions |
 | `docs/PROTOCOL.md` | what is known about the devices and the inform protocol |
 | `docs/DEVAGENTAI.md` | project settings proposed for DevAgentAi |
@@ -73,6 +73,7 @@ Not verified on a device: UDP discovery port 10001 (from the controller code, se
 
 - One ticket = one focused change. Keep commits small.
 - Run `python3 -m unittest discover -s tests -v` before finishing. It must exit 0.
+- mfi-server tests: `python3 -m unittest discover -s mfi-server/tests -t mfi-server -v`.
 - Update `docs/` when you learn a new fact; cite where it came from.
 - If a task needs a real device, Docker or Home Assistant, stop and write in the
   ticket exactly what must be run by a human and what output is expected.
