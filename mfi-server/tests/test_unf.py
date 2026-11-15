@@ -178,6 +178,21 @@ class TestImportBackup(unittest.TestCase):
         self.assertEqual(records[0]["authkey"], key_hex)
         self.assertEqual(records[1]["authkey"], "")
 
+    def test_sensor_with_zero_port_is_skipped_not_fatal(self):
+        docs = [
+            {"__cmd": "select", "collection": "device"},
+            {"mac": MAC_A, "model": "P1E", "name": "a"},
+            {"__cmd": "select", "collection": "sensor"},
+            {"_id": "s0", "mac": MAC_A, "port": 0, "model": "Outlet", "label": "Zero"},
+            {"_id": "s1", "mac": MAC_A, "port": 1, "model": "Outlet", "label": "One"},
+        ]
+        records = import_backup(make_backup(docs, {}))
+        self.assertEqual(len(records), 1)
+        self.assertEqual(
+            records[0]["ports"],
+            [{"port": 1, "sensor_id": "s1", "label": "One", "model": "Outlet"}],
+        )
+
     def test_missing_db_gz_raises(self):
         with self.assertRaisesRegex(UnfError, "db.gz not found in backup"):
             import_backup(_encrypt(_zip_bytes({"format": b"2"})))

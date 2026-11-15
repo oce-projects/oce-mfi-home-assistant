@@ -173,6 +173,17 @@ class TestMeasurements(unittest.TestCase):
         copied["s1"]["pf"] = 0
         self.assertEqual(m.latest(MAC)["s1"]["pf"], 0.9)
 
+    def test_non_finite_values_are_ignored(self):
+        m = Measurements()
+        m.ingest(MAC, {"alarm": [{"sId": "s1", "tag": "pf", "val": float("nan")}]}, 5000)
+        m.ingest(MAC, {"alarm": [{"sId": "s1", "tag": "pf", "val": float("inf")}]}, 5000)
+        self.assertEqual(m.latest(MAC), {})
+
+    def test_energy_with_non_finite_time_is_ignored(self):
+        m = Measurements()
+        m.ingest(MAC, {"alarm": [{"sId": "s1", "tag": "energy_sum", "val": 10, "time": float("inf")}]}, 5000)
+        self.assertEqual(m.latest(MAC), {})
+
 
 if __name__ == "__main__":
     unittest.main()

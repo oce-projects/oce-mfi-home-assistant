@@ -29,6 +29,7 @@ BLOCK_SIZE = 16
 MAC_LEN = 6
 IV_LEN = 16
 MAX_DATA_VERSION = 1
+MAX_JSON_BYTES = 262144
 _MAC_RE = re.compile(r"[0-9a-f]{12}")
 
 
@@ -108,10 +109,14 @@ def _try_key(key: bytes, header: InformHeader, payload: bytes) -> dict | None:
         logger.debug("bad padding, trying to recover")
         body = plain.rstrip(b"\x00")
     if header.flags & FLAG_COMPRESSED:
+        decompressor = zlib.decompressobj()
         try:
-            body = zlib.decompress(body)
+            body = decompressor.decompress(body, MAX_JSON_BYTES)
         except zlib.error:
             logger.debug("inflate failed for one key")
+            return None
+        if decompressor.unconsumed_tail:
+            logger.debug("compressed payload above the size limit, rejecting")
             return None
     try:
         message = json.loads(body.decode("utf-8"))

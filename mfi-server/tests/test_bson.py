@@ -91,6 +91,13 @@ class TestErrors(unittest.TestCase):
                 with self.assertRaises(BsonError):
                     list(iter_documents(raw))
 
+    def test_deeply_nested_document_raises_bson_error(self):
+        nested = {"v": 1}
+        for _ in range(200):
+            nested = {"v": nested}
+        with self.assertRaises(BsonError):
+            list(iter_documents(encode_document(nested)))
+
 
 class TestEncode(unittest.TestCase):
     def test_round_trip_all_supported_types(self):

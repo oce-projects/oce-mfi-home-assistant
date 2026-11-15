@@ -18,6 +18,7 @@ INT32_MIN = -(2**31)
 INT32_MAX = 2**31 - 1
 INT64_MIN = -(2**63)
 INT64_MAX = 2**63 - 1
+MAX_DEPTH = 100
 
 
 class BsonError(ValueError):
@@ -74,7 +75,9 @@ def _read_string(r: _Reader) -> str:
     return _decode_text(raw[:-1], start)
 
 
-def _read_container(r: _Reader) -> list[tuple[str, Any]]:
+def _read_container(r: _Reader, depth: int = 0) -> list[tuple[str, Any]]:
+    if depth > MAX_DEPTH:
+        raise BsonError(f"document nested deeper than {MAX_DEPTH}")
     start = r.pos
     length = r.unpack("<i")
     end = start + length
@@ -88,20 +91,20 @@ def _read_container(r: _Reader) -> list[tuple[str, Any]]:
         type_pos = inner.pos
         type_byte = inner.take(1)[0]
         name = inner.cstring()
-        pairs.append((name, _read_value(inner, type_byte, type_pos)))
+        pairs.append((name, _read_value(inner, type_byte, type_pos, depth)))
     r.pos = end
     return pairs
 
 
-def _read_value(r: _Reader, type_byte: int, type_pos: int) -> Any:
+def _read_value(r: _Reader, type_byte: int, type_pos: int, depth: int = 0) -> Any:
     if type_byte == 0x01:
         return r.unpack("<d")
     if type_byte == 0x02:
         return _read_string(r)
     if type_byte == 0x03:
-        return dict(_read_container(r))
+        return dict(_read_container(r, depth + 1))
     if type_byte == 0x04:
-        return [value for _, value in _read_container(r)]
+        return [value for _, value in _read_container(r, depth + 1)]
     if type_byte == 0x05:
         size = r.unpack("<i")
         r.take(1)  # binary subtype, not kept

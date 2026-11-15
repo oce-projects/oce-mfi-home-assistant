@@ -86,11 +86,16 @@ class InformHandler(BaseHTTPRequestHandler):
             self.server.states.seen(mac)
             self.server.measurements.ingest(mac, payload, now_ms)
             cmd = self.server.queue.pop(mac) if was_connected else None
-            if cmd is None:
-                message = noop(now_ms)
-            else:
-                message = output_command(mac, cmd["port"], cmd["sensor_id"], cmd["value"], now_ms)
-            response = encode_response(header, key, message)
+            try:
+                if cmd is None:
+                    message = noop(now_ms)
+                else:
+                    message = output_command(mac, cmd["port"], cmd["sensor_id"], cmd["value"], now_ms)
+                response = encode_response(header, key, message)
+            except Exception:
+                if cmd is not None:
+                    self.server.queue.put(mac, cmd["port"], cmd["sensor_id"], cmd["value"])
+                raise
         except PacketError as exc:
             logger.debug("inform rejected with %d: %s", exc.status, exc.reason)
             self._send_empty(exc.status)

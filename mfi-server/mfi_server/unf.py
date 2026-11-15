@@ -153,11 +153,15 @@ def _attach_sensor(devices: dict[str, dict], doc: dict) -> None:
     """Add one sensor document as a port of its device; orphan or incomplete sensors are skipped."""
     try:
         mac = normalize_mac(doc.get("mac"))
-        port = int(doc["port"])
+        raw_port = doc["port"]
         sensor_id = str(doc["_id"])
     except (KeyError, TypeError, ValueError):
         logger.debug("skipped sensor without a valid MAC, port or id")
         return
+    if type(raw_port) is not int or raw_port < 1:
+        logger.debug("skipped sensor with a port that is not an integer >= 1")
+        return
+    port = raw_port
     device = devices.get(mac)
     if device is None:
         logger.debug("skipped sensor of a device not in the backup")
