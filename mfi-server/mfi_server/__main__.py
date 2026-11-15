@@ -14,12 +14,16 @@ import logging
 import os
 import re
 import sys
+import threading
+import time
 from collections.abc import Mapping
 from pathlib import Path
 
+from mfi_server.bridge import MqttBridge
 from mfi_server.commands import CommandQueue
-from mfi_server.config import load_settings
+from mfi_server.config import Settings, load_settings, supervisor_mqtt
 from mfi_server.measurements import Measurements
+from mfi_server.mqtt import MqttClient
 from mfi_server.packet import PacketError, decode
 from mfi_server.server import make_server
 from mfi_server.states import DeviceStates
@@ -31,6 +35,7 @@ logger = logging.getLogger(__name__)
 KEY_HEX_RE = re.compile(r"[0-9a-fA-F]{32}")
 KEY_FILE_MESSAGE = "key file must contain 32 hex characters"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+MQTT_CLIENT_ID = "mfi-server"
 
 
 def main(argv: list[str] | None = None, environ: Mapping[str, str] | None = None) -> int:
@@ -98,6 +103,56 @@ def _import_command(args: list[str]) -> int:
     return 0
 
 
+def _mqtt_broker(settings: Settings, environ: Mapping[str, str]) -> dict | None:
+    """Return the MQTT broker: the settings first, then the Supervisor in add-on mode; None if there is none."""
+    if settings.mqtt_host:
+        return {
+            "host": settings.mqtt_host,
+            "port": settings.mqtt_port,
+            "username": settings.mqtt_username,
+            "password": settings.mqtt_password,
+        }
+    if settings.mode == "addon":
+        return supervisor_mqtt(environ)
+    return None
+
+
+def _run_bridge(bridge: MqttBridge, stop_event: threading.Event) -> None:
+    """Run the bridge until stop_event is set; a failure is logged and the inform server keeps running."""
+    try:
+        bridge.run(stop_event)
+    except Exception as exc:
+        logger.error("MQTT bridge stopped: %s", type(exc).__name__)
+
+
+def _start_bridge(
+    settings: Settings,
+    environ: Mapping[str, str],
+    store: DeviceStore,
+    states: DeviceStates,
+    queue: CommandQueue,
+    measurements: Measurements,
+    stop_event: threading.Event,
+) -> None:
+    """Start the MQTT bridge in a daemon thread, but only when a broker is configured."""
+    broker = _mqtt_broker(settings, environ)
+    if broker is None:
+        return
+    client = MqttClient(
+        broker["host"],
+        broker["port"],
+        broker["username"],
+        broker["password"],
+        MQTT_CLIENT_ID,
+        on_message=lambda topic, payload: None,  # replaced below, once the bridge exists
+        will_topic=f"{settings.mqtt_topic_prefix}/status",
+        will_payload=b"offline",
+    )
+    bridge = MqttBridge(client, store, states, queue, measurements, settings, time.time)
+    client.on_message = bridge.on_message
+    threading.Thread(target=_run_bridge, args=(bridge, stop_event), daemon=True).start()
+
+
 def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     """Run the inform server until it is interrupted."""
     try:
@@ -115,18 +170,24 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
             store.import_records(import_backup(Path(settings.backup_file).read_bytes()))
         except (OSError, ValueError) as exc:
             logger.error("backup import failed: %s", exc)
-    server = make_server(settings, store, DeviceStates(), CommandQueue(), Measurements())
+    states = DeviceStates()
+    queue = CommandQueue()
+    measurements = Measurements()
+    server = make_server(settings, store, states, queue, measurements)
     logger.info(
         "listening on %s:%d (mode %s)",
         settings.bind_address,
         server.server_address[1],
         settings.mode,
     )
+    stop_event = threading.Event()
+    _start_bridge(settings, environ, store, states, queue, measurements, stop_event)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         logger.info("stopped by user")
     finally:
+        stop_event.set()
         server.shutdown()
         server.server_close()
     return 0
