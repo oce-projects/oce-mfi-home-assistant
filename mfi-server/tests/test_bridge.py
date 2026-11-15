@@ -12,6 +12,7 @@ from pathlib import Path
 from mfi_server.bridge import MqttBridge
 from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings
+from mfi_server.control import OutputControl
 from mfi_server.measurements import Measurements
 from mfi_server.states import DeviceStates
 from mfi_server.store import DeviceStore
@@ -78,11 +79,12 @@ class BridgeTest(unittest.TestCase):
         self.clock = FakeClock(0.0)
         self.states = DeviceStates(clock=self.clock)
         self.queue = CommandQueue()
+        self.control = OutputControl(self.store, self.states, self.queue, None)
         self.measurements = Measurements()
         self.client = FakeClient()
         self.settings = Settings(data_dir=Path(tmp.name))
         self.bridge = MqttBridge(
-            self.client, self.store, self.states, self.queue, self.measurements, self.settings, self.clock
+            self.client, self.store, self.states, self.control, self.measurements, self.settings, self.clock
         )
 
     def test_on_queues_output_one_for_port_one(self):
