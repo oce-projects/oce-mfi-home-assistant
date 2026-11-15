@@ -1,11 +1,10 @@
 """MQTT bridge of mfi-server: Home Assistant discovery, device states and commands.
 
 The bridge publishes the discovery messages, the availability and the last
-measurements of every device, and turns ON/OFF messages into mfi-output
-commands in the queue. A command waits in the queue for the next regular
-inform of the device: the bridge does not wake the device up, because that
-needs the connect_request address known only to server.py.
-Standard library only.
+measurements of every device, and turns ON/OFF messages into output commands
+through OutputControl. OutputControl queues the command and sends the wake-up
+packet when the device's connect_request address is known, so the output
+changes at once. Standard library only.
 """
 from __future__ import annotations
 
@@ -14,8 +13,8 @@ import logging
 import threading
 from collections.abc import Callable
 
-from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings
+from mfi_server.control import OutputControl
 from mfi_server.discovery import discovery_messages
 from mfi_server.measurements import Measurements
 from mfi_server.states import DeviceStates
@@ -37,7 +36,7 @@ class MqttBridge:
         client,
         store: DeviceStore,
         states: DeviceStates,
-        queue: CommandQueue,
+        control: OutputControl,
         measurements: Measurements,
         settings: Settings,
         clock: Callable[[], float],
@@ -45,7 +44,7 @@ class MqttBridge:
         self.client = client
         self.store = store
         self.states = states
-        self.queue = queue
+        self.control = control
         self.measurements = measurements
         self.settings = settings
         self.clock = clock
@@ -110,21 +109,12 @@ class MqttBridge:
         if payload not in COMMAND_VALUES:
             logger.warning("command payload is not ON or OFF for %s port %d", mac, port_no)
             return
-        value = COMMAND_VALUES[payload]
-        device = self.store.get(mac)
-        if device is None:
-            logger.warning("command for unknown device %s", mac)
-            return
-        port = next((item for item in device["ports"] if item["port"] == port_no), None)
-        if port is None:
-            logger.warning("command for unknown port %d of %s", port_no, mac)
-            return
         try:
-            self.queue.put(device["mac"], port_no, port["sensor_id"], value)
-        except ValueError as exc:
-            logger.warning("command for %s port %d refused: %s", mac, port_no, exc)
+            self.control.set_output(mac, port_no, COMMAND_VALUES[payload])
+        except (KeyError, ValueError) as exc:
+            logger.warning("command for %s port %d refused: %s", mac, port_no, type(exc).__name__)
             return
-        logger.info("queued output %d for %s port %d", value, mac, port_no)
+        logger.info("queued output %d for %s port %d", COMMAND_VALUES[payload], mac, port_no)
 
     def _on_connect(self) -> None:
         """Subscribe, publish the discovery and the states; called after every (re)connection."""
