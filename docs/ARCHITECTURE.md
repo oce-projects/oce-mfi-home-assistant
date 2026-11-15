@@ -50,6 +50,7 @@ flowchart LR
 | 2026-11-15 | mfi-server uses the Python standard library only (own AES-128 and BSON reader) |
 | 2026-11-15 | mfi-server is a full controller: the same code runs as a Home Assistant add-on and as a standalone program |
 | 2026-11-15 | Home Assistant entities come through MQTT discovery; the server exposes its data over MQTT by default, and MQTT is optional when no broker is configured |
+| 2026-11-15 | Web API: measurement history in sqlite3 for 30 days; standalone login with a salted PBKDF2 password hash; add-on access only through the Home Assistant ingress |
 
 ## Existing work (checked 2026-11-15)
 

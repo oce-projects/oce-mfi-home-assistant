@@ -184,3 +184,21 @@ class InformServerTest(unittest.TestCase):
         self.assertEqual(message["_type"], "noop")
         self.assertEqual(self.measurements.latest(MAC), {"sensor1": {"output": 1}})
         self.assertEqual(self.states.state(MAC), "connected")
+
+    def test_valid_inform_records_the_wakeup_target(self):
+        key = os.urandom(16)
+        self._add_device(MAC, key.hex())
+        self._inform(key, {"mac": MAC, "connect_request_ip": "127.0.0.1", "connect_request_port": 40000})
+        self.assertEqual(self.states.wakeup_target(MAC), ("127.0.0.1", 40000))
+        other_key = os.urandom(16)
+        self._add_device("02aabbccdd09", other_key.hex())
+        request = packet.encode(bytes.fromhex("02aabbccdd09"), other_key, {"mac": "02aabbccdd09"}, os.urandom(16))
+        status, _, _ = self._request("POST", "/inform", request)
+        self.assertEqual(status, 200)
+        self.assertIsNone(self.states.wakeup_target("02aabbccdd09"))
+
+    def test_wakeup_target_ignored_when_ip_differs_from_peer(self):
+        key = os.urandom(16)
+        self._add_device(MAC, key.hex())
+        self._inform(key, {"mac": MAC, "connect_request_ip": "192.168.1.20", "connect_request_port": 40000})
+        self.assertIsNone(self.states.wakeup_target(MAC))

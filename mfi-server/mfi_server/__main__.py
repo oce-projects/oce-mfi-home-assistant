@@ -3,25 +3,32 @@
     python3 -m mfi_server [--data DIR]                      run the inform server
     python3 -m mfi_server decode FILE --key-file KEYFILE    decode one captured packet
     python3 -m mfi_server import-backup FILE [--data DIR]   import devices from a .unf backup
+    python3 -m mfi_server set-password [--data DIR]         set the password of the standalone API
 
 Keys are never printed. Errors go to stderr with exit code 2.
 """
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import logging
 import os
 import re
+import socket
 import sys
 import threading
 import time
 from collections.abc import Mapping
 from pathlib import Path
 
+from mfi_server.api import make_api_server
+from mfi_server.auth import Sessions, LoginLimiter, hash_password, save_password_hash
 from mfi_server.bridge import MqttBridge
 from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings, load_settings, supervisor_mqtt
+from mfi_server.control import OutputControl
+from mfi_server.history import History
 from mfi_server.measurements import Measurements
 from mfi_server.mqtt import MqttClient
 from mfi_server.packet import PacketError, decode
@@ -36,6 +43,8 @@ KEY_HEX_RE = re.compile(r"[0-9a-fA-F]{32}")
 KEY_FILE_MESSAGE = "key file must contain 32 hex characters"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 MQTT_CLIENT_ID = "mfi-server"
+MIN_PASSWORD_LENGTH = 12
+HISTORY_PURGE_INTERVAL_S = 3600
 
 
 def main(argv: list[str] | None = None, environ: Mapping[str, str] | None = None) -> int:
@@ -47,6 +56,8 @@ def main(argv: list[str] | None = None, environ: Mapping[str, str] | None = None
             return _decode_command(args[1:])
         if args and args[0] == "import-backup":
             return _import_command(args[1:])
+        if args and args[0] == "set-password":
+            return _set_password_command(args[1:])
         return _serve(args, env)
     except SystemExit as exc:
         # argparse exits on bad arguments; its exit code is the answer.
@@ -103,6 +114,27 @@ def _import_command(args: list[str]) -> int:
     return 0
 
 
+def _set_password_command(args: list[str]) -> int:
+    """Set the password of the standalone API; it is typed twice and never read from the command line."""
+    parser = argparse.ArgumentParser(prog="mfi_server set-password")
+    parser.add_argument("--data", default="./data")
+    options = parser.parse_args(args)
+    data_dir = Path(options.data)
+    try:
+        data_dir.mkdir(parents=True, exist_ok=True)
+        password = getpass.getpass("Password: ")
+        repeat = getpass.getpass("Repeat: ")
+        if password != repeat:
+            return _fail("passwords do not match")
+        if len(password) < MIN_PASSWORD_LENGTH:
+            return _fail(f"password must be at least {MIN_PASSWORD_LENGTH} characters")
+        save_password_hash(data_dir, hash_password(password))
+    except OSError as exc:
+        return _fail(str(exc))
+    print("password set")
+    return 0
+
+
 def _mqtt_broker(settings: Settings, environ: Mapping[str, str]) -> dict | None:
     """Return the MQTT broker: the settings first, then the Supervisor in add-on mode; None if there is none."""
     if settings.mqtt_host:
@@ -130,7 +162,7 @@ def _start_bridge(
     environ: Mapping[str, str],
     store: DeviceStore,
     states: DeviceStates,
-    queue: CommandQueue,
+    control: OutputControl,
     measurements: Measurements,
     stop_event: threading.Event,
 ) -> None:
@@ -148,9 +180,15 @@ def _start_bridge(
         will_topic=f"{settings.mqtt_topic_prefix}/status",
         will_payload=b"offline",
     )
-    bridge = MqttBridge(client, store, states, queue, measurements, settings, time.time)
+    bridge = MqttBridge(client, store, states, control, measurements, settings, time.time)
     client.on_message = bridge.on_message
     threading.Thread(target=_run_bridge, args=(bridge, stop_event), daemon=True).start()
+
+
+def _purge_history(history: History, stop_event: threading.Event) -> None:
+    """Delete the history older than the retention period every hour until stop_event is set."""
+    while not stop_event.wait(HISTORY_PURGE_INTERVAL_S):
+        history.purge()
 
 
 def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
@@ -173,6 +211,20 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     states = DeviceStates()
     queue = CommandQueue()
     measurements = Measurements()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind((settings.bind_address, settings.wakeup_port))
+    except OSError as exc:
+        sock.close()
+        logger.error("cannot bind the wake-up socket: %s", exc)
+        return 2
+    control = OutputControl(store, states, queue, sock)
+    history = History(settings.data_dir / "history.sqlite3", retention_days=settings.history_days)
+    measurements.add_listener(history.record)
+    sessions = Sessions(time.time)
+    limiter = LoginLimiter(time.time)
+    api_server = make_api_server(settings, store, states, measurements, history, control, sessions, limiter)
+    threading.Thread(target=api_server.serve_forever, daemon=True).start()
     server = make_server(settings, store, states, queue, measurements)
     logger.info(
         "listening on %s:%d (mode %s)",
@@ -181,7 +233,8 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
         settings.mode,
     )
     stop_event = threading.Event()
-    _start_bridge(settings, environ, store, states, queue, measurements, stop_event)
+    threading.Thread(target=_purge_history, args=(history, stop_event), daemon=True).start()
+    _start_bridge(settings, environ, store, states, control, measurements, stop_event)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -190,6 +243,12 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
         stop_event.set()
         server.shutdown()
         server.server_close()
+        api_server.shutdown()
+        api_server.server_close()
+        try:
+            sock.close()
+        except OSError as exc:
+            logger.warning("closing the wake-up socket failed: %s", exc)
     return 0
 
 

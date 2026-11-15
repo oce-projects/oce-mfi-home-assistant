@@ -19,6 +19,7 @@ from mfi_server.messages import noop, output_command
 from mfi_server.packet import PacketError, decode, encode_response, normalize_mac, parse_header
 from mfi_server.states import DeviceStates
 from mfi_server.store import DeviceStore
+from mfi_server.wakeup import wakeup_target
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,11 @@ class InformHandler(BaseHTTPRequestHandler):
             now_ms = int(time.time() * 1000)
             was_connected = self.server.states.state(mac) == "connected"
             self.server.states.seen(mac)
+            target = wakeup_target(payload)
+            # Trust the address only when it is the device's own inform source, so a
+            # device cannot aim the wake-up packets at an unrelated host (reflection).
+            if target is not None and target[0] == self.client_address[0]:
+                self.server.states.set_wakeup_target(mac, target[0], target[1])
             self.server.measurements.ingest(mac, payload, now_ms)
             cmd = self.server.queue.pop(mac) if was_connected else None
             try:

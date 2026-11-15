@@ -3,8 +3,9 @@
 ## Status
 
 In progress. Not yet tested with a real device. Home Assistant entities come
-through MQTT discovery (a broker is needed). No adoption of new devices, and no
-wake-up packet is sent yet.
+through MQTT discovery (a broker is needed). No adoption of new devices. A
+wake-up packet is sent to a device when its address is known (from its inform
+connect_request), UNVERIFIED on a real device.
 
 ## Install on Home Assistant OS
 
@@ -56,6 +57,8 @@ An optional file `data/settings.json` may hold the same keys as the options.
 | `MFI_MQTT_PASSWORD` | empty |
 | `MFI_MQTT_TOPIC_PREFIX` | mfi |
 | `MFI_MQTT_DISCOVERY_PREFIX` | homeassistant |
+| `MFI_WEB_PORT` | 8099 |
+| `MFI_HISTORY_DAYS` | 30 |
 
 Precedence: variable, then file, then default.
 
@@ -97,19 +100,49 @@ when it is empty there is no broker and the bridge does not start.
 | `mfi/<mac>/<port>/<tag>` | last measurement (retained); `ON` or `OFF` for `output` |
 | `mfi/<mac>/<port>/output/set` | send `ON` or `OFF` to switch an outlet |
 
-A command is not sent to the device at once: the bridge does not wake the device
-up. It waits in the queue for the next regular inform of the device, so the
-switch changes with a delay. The delay is UNVERIFIED on a real device.
+A command is queued for the next regular inform of the device. When the device's
+wake-up address is known, a wake-up packet is also sent at once, so the switch
+changes at once. Not verified on a real device.
 
 ### Security
 
 The broker user and password travel without TLS (TLS is out of scope). Keep the
 broker on the isolated network too, next to the devices.
 
+## Web API
+
+The JSON API listens on port 8099 (`web_port`, variable `MFI_WEB_PORT`). Routes are
+found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is accepted.
+
+- Add-on mode: open the mFi panel from the Home Assistant sidebar. There is no login;
+  only the Supervisor ingress address (172.30.32.2) is served, other addresses get 403.
+- Standalone mode: a session is needed. Start one with `POST api/v1/login` and a JSON
+  body `{"password": "..."}`: the answer sets the `mfi_session` cookie (204). Set the
+  password with `python3 -m mfi_server set-password --data DIR`: it is asked twice,
+  it must be at least 12 characters, and it is never given on the command line.
+  A wrong password answers 401; five failures in 60 seconds from one address answer 429.
+- Standalone mode: until the password is set, every route except `api/v1/health` answers 503
+  `password_not_set`.
+
+| Route | Method | Use |
+|---|---|---|
+| `api/v1/health` | GET | status and version, no login |
+| `api/v1/login` | POST | start a session (standalone mode) |
+| `api/v1/logout` | POST | end the session |
+| `api/v1/devices` | GET | devices, ports and latest values |
+| `api/v1/devices/<mac>` | GET | one device, same fields; unknown MAC answers 404 |
+| `api/v1/devices/<mac>/ports/<port>/output` | POST | body `{"value": 0}` or `{"value": 1}`; 202 when queued |
+| `api/v1/history` | GET | `mac`, `sensor_id`, `tag`, `from` and `to` (milliseconds); returns `points` as `[time_ms, value]` |
+
+History is kept for `history_days` (default 30) in `history.sqlite3` inside the data folder.
+
+Security warning: never expose 8099/tcp on the internet. Standalone mode has no built-in
+HTTPS: for remote access put a reverse proxy with TLS in front of it, on the isolated network.
+
 ## Security
 
 - Keep the devices on an isolated network without internet access.
-- Never expose 6080/tcp or 3478/udp to the internet.
+- Never expose 6080/tcp, 3478/udp or 8099/tcp to the internet.
 - Inform packets without encryption are refused with HTTP 400.
 - The server never sends a factory reset to a device.
 - The add-on runs as root because the Supervisor `/data` volume belongs to root.
@@ -120,3 +153,4 @@ broker on the isolated network too, next to the devices.
 |---|---|---|
 | 6080 | tcp | Inform: mFi devices report to the server (HTTP) |
 | 3478 | udp | Wake-up packets to the devices |
+| 8099 | tcp | Web API (JSON); never expose it to the internet |

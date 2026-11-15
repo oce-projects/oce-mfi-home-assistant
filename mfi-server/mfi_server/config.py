@@ -31,6 +31,8 @@ FILE_KEYS = (
     "mqtt_password",
     "mqtt_topic_prefix",
     "mqtt_discovery_prefix",
+    "web_port",
+    "history_days",
 )
 ENV_NAMES = {
     "inform_port": "MFI_INFORM_PORT",
@@ -44,6 +46,8 @@ ENV_NAMES = {
     "mqtt_password": "MFI_MQTT_PASSWORD",
     "mqtt_topic_prefix": "MFI_MQTT_TOPIC_PREFIX",
     "mqtt_discovery_prefix": "MFI_MQTT_DISCOVERY_PREFIX",
+    "web_port": "MFI_WEB_PORT",
+    "history_days": "MFI_HISTORY_DAYS",
 }
 
 
@@ -66,6 +70,8 @@ class Settings:
     mqtt_password: str = field(default="", repr=False)
     mqtt_topic_prefix: str = "mfi"
     mqtt_discovery_prefix: str = "homeassistant"
+    web_port: int = 8099
+    history_days: int = 30
 
 
 def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Path = ADDON_OPTIONS_PATH) -> Settings:
@@ -106,6 +112,8 @@ def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Pat
         mqtt_discovery_prefix=_text(
             "mqtt_discovery_prefix", values.get("mqtt_discovery_prefix", base.mqtt_discovery_prefix)
         ),
+        web_port=_port("web_port", values.get("web_port", base.web_port)),
+        history_days=_history_days(values.get("history_days", base.history_days)),
     )
     logger.debug("settings loaded: mode=%s data_dir=%s", mode, data_dir)
     return settings
@@ -194,6 +202,21 @@ def _port(field: str, value: object) -> int:
     if not 1 <= port <= 65535:
         raise ValueError(f"{field} must be 1-65535")
     return port
+
+
+def _history_days(value: object) -> int:
+    """Return the history retention in days (1-3650), or raise ValueError."""
+    if isinstance(value, bool):
+        raise ValueError("history_days must be 1-3650")
+    if isinstance(value, float):
+        raise ValueError("history_days must be 1-3650")
+    try:
+        days = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("history_days must be 1-3650") from exc
+    if not 1 <= days <= 3650:
+        raise ValueError("history_days must be 1-3650")
+    return days
 
 
 def _text(field: str, value: object) -> str:
