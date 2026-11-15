@@ -139,6 +139,24 @@ History is kept for `history_days` (default 30) in `history.sqlite3` inside the 
 Security warning: never expose 8099/tcp on the internet. Standalone mode has no built-in
 HTTPS: for remote access put a reverse proxy with TLS in front of it, on the isolated network.
 
+## Web page
+
+The web page is served by the same server as the API, on port 8099 (`web_port`, variable `MFI_WEB_PORT`). It uses hand-written static files (HTML, CSS and JavaScript): there are no build tools and no resources loaded from the Internet.
+
+- Add-on mode: open the mFi panel from the Home Assistant sidebar (ingress). There is no login: the page is served only through the ingress.
+- Standalone mode: open `http://<host>:8099/` in the browser. If the password is not set yet, the page asks you to set it with `set-password` (see Web API). When the password is set, the login form appears and, after a successful login, the session cookie `mfi_session` is used.
+
+The page is bilingual (English and Italian). The language selector is at the top right. The default language comes from the browser: Italian when the browser language starts with `it`, English otherwise. The choice of the user is saved in the browser and restored at the next visit.
+
+The page shows:
+
+- the device list: name, model, state and last contact;
+- the ON/OFF switch of each outlet;
+- the measurements of each outlet: power, voltage, current, power factor and energy;
+- a chart of the last 24 hours, drawn as SVG, with the minimum and maximum values.
+
+Security warning: never expose 8099/tcp to the internet. The page has no built-in HTTPS (see Web API).
+
 ## Security
 
 - Keep the devices on an isolated network without internet access.
