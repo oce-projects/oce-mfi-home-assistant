@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.2.5 - 2026-11-15
+
+- `docs/PROTOCOL.md` rewritten with the inform protocol specification taken from the decompiled
+  controller 2.1.11 (packet format, keys, adoption, responses, commands, measurements, discovery,
+  states, open questions); one line updated in `docs/ARCHITECTURE.md` and `AGENTS.md`.
+
 ## 0.2.4 - 2026-11-15
 
 - `docs/DEVAGENTAI.md` now lists the settings actually used in DevAgentAi; `mfi-controller` 0.1.3 (security notes in `DOCS.md`).

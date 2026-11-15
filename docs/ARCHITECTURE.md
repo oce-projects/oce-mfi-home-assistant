@@ -36,8 +36,8 @@ flowchart LR
 - No vendor code. Reuse is allowed from MIT/Apache projects, with credit
   (`uilibs/mficlient` MIT, `magcode/mpower-tools` Apache-2.0,
   `pasbec/home-assistant-mfi-mpower` MIT).
-- Depends on reverse engineering of the controller (work in progress outside
-  this repository; results will be summarised in `docs/PROTOCOL.md`).
+- Based on the inform specification in `docs/PROTOCOL.md`, taken from the decompiled controller
+  2.1.11; the questions that need a real device are listed there.
 
 ## Decisions
 
