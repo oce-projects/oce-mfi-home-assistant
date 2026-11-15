@@ -40,7 +40,7 @@ class OutputControl:
         port_rec = next((p for p in device["ports"] if p["port"] == port), None)
         if port_rec is None:
             raise KeyError((mac, port))
-        if value not in (0, 1):
+        if type(value) is not int or value not in (0, 1):
             raise ValueError("value must be 0 or 1")
         self.queue.put(device["mac"], port, port_rec["sensor_id"], value)
         target = self.states.wakeup_target(device["mac"])
