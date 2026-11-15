@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.3.0 - 2026-11-15
+
+- New add-on `mfi-server` 0.1.0 (phase 2): pure Python inform core (AES-128, inform packets, `.unf` key import, device store, states, `mfi-output` commands, measurements, HTTP server, command line), standard library only, tested offline in `mfi-server/tests/`; never sends a factory reset.
+- `README.md`, `AGENTS.md` and `docs/ARCHITECTURE.md` updated.
+
 ## 0.2.5 - 2026-11-15
 
 - `docs/PROTOCOL.md` rewritten with the inform protocol specification taken from the decompiled
