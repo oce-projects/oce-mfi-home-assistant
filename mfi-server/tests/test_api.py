@@ -211,6 +211,12 @@ class TestApi(unittest.TestCase):
         self.assertEqual(int(headers["content-length"]), len(body))
         self.assertIn(b"<!DOCTYPE html>", body)
 
+    def test_query_string_marker_serves_static(self):
+        status, headers, body = self._request("GET", "/?x=api/v1/devices")
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", headers["content-type"])
+        self.assertIn(b"<!DOCTYPE html>", body)
+
     def test_ingress_root_serves_index(self):
         status, headers, _ = self._request("GET", "/api/hassio_ingress/abc/")
         self.assertEqual(status, 200)

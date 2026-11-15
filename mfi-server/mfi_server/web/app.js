@@ -159,6 +159,7 @@ function setLoginMessage(key) {
 }
 
 function showLogin(key) {
+  closeChart();
   loggedIn = false;
   loginSection.hidden = false;
   devicesHeading.hidden = true;
@@ -307,7 +308,7 @@ function renderPort(mac, port) {
   if (outputErrors.has(key)) {
     block.appendChild(el("p", "port__error", t("output_error")));
   }
-  block.appendChild(renderMetrics(port, label, values));
+  block.appendChild(renderMetrics(mac, port, label, values));
   return block;
 }
 
@@ -323,7 +324,7 @@ function renderToggle(mac, portNumber, output, key) {
   return toggle;
 }
 
-function renderMetrics(port, portLabel, values) {
+function renderMetrics(mac, port, portLabel, values) {
   const group = el("div", "metrics");
   for (const metric of METRICS) {
     const raw = values[metric.key];
@@ -336,7 +337,7 @@ function renderMetrics(port, portLabel, values) {
       el("span", "metric__unit", metric.unit)
     );
     button.addEventListener("click", () => {
-      openChart(port.sensor_id, portLabel, metric).catch(reportError);
+      openChart(mac, port.sensor_id, portLabel, metric).catch(reportError);
     });
     group.appendChild(button);
   }
@@ -377,9 +378,8 @@ function isPoint(point) {
   return Array.isArray(point) && point.length === 2 && typeof point[0] === "number" && typeof point[1] === "number";
 }
 
-async function openChart(sensorId, portLabel, metric) {
+async function openChart(mac, sensorId, portLabel, metric) {
   const now = Date.now();
-  const mac = devices.find((device) => device.ports.some((port) => port.sensor_id === sensorId)).mac;
   const params = new URLSearchParams({
     mac: mac,
     sensor_id: String(sensorId),

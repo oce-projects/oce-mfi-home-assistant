@@ -83,7 +83,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         self._dispatch("POST")
 
     def _dispatch(self, method: str) -> None:
-        idx = self.path.find(API_MARKER)
+        idx = urlparse(self.path).path.find(API_MARKER)
         if idx == -1:
             if method == "GET":
                 self._serve_static()
@@ -293,6 +293,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", STATIC_FILES[name])
         self.send_header("Content-Security-Policy", STATIC_CSP)
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-cache")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
