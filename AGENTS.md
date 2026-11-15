@@ -67,7 +67,7 @@ contain `config.yaml`, `Dockerfile`, `README.md` and `CHANGELOG.md`.
 | A device without controller polls `http://mfi:6080/inform` every 15 s | device log posted on the Ubiquiti forum |
 | Home Assistant core has an `mfi` integration (YAML only, library `mficlient`) that needs a running controller | home-assistant/core source |
 
-Not verified: UDP discovery port, exact MongoDB version range (only 2.4.10 tested).
+Not verified on a device: UDP discovery port 10001 (from the controller code, see `docs/PROTOCOL.md`). Not verified: exact MongoDB version range (only 2.4.10 tested).
 
 ## How to work
 
