@@ -170,6 +170,17 @@ class TestMqttSettings(unittest.TestCase):
                 _load({"MFI_MQTT_PORT": "70000"}, d)
             self.assertIn("mqtt_port", str(cm.exception))
 
+    def test_mqtt_port_non_numeric_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError) as cm:
+                _load({"MFI_MQTT_PORT": "abc"}, d)
+            self.assertIn("mqtt_port", str(cm.exception))
+
+    def test_mqtt_discovery_prefix_from_environment(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = _load({"MFI_MQTT_DISCOVERY_PREFIX": "ha"}, d)
+            self.assertEqual(s.mqtt_discovery_prefix, "ha")
+
 
 class TestSupervisorMqtt(unittest.TestCase):
     def test_no_token_means_no_broker(self):
@@ -219,6 +230,11 @@ class TestSupervisorMqtt(unittest.TestCase):
 
         with self.assertLogs("mfi_server.config", level="INFO"):
             self.assertIsNone(supervisor_mqtt({"SUPERVISOR_TOKEN": "tok"}, failing_opener))
+
+    def test_non_json_body_with_status_200_means_no_broker(self):
+        self.assertIsNone(
+            supervisor_mqtt({"SUPERVISOR_TOKEN": "tok"}, _opener_answering(200, b"not json"))
+        )
 
 
 if __name__ == "__main__":
