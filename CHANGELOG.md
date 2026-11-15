@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.6.0 - 2026-11-15
+
+- Epic E2 of `mfi-server` 0.4.0 (phase 2): web page with devices, outlets, measurements and history, in English and Italian, inside the Home Assistant ingress and in standalone mode.
+- Versions aligned: `mfi-server` 0.4.0 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`; repository 0.6.0 in `VERSION` and `CHANGELOG.md`.
+
 ## 0.5.0 - 2026-11-15
 
 - `mfi-server` 0.3.0 (phase 2): HTTP JSON API (health, login and logout with a session cookie, devices, output commands, history) with a route prefix that accepts the Home Assistant ingress path; measurement history in sqlite3, kept 30 days; login for the standalone mode with a password set by `set-password` (off until it is set); add-on mode reached through ingress from 172.30.32.2 only; output commands send the wake-up packet when the device address is known, so the output changes at once; `web_port` and `history_days` settings; `config.yaml` with ingress.

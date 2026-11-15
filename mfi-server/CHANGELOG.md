@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 - 2026-11-15
+
+- Web page of `mfi-server`, served by the same HTTP server as the API: `web/index.html`, `app.js`, `style.css` and the English and Italian texts in `web/i18n/`. It works inside the Home Assistant ingress (the "mFi" entry in the sidebar) and in standalone mode, with the login of 0.3.0.
+- Language selector (English or Italian): the browser language is the default, and the choice is saved in `localStorage`.
+- Device list refreshed every 10 seconds, outlet switches (ON/OFF), measurements, and a 24-hour history chart drawn in SVG.
+- `api.py` serves the static files with `Content-Security-Policy` and `X-Content-Type-Options` headers. File names are matched against a fixed list, so no part of the request path reaches the file system.
+
 ## 0.3.0 - 2026-11-15
 
 - HTTP JSON API (`api.py`): health, login and logout with a session cookie (`mfi_session`), devices with their ports and latest values, output commands, and measurement history. Routes are found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is accepted.
