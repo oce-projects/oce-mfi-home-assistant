@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.5.0 - 2026-11-15
+
+- `mfi-server` 0.3.0 (phase 2): HTTP JSON API (health, login and logout with a session cookie, devices, output commands, history) with a route prefix that accepts the Home Assistant ingress path; measurement history in sqlite3, kept 30 days; login for the standalone mode with a password set by `set-password` (off until it is set); add-on mode reached through ingress from 172.30.32.2 only; output commands send the wake-up packet when the device address is known, so the output changes at once; `web_port` and `history_days` settings; `config.yaml` with ingress.
+- The exception for 172.30.32.2 (Home Assistant ingress address) is documented in `tests/test_repository.py`.
+
 ## 0.4.0 - 2026-11-15
 
 - `mfi-server` 0.2.0 (phase 2): MQTT client in pure Python, Home Assistant MQTT discovery for the outlets and their measurements, and an MQTT bridge for states and output commands. The broker comes from the Supervisor in add-on mode or from the `MFI_MQTT_*` settings.

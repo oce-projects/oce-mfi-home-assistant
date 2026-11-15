@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 - 2026-11-15
+
+- HTTP JSON API (`api.py`): health, login and logout with a session cookie (`mfi_session`), devices with their ports and latest values, output commands, and measurement history. Routes are found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is accepted.
+- History of the measurements in sqlite3 (`history.py`), kept for 30 days by default and purged every hour; it is a listener of Measurements, so every new value is recorded.
+- Login for the standalone mode (`auth.py`): password hashed with pbkdf2_sha256 and a random salt, set with the `set-password` subcommand (asked twice, at least 12 characters, never on the command line). The login is off by default: until a password is set the API answers 503 `password_not_set`. Failed logins are limited to 5 per minute per address (429).
+- Add-on mode: the API accepts requests only from the Home Assistant ingress address (172.30.32.2) and needs no login.
+- `OutputControl` (`control.py`) now sends the wake-up UDP packet when the device's connect_request address is known, so an output changes at once instead of at the next inform.
+- New settings `web_port` (`MFI_WEB_PORT`, default 8099) and `history_days` (`MFI_HISTORY_DAYS`, default 30, from 1 to 3650).
+- `config.yaml` with ingress: `ingress: true`, `ingress_port: 8099`, panel icon and title; port 8099 is not added to `ports`.
+
 ## 0.2.0 - 2026-11-15
 
 - MQTT 3.1.1 client in pure Python (`mqtt.py`): QoS 0 and 1, retained last will, reconnect with a growing delay; standard library only.
