@@ -42,7 +42,8 @@ before touching anything that talks to devices.
 | Path | What |
 |---|---|
 | `repository.yaml` | Home Assistant add-on repository manifest |
-| `mfi-controller/` | Phase 1 add-on: original mFi Controller 2.1.11 in a container (in progress) |
+| `mfi-controller/` | Phase 1 add-on: original mFi Controller 2.1.11 in a container (tested with Docker, not yet on HAOS) |
+| `tools/` | scripts run by a human (Docker test bench); never part of the offline tests |
 | `mfi-server/` | Phase 2 add-on: our own server speaking the inform protocol (not started) |
 | `docs/ARCHITECTURE.md` | phases, components, decisions |
 | `docs/PROTOCOL.md` | what is known about the devices and the inform protocol |
@@ -59,13 +60,14 @@ contain `config.yaml`, `Dockerfile`, `README.md` and `CHANGELOG.md`.
 |---|---|
 | Controller ports: 6080 inform (HTTP), 6443 web UI (HTTPS) since 1.1.0; 9080/9443 up to 1.0.8; configurable in `<mFi>/data/system.properties` | official Ubiquiti FAQ, 2013 |
 | Controller 2.1.11 Linux package: `https://dl.ubnt.com/mfi/2.1.11/mFi.unix.zip`, 26,896,961 bytes, sha256 `20f17a752b314ddd997a814851de319dea8ca2f2acb286f0973fb95f0430382d` | downloaded and hashed |
-| The package contains `mFi/lib/ace.jar` (controller code, built on the UniFi code base, class `com.ubnt.ace.Launcher`), `mongo-java-driver-2.11.3.jar`, and `mFi/bin/mongod` as a 15-byte placeholder: MongoDB must be provided separately | archive listing |
+| The package contains `mFi/lib/ace.jar` (controller code, built on the UniFi code base, class `com.ubnt.ace.Launcher`), `mongo-java-driver-2.11.3.jar`, and `mFi/bin/mongod`, a symlink to `/usr/bin/mongod` (15 bytes = the path): MongoDB must be installed separately and the controller starts it | archive listing, Unix mode `0o120755` |
+| The controller runs on OpenJDK 7u261 + MongoDB 2.4.10 (Debian 8 jessie); MongoDB listens on `127.0.0.1:37017` | `ps` in the `mfi-controller` container, see its README |
 | Java 7 is required; Java 8 broke the web UI of 2.1.4 | user reports on the Ubiquiti forum |
 | One "M2M" firmware for all mFi products; official versions 2.1.1 to 2.1.11; files start with `UBNT` | dl.ubnt.com listing, file headers |
 | A device without controller polls `http://mfi:6080/inform` every 15 s | device log posted on the Ubiquiti forum |
 | Home Assistant core has an `mfi` integration (YAML only, library `mficlient`) that needs a running controller | home-assistant/core source |
 
-Not verified: MongoDB internal port, UDP discovery port, exact MongoDB version range.
+Not verified: UDP discovery port, exact MongoDB version range (only 2.4.10 tested).
 
 ## How to work
 

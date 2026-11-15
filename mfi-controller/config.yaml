@@ -1,0 +1,35 @@
+# =============================================================================
+# Home Assistant app (add-on) "Ubiquiti mFi Controller" - configuration
+# Version: 0.1.0 (full history in CHANGELOG.md)
+# Format: https://developers.home-assistant.io/docs/apps/configuration
+# No "image" key: the Supervisor builds the container locally from the Dockerfile.
+# =============================================================================
+name: "Ubiquiti mFi Controller"
+version: "0.1.0"
+slug: "mfi_controller"
+description: >-
+  Original Ubiquiti mFi Controller 2.1.11 (Java 7, MongoDB 2.4) for mPower
+  power strips, mPort and mFi sensors. Use it with the Home Assistant "mfi"
+  integration.
+url: "https://github.com/oce-projects/mfi-home-assistant"
+arch:
+  - amd64
+startup: application
+boot: auto
+stage: experimental
+webui: "https://[HOST]:[PORT:6443]/"
+watchdog: "tcp://[HOST]:[PORT:6443]"
+# The controller needs time to shut MongoDB down cleanly (measured: 1.5 s to 26 s)
+timeout: 120
+# MongoDB writes continuously: back up with the controller stopped
+backup: cold
+ports:
+  6080/tcp: 6080
+  6443/tcp: 6443
+ports_description:
+  6080/tcp: "Inform: mFi devices report to the controller (HTTP)"
+  6443/tcp: "Controller web UI and API (HTTPS)"
+options:
+  java_max_memory_mb: 1024
+schema:
+  java_max_memory_mb: "int(256,4096)"

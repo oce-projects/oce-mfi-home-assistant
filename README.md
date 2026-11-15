@@ -14,19 +14,23 @@ Home Assistant OS, locally, without the vendor cloud.
 
 | Phase | Add-on | What it does | Status |
 |---|---|---|---|
-| 1 | `mfi-controller` | runs the original mFi Controller 2.1.11 in a container; Home Assistant talks to it with the core `mfi` integration | in progress |
+| 1 | `mfi-controller` | runs the original mFi Controller 2.1.11 in a container; Home Assistant talks to it with the core `mfi` integration | 0.1.0: tested with Docker, not yet on HAOS |
 | 2 | `mfi-server` | our own server that speaks the device protocol directly and creates Home Assistant entities, without vendor code | not started |
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Install (when an add-on is ready)
 
-1. In Home Assistant: Settings, Add-ons, Add-on Store, menu, Repositories.
-2. Add the URL of this repository.
-3. Install the add-on from the store.
+Home Assistant now calls add-ons "apps".
 
-While the repository is private, an add-on can be tested by copying its folder
-into the `/addons` folder of Home Assistant OS (local add-on).
+1. In Home Assistant: Settings, Apps, App store, menu, Repositories.
+2. Add the URL of this repository.
+3. Install the app from the store.
+
+While the repository is private, an app can be tested by copying its folder
+into the local apps folder of Home Assistant OS: the `local_apps` share of the
+Samba app, or `/addons` in the Advanced SSH & Web Terminal app (same folder).
+Step-by-step guide: [mfi-controller/DOCS.md](mfi-controller/DOCS.md).
 
 ## Vendor software
 
