@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import unittest
+import zlib
 
 from mfi_server import aes
 from mfi_server.packet import (
@@ -134,6 +135,18 @@ class TestPacket(unittest.TestCase):
             normalize_mac("02aabbccdd0")
         with self.assertRaises(ValueError):
             normalize_mac(12)
+
+
+class TestDecompressionLimit(unittest.TestCase):
+    def test_oversized_compressed_payload_is_rejected(self):
+        key = bytes.fromhex(DEFAULT_KEY_HEX)
+        iv = bytes(16)
+        mac = bytes.fromhex("02aabbccdd01")
+        body = zlib.compress(b"\x00" * 300000)
+        cipher = aes.encrypt_cbc(key, iv, aes.pkcs7_pad(body))
+        packet = HEADER_STRUCT.pack(MAGIC, 0, mac, FLAG_ENCRYPTED | FLAG_COMPRESSED, iv, 1, len(cipher)) + cipher
+        with self.assertRaises(PacketError):
+            decode(packet, [key])
 
 
 if __name__ == "__main__":

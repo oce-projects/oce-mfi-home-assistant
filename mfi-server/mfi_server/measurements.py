@@ -6,6 +6,7 @@ resets and stores the latest values per device and sensor. Kept in memory only.
 from __future__ import annotations
 
 import logging
+import math
 import threading
 from copy import deepcopy
 
@@ -17,7 +18,11 @@ RESET_RATIO = 0.9
 
 
 def _is_number(value: object) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
 
 
 def flatten_alarm(alarm: list) -> list[dict]:

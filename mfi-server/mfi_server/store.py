@@ -85,7 +85,7 @@ class DeviceStore:
     """devices.json in data_dir: loaded at start, rewritten on every change."""
 
     def __init__(self, data_dir: Path) -> None:
-        data_dir.mkdir(parents=True, exist_ok=True)
+        data_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.path = data_dir / FILE_NAME
         self._lock = threading.RLock()
         self._devices: dict[str, dict] = {}
@@ -124,7 +124,8 @@ class DeviceStore:
         devices = [self._devices[mac] for mac in sorted(self._devices)]
         text = json.dumps({"schema": SCHEMA, "devices": devices}, indent=2, sort_keys=True)
         try:
-            with open(tmp, "w", encoding="utf-8") as handle:
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
                 handle.write(text)
                 handle.flush()
                 os.fsync(handle.fileno())
