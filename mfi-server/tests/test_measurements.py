@@ -184,6 +184,23 @@ class TestMeasurements(unittest.TestCase):
         m.ingest(MAC, {"alarm": [{"sId": "s1", "tag": "energy_sum", "val": 10, "time": float("inf")}]}, 5000)
         self.assertEqual(m.latest(MAC), {})
 
+    def test_huge_integer_value_is_ignored(self):
+        m = Measurements()
+        m.ingest(MAC, {"alarm": [{"sId": "s1", "tag": "pf", "val": 10**400}]}, 5000)
+        self.assertEqual(m.latest(MAC), {})
+
+    def test_energy_with_huge_integer_time_is_ignored(self):
+        m = Measurements()
+        m.ingest(MAC, {"alarm": [{"sId": "s1", "tag": "energy_sum", "val": 10, "time": 10**400}]}, 5000)
+        self.assertEqual(m.latest(MAC), {})
+
+    def test_same_sensor_id_on_two_devices_is_independent(self):
+        m = Measurements()
+        m.ingest(MAC, {"alarm": [{"sId": "shared", "tag": "energy_sum", "val": 1000}]}, 5000)
+        m.ingest(OTHER_MAC, {"alarm": [{"sId": "shared", "tag": "energy_sum", "val": 10}]}, 6000)
+        self.assertEqual(m.latest(MAC)["shared"]["energy_sum"], 1000.0)
+        self.assertEqual(m.latest(OTHER_MAC)["shared"]["energy_sum"], 10.0)
+
 
 if __name__ == "__main__":
     unittest.main()

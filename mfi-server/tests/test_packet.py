@@ -60,6 +60,16 @@ class TestPacket(unittest.TestCase):
         _, payload, _ = decode(pkt, [KEY])
         self.assertEqual(payload, {"mac": "02aabbccdd01"})
 
+    def test_deeply_nested_json_is_rejected(self):
+        iv = os.urandom(16)
+        body = b"[" * 20000 + b"]" * 20000
+        plain = body + b"\x00" * (-len(body) % 16)
+        cipher = aes.encrypt_cbc(KEY, iv, plain)
+        pkt = HEADER_STRUCT.pack(MAGIC, 0, MAC, FLAG_ENCRYPTED, iv, 1, len(cipher)) + cipher
+        with self.assertRaises(PacketError) as ctx:
+            decode(pkt, [KEY])
+        self.assertEqual(ctx.exception.status, 400)
+
     def test_response_keeps_header_and_iv(self):
         iv = os.urandom(16)
         request = encode(MAC, KEY, {"mac": "02aabbccdd01"}, iv)
@@ -145,8 +155,9 @@ class TestDecompressionLimit(unittest.TestCase):
         body = zlib.compress(b"\x00" * 300000)
         cipher = aes.encrypt_cbc(key, iv, aes.pkcs7_pad(body))
         packet = HEADER_STRUCT.pack(MAGIC, 0, mac, FLAG_ENCRYPTED | FLAG_COMPRESSED, iv, 1, len(cipher)) + cipher
-        with self.assertRaises(PacketError):
+        with self.assertRaises(PacketError) as ctx:
             decode(packet, [key])
+        self.assertEqual(ctx.exception.status, 400)
 
 
 if __name__ == "__main__":

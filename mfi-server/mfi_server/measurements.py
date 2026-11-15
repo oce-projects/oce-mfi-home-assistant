@@ -18,11 +18,13 @@ RESET_RATIO = 0.9
 
 
 def _is_number(value: object) -> bool:
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(value)
-    )
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        logger.debug("skipped number too large to check")
+        return False
 
 
 def flatten_alarm(alarm: list) -> list[dict]:
@@ -97,7 +99,7 @@ class Measurements:
                     if not _is_number(time_ms):
                         logger.debug("skipped energy value with bad time for %s", sensor_id)
                         continue
-                    val = float(self._counter.update(sensor_id, float(val), int(time_ms)))
+                    val = float(self._counter.update(f"{mac}:{sensor_id}", float(val), int(time_ms)))
                 self._latest.setdefault(mac, {}).setdefault(sensor_id, {})[tag] = val
 
     def latest(self, mac: str) -> dict:
