@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title data-i18n="app_title"></title>
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__title">
+        <h1 data-i18n="app_title"></h1>
+        <span id="version" class="topbar__version"></span>
+      </div>
+      <div class="topbar__controls">
+        <label class="topbar__label" for="lang" data-i18n="lang_label"></label>
+        <select id="lang">
+          <option value="en" data-i18n="lang_en"></option>
+          <option value="it" data-i18n="lang_it"></option>
+        </select>
+        <button id="logout-button" type="button" data-i18n="logout"></button>
+      </div>
+    </header>
+    <main class="page">
+      <section id="login" class="panel" hidden>
+        <h2 data-i18n="login_heading"></h2>
+        <input id="password" type="password" autocomplete="current-password" data-i18n-placeholder="password_label">
+        <button id="login-button" type="button" data-i18n="login_button"></button>
+        <p id="login-message" class="message"></p>
+      </section>
+      <section id="chart" class="panel" hidden>
+        <h3 id="chart-title"></h3>
+        <button id="chart-close" type="button" data-i18n="chart_close"></button>
+        <svg id="chart-svg" viewBox="0 0 600 200"></svg>
+        <div class="chart__stats">
+          <span id="chart-min"></span>
+          <span id="chart-max"></span>
+        </div>
+      </section>
+      <h2 data-i18n="devices_heading"></h2>
+      <div id="devices"></div>
+    </main>
+  </body>
+</html>

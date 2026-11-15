@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import mfi_server
@@ -31,6 +32,15 @@ LOGOUT_ROUTE = "api/v1/logout"
 HISTORY_ROUTE = "api/v1/history"
 DEVICES_ROUTE = "api/v1/devices"
 SESSION_COOKIE = "mfi_session"
+WEB_DIR = Path(__file__).resolve().parent / "web"
+STATIC_FILES = {
+    "index.html": "text/html; charset=utf-8",
+    "app.js": "text/javascript; charset=utf-8",
+    "style.css": "text/css; charset=utf-8",
+    "i18n/en.json": "application/json; charset=utf-8",
+    "i18n/it.json": "application/json; charset=utf-8",
+}
+STATIC_CSP = "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:"
 
 
 class ApiServer(ThreadingHTTPServer):
@@ -73,9 +83,12 @@ class ApiHandler(BaseHTTPRequestHandler):
         self._dispatch("POST")
 
     def _dispatch(self, method: str) -> None:
-        idx = self.path.find(API_MARKER)
+        idx = urlparse(self.path).path.find(API_MARKER)
         if idx == -1:
-            self._error(404, "not_found")
+            if method == "GET":
+                self._serve_static()
+            else:
+                self._error(404, "not_found")
             return
         route = self.path[idx:].split("?")[0]
         body = b""
@@ -263,6 +276,39 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._error(400, "bad_request")
             return None
         return data
+
+    def _serve_static(self) -> None:
+        """Send a file of the web page; only the names listed in STATIC_FILES are ever read."""
+        path = urlparse(self.path).path
+        name = self._static_name(path)
+        if name is None:
+            self._error(404, "not_found")
+            return
+        try:
+            body = (WEB_DIR / name).read_bytes()
+        except OSError:
+            self._error(404, "not_found")
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", STATIC_FILES[name])
+        self.send_header("Content-Security-Policy", STATIC_CSP)
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    @staticmethod
+    def _static_name(path: str) -> str | None:
+        """Return the STATIC_FILES key that ends the path, or None. The path is never decoded or joined to a directory."""
+        if path == "" or path.endswith("/"):
+            return "index.html"
+        segments = path.strip("/").split("/")
+        for start in range(len(segments)):
+            candidate = "/".join(segments[start:])
+            if candidate in STATIC_FILES:
+                return candidate
+        return None
 
     def _send_json(self, status: int, obj: object) -> None:
         body = json.dumps(obj).encode("utf-8")
