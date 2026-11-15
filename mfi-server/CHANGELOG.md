@@ -4,7 +4,7 @@
 
 - MQTT 3.1.1 client in pure Python (`mqtt.py`): QoS 0 and 1, retained last will, reconnect with a growing delay; standard library only.
 - Home Assistant MQTT discovery: a switch for each outlet output, and sensors for power, voltage, current, power factor and energy of each outlet.
-- MQTT bridge (`bridge.py`): retained states and availability, retained `online` status, and output commands (`output/set` with ON or OFF) queued for the next regular inform of the device.
+- MQTT bridge (`bridge.py`): retained states and availability, retained `online` status, periodic republishing of states every 15 s and a full re-subscribe and re-publish after each (re)connection, and output commands (`output/set` with ON or OFF) queued for the next regular inform of the device.
 - MQTT settings (`mqtt_host`, `mqtt_port`, `mqtt_username`, `mqtt_password`, `mqtt_topic_prefix`, `mqtt_discovery_prefix`) and the Supervisor MQTT service in add-on mode (`services: mqtt:want`).
 - MQTT is optional in standalone mode: without a broker host the bridge does not start.
 

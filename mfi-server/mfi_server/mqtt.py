@@ -271,17 +271,22 @@ class MqttClient:
         self._send(packet)
         self._subscriptions = list(topics)
 
-    def loop_forever(self, stop_event: threading.Event) -> None:
-        """Deliver incoming messages until stop_event is set; reconnect with a growing delay."""
+    def loop_forever(self, stop_event: threading.Event, on_connect: Callable[[], None] | None = None, on_tick: Callable[[], None] | None = None, tick_interval_s: float = 0.0) -> None:
+        """Deliver incoming messages until stop_event is set; reconnect with a growing delay.
+
+        on_connect runs after every (re)connection and on_tick every tick_interval_s seconds.
+        """
         delay = RECONNECT_FIRST_S
         while not stop_event.is_set():
             try:
                 if self._sock is None:
                     self.connect()
                     delay = RECONNECT_FIRST_S
-                    if self._subscriptions:
+                    if on_connect is not None:
+                        on_connect()
+                    elif self._subscriptions:
                         self._send(build_subscribe(self._next_packet_id(), self._subscriptions))
-                self._pump(stop_event)
+                self._pump(stop_event, on_tick, tick_interval_s)
             except (OSError, MqttError, ValueError) as exc:
                 self._close()
                 logger.warning(
@@ -294,17 +299,22 @@ class MqttClient:
                 delay = min(delay * 2, RECONNECT_MAX_S)
         self.disconnect()
 
-    def _pump(self, stop_event: threading.Event) -> None:
-        """Read and deliver packets, sending PINGREQ every keepalive seconds."""
+    def _pump(self, stop_event: threading.Event, on_tick: Callable[[], None] | None = None, tick_interval_s: float = 0.0) -> None:
+        """Read and deliver packets, send PINGREQ every keepalive seconds and call on_tick every tick_interval_s."""
         last_ping = time.monotonic()
+        last_tick = time.monotonic()
         while not stop_event.is_set():
             packet = self._read_once()
             if packet is not None:
                 self._dispatch(*packet)
             self._deliver_inbox()
-            if self.keepalive > 0 and time.monotonic() - last_ping >= self.keepalive:
+            now = time.monotonic()
+            if self.keepalive > 0 and now - last_ping >= self.keepalive:
                 self._send(build_pingreq())
-                last_ping = time.monotonic()
+                last_ping = now
+            if on_tick is not None and tick_interval_s > 0 and now - last_tick >= tick_interval_s:
+                on_tick()
+                last_tick = time.monotonic()
 
     def _deliver_inbox(self) -> None:
         """Call on_message for every queued QoS 0 message; a failing handler is logged."""
