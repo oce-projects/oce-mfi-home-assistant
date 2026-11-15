@@ -1,0 +1,25 @@
+# DevAgentAi tickets (may contain local details)
+.tickets/
+
+# Vendor files and site data: never commit (see AGENTS.md)
+*.jar
+*.zip
+*.deb
+*.bin
+*.unf
+*.exe
+*.dmg
+*.pkg
+db.gz
+backups/
+
+# Local runtime data
+data/
+*.log
+.env
+secrets.yaml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
