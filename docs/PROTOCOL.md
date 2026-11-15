@@ -79,7 +79,7 @@ Keys tried (OBSERVED, `DeviceManager`), in order. The first key that decrypts wi
 | device with `x_prev_authkey` | `x_prev_authkey`, then `x_authkey` |
 | known device | `x_authkey`, then default key |
 
-- Default key: `ba86f2bbe107c7c57eb5f2690775c712`. It is fixed in the code, the same for every reset device, and already public (`mcrute/ubntmfi`).
+- Default key: `ba86f2bbe107c7c57eb5f2690775c712`. OBSERVED: it is a factory constant fixed in the controller code, the same for every reset device. It is not a site key and gives no access to an adopted device, which uses its own `x_authkey`. Already public in `mcrute/ubntmfi`. Never write a real `x_authkey` in this repository (AGENTS.md rule 2).
 - OBSERVED: `x_prev_authkey` is only read, never written in the code.
 - Measured on real backups: every `x_authkey` is 32 lowercase hex characters.
 
@@ -127,7 +127,7 @@ OBSERVED (`DeviceManager`). One response per inform; the first matching row wins
 | 10 | otherwise | `noop` with `interval` |
 
 - noop interval, BYTECODE: `now + 10 + (long)Math.random() * 5` casts `Math.random()` to long before multiplying, so the random part is always 0. Interval = 10 s, always.
-- INFERRED, approximate reading: the controller stores next heartbeat = now + 20 s and considers the device lost at now + 60 s.
+- UNVERIFIED (approximate reading of `DeviceManager`, not reconciled with the states below): the controller stores next heartbeat = now + 20 s and a "lost" time of now + 60 s. Do not rely on these two values; see "Device states in the controller".
 - The 15 s retry in the forum log is the case of a device that cannot find a controller.
 - OBSERVED: `cfgversion` and `portversion` are not hashes. They are 16 random hex characters (`java.util.Random`), regenerated on every change. A mismatch makes the controller resend the configuration.
 
@@ -222,18 +222,19 @@ OBSERVED (`DatagramQueryServer`, `LiteStationQueryServer`):
 | 2 | discovered, pending adoption | |
 | 4 | firmware upgrade | 180 s |
 | 5 | configuration sent | 120 s |
-| 6 | heartbeat lost (no inform for more than 40 s) | |
+| 6 | heartbeat lost (no inform for more than 40 s, UNVERIFIED) | |
 | 7 | adopting | 120 s |
 | 8 | being deleted | |
 
 - OBSERVED: after 120 s without an inform the device is lost (`EVT_AP_Lost_Contact`).
+- The 40 s (state 6), 60 s (see "Controller responses") and 120 s values come from different code paths and were not reconciled. A new server should use only the OBSERVED 120 s value to declare a device lost; the other two are UNVERIFIED.
 - The meanings of states 0, 5, 6 and 8 are INFERRED (no names in the code).
 
 ## Security summary
 
 - Fixed public default key, and SSH `ubnt` / `ubnt` without host key check, for first contact.
 - Adoption key from `java.util.Random`.
-- The administrator password is stored in clear text and reused as the SSH password of every adopted device.
+- The controller keeps the administrator password in clear text (OBSERVED; where exactly it is stored is UNVERIFIED). The device receives it as a DES crypt in `system_cfg` (see "Controller responses"), and it becomes the SSH and web password of every adopted device.
 - The authkey appears in clear text in a log line of a simulation class.
 - Devices belong on an isolated network without internet access (AGENTS.md rule 8).
 
@@ -274,3 +275,4 @@ The controller 2.1.11 backup format matches UniFi: AES-128-CBC with the public U
 11. mPort processor, system and factory reset.
 12. Whether a modern SSH library accepts the devices' legacy algorithms.
 13. Real memory of mPower mini and PRO.
+14. After how many seconds without an inform the controller shows a device as heartbeat lost (40 s or 60 s).
