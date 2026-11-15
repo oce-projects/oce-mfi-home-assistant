@@ -15,6 +15,8 @@ from unittest.mock import patch
 import mfi_server
 from mfi_server.api import STATIC_CSP, make_api_server
 from mfi_server.auth import LoginLimiter, Sessions, hash_password, save_password_hash
+from mfi_server.automation_engine import AutomationEngine
+from mfi_server.automation_store import AutomationStore
 from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings
 from mfi_server.control import OutputControl
@@ -34,6 +36,12 @@ DEVICE = {
 }
 OUTPUT_PATH = f"/api/v1/devices/{MAC}/ports/1/output"
 ADDON_DEVICES_PATH = "/api/hassio_ingress/abc/api/v1/devices"
+AUTOMATIONS_PATH = "/api/v1/automations"
+AUTOMATION = {
+    "id": "a1",
+    "triggers": [{"trigger": "time", "at": "08:00:00"}],
+    "actions": [{"action": "switch.turn_on", "target": {"entity_id": "switch.mfi_02aabbccdd01_1"}}],
+}
 
 
 class FakeStore:
@@ -62,6 +70,13 @@ class TestApi(unittest.TestCase):
         self.sessions = Sessions(clock=lambda: 0.0)
         self.clock = [0.0]
         self.limiter = LoginLimiter(clock=lambda: self.clock[0])
+        self.automations = AutomationStore(self.data_dir)
+        self.engine = AutomationEngine(
+            entities=lambda e: None,
+            set_output=self.control.set_output,
+            resolve=lambda e: None,
+            clock=lambda: 0.0,
+        )
         self.servers: list = []
         self.server = self._start("standalone")
 
@@ -82,6 +97,8 @@ class TestApi(unittest.TestCase):
             self.control,
             self.sessions,
             self.limiter,
+            self.automations,
+            self.engine,
         )
         threading.Thread(target=server.serve_forever, daemon=True).start()
         self.servers.append(server)
@@ -237,6 +254,36 @@ class TestApi(unittest.TestCase):
         status, _, body = self._request("GET", "/nonexistent.js")
         self.assertEqual(status, 404)
         self.assertEqual(json.loads(body), {"error": "not_found"})
+
+    def test_automation_validate_bad_yaml_is_400_with_details(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request(
+            "POST", "/api/v1/automations/validate", body={"yaml": "id: [unclosed"}, headers=headers
+        )
+        self.assertEqual(status, 400)
+        self.assertTrue(json.loads(body)["details"])
+
+    def test_automation_create_then_same_id_is_409(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", AUTOMATIONS_PATH, body=AUTOMATION, headers=headers)
+        self.assertEqual(status, 201)
+        self.assertEqual(json.loads(body)["id"], "a1")
+        status, _, body = self._request("POST", AUTOMATIONS_PATH, body=AUTOMATION, headers=headers)
+        self.assertEqual(status, 409)
+        self.assertEqual(json.loads(body), {"error": "conflict"})
+
+    def test_automation_trigger_is_202(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, _ = self._request("POST", AUTOMATIONS_PATH, body=AUTOMATION, headers=headers)
+        self.assertEqual(status, 201)
+        status, _, _ = self._request("POST", "/api/v1/automations/a1/trigger", headers=headers)
+        self.assertEqual(status, 202)
+
+    def test_automations_without_cookie_is_401(self):
+        self._set_password()
+        status, _, body = self._request("GET", AUTOMATIONS_PATH)
+        self.assertEqual(status, 401)
+        self.assertEqual(json.loads(body), {"error": "unauthorized"})
 
 
 if __name__ == "__main__":

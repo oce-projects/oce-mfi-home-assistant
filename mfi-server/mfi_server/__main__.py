@@ -24,6 +24,8 @@ from pathlib import Path
 
 from mfi_server.api import make_api_server
 from mfi_server.auth import Sessions, LoginLimiter, hash_password, save_password_hash
+from mfi_server.automation_engine import AutomationEngine
+from mfi_server.automation_store import AutomationStore
 from mfi_server.bridge import MqttBridge
 from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings, load_settings, supervisor_mqtt
@@ -45,6 +47,8 @@ LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 MQTT_CLIENT_ID = "mfi-server"
 MIN_PASSWORD_LENGTH = 12
 HISTORY_PURGE_INTERVAL_S = 3600
+AUTOMATION_TICK_S = 1
+ENTITY_RE = re.compile(r"(switch|sensor)\.mfi_([0-9a-f]{12})_([0-9]+)(?:_([a-z_]+))?")
 
 
 def main(argv: list[str] | None = None, environ: Mapping[str, str] | None = None) -> int:
@@ -191,6 +195,101 @@ def _purge_history(history: History, stop_event: threading.Event) -> None:
         history.purge()
 
 
+def _parse_entity(entity_id: str) -> tuple[str, str, int, str] | None:
+    """Split 'switch.mfi_<mac>_<port>' or 'sensor.mfi_<mac>_<port>_<tag>' into (domain, mac, port, tag).
+
+    The tag is '' for a switch. Returns None for any other text.
+    """
+    match = ENTITY_RE.fullmatch(entity_id)
+    if match is None:
+        return None
+    domain, mac, port, tag = match.groups()
+    if (domain == "switch") != (tag is None):
+        return None
+    return domain, mac, int(port), tag or ""
+
+
+def _find_port(store: DeviceStore, entity_id: str) -> tuple[str, int, str, str] | None:
+    """Return (mac, port, sensor_id, tag) of the port an entity belongs to; None when no known device has it."""
+    parsed = _parse_entity(entity_id)
+    if parsed is None:
+        return None
+    _, mac, port_no, tag = parsed
+    record = store.get(mac)
+    if record is None:
+        return None
+    for port in record["ports"]:
+        if port["port"] == port_no:
+            return mac, port_no, port["sensor_id"], tag
+    return None
+
+
+def _resolve_entity(store: DeviceStore, entity_id: str) -> tuple[str, int] | None:
+    """Return (mac, port), the pair that OutputControl.set_output takes; None when the entity is unknown."""
+    found = _find_port(store, entity_id)
+    return None if found is None else (found[0], found[1])
+
+
+def _as_state(tag: str, value: object) -> object:
+    """State of an entity: a switch is 'on' or 'off' (output 1 or 0), a sensor keeps its number."""
+    if tag == "output":
+        return "on" if value == 1 else "off"
+    return value
+
+
+def _entity_state(store: DeviceStore, measurements: Measurements, entity_id: str) -> object:
+    """Current state of an entity from the latest measurements; None when nothing is known yet."""
+    found = _find_port(store, entity_id)
+    if found is None:
+        return None
+    mac, _, sensor_id, tag = found
+    key = tag or "output"
+    value = measurements.latest(mac).get(sensor_id, {}).get(key)
+    if value is None:
+        return None
+    return _as_state(key, value)
+
+
+def _entity_for(store: DeviceStore, mac: str, sensor_id: str, tag: str) -> str | None:
+    """Entity id of a measurement: switch.mfi_<mac>_<port> for output, else sensor.mfi_<mac>_<port>_<tag>."""
+    record = store.get(mac)
+    if record is None:
+        return None
+    for port in record["ports"]:
+        if port["sensor_id"] == sensor_id:
+            if tag == "output":
+                return f"switch.mfi_{mac}_{port['port']}"
+            return f"sensor.mfi_{mac}_{port['port']}_{tag}"
+    return None
+
+
+def _automation_listener(store: DeviceStore, engine: AutomationEngine):
+    """Return a Measurements listener that passes each changed value to the engine as an entity change."""
+    last: dict[str, object] = {}
+    lock = threading.Lock()
+
+    def listen(mac: str, sensor_id: str, tag: str, value: float, now_ms: int) -> None:
+        entity_id = _entity_for(store, mac, sensor_id, tag)
+        if entity_id is None:
+            return
+        new = _as_state(tag, value)
+        with lock:
+            old = last.get(entity_id)
+            last[entity_id] = new
+        engine.entity_changed(entity_id, old, new)
+
+    return listen
+
+
+def _run_automations(engine: AutomationEngine, stop_event: threading.Event) -> None:
+    """Call the engine's tick once a second until stop_event is set; a failure is logged and the loop goes on."""
+    while not stop_event.wait(AUTOMATION_TICK_S):
+        try:
+            engine.tick(time.time())
+        except Exception as exc:
+            logger.error("automation tick failed: %s", type(exc).__name__)
+
+
 def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     """Run the inform server until it is interrupted."""
     try:
@@ -219,11 +318,27 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
         logger.error("cannot bind the wake-up socket: %s", exc)
         return 2
     control = OutputControl(store, states, queue, sock)
+    try:
+        automations = AutomationStore(settings.data_dir)
+        engine = AutomationEngine(
+            entities=lambda entity_id: _entity_state(store, measurements, entity_id),
+            set_output=control.set_output,
+            resolve=lambda entity_id: _resolve_entity(store, entity_id),
+            clock=time.time,
+        )
+        engine.load(automations.list())
+    except ValueError as exc:
+        sock.close()
+        logger.error("cannot open the automations: %s", exc)
+        return 2
+    measurements.add_listener(_automation_listener(store, engine))
     history = History(settings.data_dir / "history.sqlite3", retention_days=settings.history_days)
     measurements.add_listener(history.record)
     sessions = Sessions(time.time)
     limiter = LoginLimiter(time.time)
-    api_server = make_api_server(settings, store, states, measurements, history, control, sessions, limiter)
+    api_server = make_api_server(
+        settings, store, states, measurements, history, control, sessions, limiter, automations, engine
+    )
     threading.Thread(target=api_server.serve_forever, daemon=True).start()
     server = make_server(settings, store, states, queue, measurements)
     logger.info(
@@ -234,6 +349,7 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     )
     stop_event = threading.Event()
     threading.Thread(target=_purge_history, args=(history, stop_event), daemon=True).start()
+    threading.Thread(target=_run_automations, args=(engine, stop_event), daemon=True).start()
     _start_bridge(settings, environ, store, states, control, measurements, stop_event)
     try:
         server.serve_forever()
