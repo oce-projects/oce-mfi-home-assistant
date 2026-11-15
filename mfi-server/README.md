@@ -16,6 +16,7 @@ Home Assistant OS.
 - Measurements.
 - Never sends a factory reset to a device.
 - MQTT discovery for Home Assistant (optional in standalone mode).
+- JSON web API on port 8099, and measurement history in `history.sqlite3` (30 days by default).
 
 ### Home Assistant entities
 
@@ -38,8 +39,8 @@ Python 3.11 or later. No extra packages.
 
 ## Security
 
-Keep the mFi devices on an isolated network. Never expose ports 6080 or 3478 to
-the internet.
+Keep the mFi devices on an isolated network. Never expose ports 6080, 3478 or
+8099 to the internet.
 
 ## Credits
 

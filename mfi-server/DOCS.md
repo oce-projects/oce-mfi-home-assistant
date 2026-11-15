@@ -121,7 +121,7 @@ found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is
   password with `python3 -m mfi_server set-password --data DIR`: it is asked twice,
   it must be at least 12 characters, and it is never given on the command line.
   A wrong password answers 401; five failures in 60 seconds from one address answer 429.
-- Until the password is set, every route except `api/v1/health` answers 503
+- Standalone mode: until the password is set, every route except `api/v1/health` answers 503
   `password_not_set`.
 
 | Route | Method | Use |
@@ -130,6 +130,7 @@ found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is
 | `api/v1/login` | POST | start a session (standalone mode) |
 | `api/v1/logout` | POST | end the session |
 | `api/v1/devices` | GET | devices, ports and latest values |
+| `api/v1/devices/<mac>` | GET | one device, same fields; unknown MAC answers 404 |
 | `api/v1/devices/<mac>/ports/<port>/output` | POST | body `{"value": 0}` or `{"value": 1}`; 202 when queued |
 | `api/v1/history` | GET | `mac`, `sensor_id`, `tag`, `from` and `to` (milliseconds); returns `points` as `[time_ms, value]` |
 
@@ -141,7 +142,7 @@ HTTPS: for remote access put a reverse proxy with TLS in front of it, on the iso
 ## Security
 
 - Keep the devices on an isolated network without internet access.
-- Never expose 6080/tcp or 3478/udp to the internet.
+- Never expose 6080/tcp, 3478/udp or 8099/tcp to the internet.
 - Inform packets without encryption are refused with HTTP 400.
 - The server never sends a factory reset to a device.
 - The add-on runs as root because the Supervisor `/data` volume belongs to root.
