@@ -42,7 +42,7 @@ class OutputControl:
             raise KeyError((mac, port))
         if value not in (0, 1):
             raise ValueError("value must be 0 or 1")
-        self.queue.put(mac, port, port_rec["sensor_id"], value)
-        target = self.states.wakeup_target(mac)
+        self.queue.put(device["mac"], port, port_rec["sensor_id"], value)
+        target = self.states.wakeup_target(device["mac"])
         if target is not None and self.sock is not None:
             wakeup.send_wakeup(self.sock, target[0], target[1])

@@ -1,6 +1,8 @@
 """Tests of the password hashing, the session store and the login limiter of mfi-server."""
 from __future__ import annotations
 
+import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -57,6 +59,13 @@ class TestPasswordHash(unittest.TestCase):
                     (data_dir / "auth.json").write_text(content, encoding="utf-8")
                     self.assertIsNone(load_password_hash(data_dir))
 
+    def test_saved_auth_file_is_owner_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            save_password_hash(data_dir, "pbkdf2_sha256$1000$aa$bb")
+            mode = stat.S_IMODE(os.stat(data_dir / "auth.json").st_mode)
+            self.assertEqual(mode, 0o600)
+
 
 class TestSessionsAndLimiter(unittest.TestCase):
     def test_sessions_create_valid_drop_and_expire(self):
@@ -80,6 +89,14 @@ class TestSessionsAndLimiter(unittest.TestCase):
         self.assertIs(lim.blocked("1.2.3.4"), True)
         now[0] = 61
         self.assertIs(lim.blocked("1.2.3.4"), False)
+
+    def test_limiter_is_per_ip(self):
+        now = [0.0]
+        lim = LoginLimiter(clock=lambda: now[0])
+        for _ in range(5):
+            lim.failure("1.2.3.4")
+        self.assertIs(lim.blocked("1.2.3.4"), True)
+        self.assertIs(lim.blocked("5.6.7.8"), False)
 
 
 if __name__ == "__main__":

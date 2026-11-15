@@ -138,6 +138,14 @@ class TestApi(unittest.TestCase):
         self.assertEqual(status, 401)
         self.assertEqual(json.loads(body), {"error": "unauthorized"})
 
+    def test_output_and_history_without_cookie_are_401(self):
+        self._set_password()
+        status, _, _ = self._request("POST", OUTPUT_PATH, body={"value": 1})
+        self.assertEqual(status, 401)
+        path = f"/api/v1/history?mac={MAC}&sensor_id=sensor-1&tag=active_pwr&from=0&to=5000"
+        status, _, _ = self._request("GET", path)
+        self.assertEqual(status, 401)
+
     def test_sixth_wrong_login_is_429(self):
         self._set_password()
         for _ in range(5):

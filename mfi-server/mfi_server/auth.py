@@ -70,11 +70,16 @@ def load_password_hash(data_dir: Path) -> str | None:
 
 
 def save_password_hash(data_dir: Path, value: str) -> None:
-    """Write the password hash to auth.json atomically: temp file in the same folder, then rename."""
+    """Write the password hash to auth.json atomically with owner-only (0o600) permissions."""
     path = data_dir / AUTH_FILE
     temp = data_dir / (AUTH_FILE + ".tmp")
+    text = json.dumps({"password_hash": value})
     try:
-        temp.write_text(json.dumps({"password_hash": value}), encoding="utf-8")
+        fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
         os.replace(temp, path)
     except OSError:
         temp.unlink(missing_ok=True)

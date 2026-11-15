@@ -58,6 +58,11 @@ def make_api_server(settings, store, states, measurements, history, control, ses
 class ApiHandler(BaseHTTPRequestHandler):
     """Answers GET and POST requests of the JSON API."""
 
+    def setup(self) -> None:
+        # Bound the time a slow client can hold a worker thread (body is read before auth).
+        self.timeout = self.server.settings.request_timeout_s
+        super().setup()
+
     def log_message(self, format: str, *args: object) -> None:
         logger.debug("api: %s", format % args)
 
