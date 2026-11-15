@@ -14,7 +14,7 @@ Home Assistant OS, locally, without the vendor cloud.
 
 | Phase | Add-on | What it does | Status |
 |---|---|---|---|
-| 1 | `mfi-controller` | runs the original mFi Controller 2.1.11 in a container; Home Assistant talks to it with the core `mfi` integration | 0.1.0: tested with Docker, not yet on HAOS |
+| 1 | `mfi-controller` | runs the original mFi Controller 2.1.11 in a container; Home Assistant talks to it with the core `mfi` integration | tested with Docker, not yet on HAOS (version in `mfi-controller/config.yaml`) |
 | 2 | `mfi-server` | our own server that speaks the device protocol directly and creates Home Assistant entities, without vendor code | not started |
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

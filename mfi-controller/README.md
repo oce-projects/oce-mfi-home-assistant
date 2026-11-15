@@ -1,6 +1,6 @@
 # Ubiquiti mFi Controller (Home Assistant app)
 
-Version 0.1.0 - history in `CHANGELOG.md`. Usage guide in `DOCS.md`.
+History in `CHANGELOG.md`. Usage guide in `DOCS.md`.
 
 This app (add-on) runs the **original Ubiquiti mFi Controller 2.1.11** in a container on Home Assistant OS. It serves mPower power strips, mPort sensor hubs and mFi sensors, a product line discontinued in 2015.
 

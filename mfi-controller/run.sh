@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================================
 # Home Assistant app (add-on) "Ubiquiti mFi Controller" - start script
-# Version: 0.1.0 (full history in CHANGELOG.md)
+# Full history in CHANGELOG.md
 #
 # What it does:
 #   1. reads the options from /data/options.json (written by Home Assistant);
@@ -13,6 +13,7 @@
 #
 # File changelog:
 #   0.1.0 - 2026-11-15 - first version.
+#   0.1.2 - 2026-11-15 - version line removed from the header.
 # =============================================================================
 set -u
 

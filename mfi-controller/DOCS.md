@@ -1,6 +1,6 @@
 # Ubiquiti mFi Controller - guide
 
-Version 0.1.0. This page appears in the "Documentation" tab of the app in Home Assistant.
+This page appears in the "Documentation" tab of the app in Home Assistant.
 
 ## What it does
 

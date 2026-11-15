@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 - 2026-11-15
+
+- `BUILD_VERSION` default in `Dockerfile` aligned with `config.yaml`: it was
+  0.1.0, so an image built without the argument was labelled `io.hass.version`
+  0.1.0. Version lines removed from the headers of `config.yaml`, `Dockerfile`,
+  `run.sh`, `README.md` and `DOCS.md`; the version now lives only in
+  `config.yaml`, this changelog and `ARG BUILD_VERSION`. Image content unchanged.
+
 ## 0.1.1 - 2026-11-15
 
 - Repository URL in `config.yaml` and in the image label
