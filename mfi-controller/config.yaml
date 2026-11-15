@@ -5,13 +5,13 @@
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "Ubiquiti mFi Controller"
-version: "0.1.0"
+version: "0.1.1"
 slug: "mfi_controller"
 description: >-
   Original Ubiquiti mFi Controller 2.1.11 (Java 7, MongoDB 2.4) for mPower
   power strips, mPort and mFi sensors. Use it with the Home Assistant "mfi"
   integration.
-url: "https://github.com/oce-projects/mfi-home-assistant"
+url: "https://github.com/oce-projects/oce-mfi-home-assistant"
 arch:
   - amd64
 startup: application

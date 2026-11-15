@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 - 2026-11-15
+
+- Repository URL in `config.yaml` and in the image label
+  `org.opencontainers.image.source` updated to the renamed repository
+  `oce-projects/oce-mfi-home-assistant`. No change to the image content.
+
 ## 0.1.0 - 2026-11-15
 
 First version (phase 1 of the project: original controller in a container).

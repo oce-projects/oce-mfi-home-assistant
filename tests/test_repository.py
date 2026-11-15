@@ -1,4 +1,4 @@
-"""Offline structure tests for the mfi-home-assistant repository.
+"""Offline structure tests for the oce-mfi-home-assistant repository.
 
 Version: 1.0.0
 

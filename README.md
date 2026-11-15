@@ -1,4 +1,4 @@
-# mfi-home-assistant
+# oce-mfi-home-assistant
 
 Home Assistant add-ons to bring **Ubiquiti mFi** devices back to life:
 mPower and mPower PRO/mini power strips, mPort and mPort Serial sensor hubs,

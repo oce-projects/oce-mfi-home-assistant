@@ -77,7 +77,7 @@ LABEL \
     io.hass.name="Ubiquiti mFi Controller" \
     org.opencontainers.image.title="Ubiquiti mFi Controller" \
     org.opencontainers.image.description="Original Ubiquiti mFi Controller 2.1.11 for Home Assistant" \
-    org.opencontainers.image.source="https://github.com/oce-projects/mfi-home-assistant"
+    org.opencontainers.image.source="https://github.com/oce-projects/oce-mfi-home-assistant"
 
 # 6080 = inform (devices report to the controller), 6443 = web UI and API
 EXPOSE 6080 6443

@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.2.1 - 2026-11-15
+
+- Repository renamed from `mfi-home-assistant` to `oce-mfi-home-assistant`
+  (`oce-projects/oce-mfi-home-assistant` on GitHub): README title, `repository.yaml`
+  URL and the test module docstring updated.
+
 ## 0.2.0 - 2026-11-15
 
 - New add-on `mfi-controller` 0.1.0 (phase 1): original mFi Controller 2.1.11 on
