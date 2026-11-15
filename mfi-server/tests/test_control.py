@@ -61,6 +61,13 @@ class TestOutputControl(unittest.TestCase):
         self.assertEqual(cmd["value"], 0)
         self.assertEqual(cmd["sensor_id"], "sensor-2")
 
+    def test_mac_is_normalized_before_queueing(self):
+        self.control.set_output("02AABBCCDD01", 1, 1)
+        cmd = self.queue.pop(MAC)
+        self.assertIsNotNone(cmd)
+        self.assertEqual(cmd["mac"], MAC)
+        self.assertEqual(cmd["port"], 1)
+
     def test_unknown_mac_raises_keyerror(self):
         with self.assertRaises(KeyError):
             self.control.set_output("02aabbccdd09", 1, 1)
