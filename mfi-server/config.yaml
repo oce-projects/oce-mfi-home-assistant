@@ -5,7 +5,7 @@
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "mFi Server"
-version: "0.1.0"
+version: "0.2.0"
 slug: "mfi_server"
 description: >-
   Our own mFi controller in pure Python: speaks the inform protocol with already
@@ -18,6 +18,8 @@ startup: application
 boot: auto
 init: false
 stage: experimental
+services:
+  - mqtt:want
 ports:
   6080/tcp: 6080
   3478/udp: 3478
@@ -29,6 +31,10 @@ map:
 options:
   backup_file: ""
   log_level: info
+  mqtt_topic_prefix: mfi
+  mqtt_discovery_prefix: homeassistant
 schema:
   backup_file: "str?"
   log_level: "list(debug|info|warning|error)"
+  mqtt_topic_prefix: str
+  mqtt_discovery_prefix: str

@@ -6,7 +6,7 @@
 # Digest not measured yet: pin it by hand after a real build
 FROM python:3.12-slim
 
-ARG BUILD_VERSION="0.1.0"
+ARG BUILD_VERSION="0.2.0"
 ARG BUILD_ARCH="amd64"
 
 ENV PYTHONUNBUFFERED=1
