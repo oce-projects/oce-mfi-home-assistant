@@ -2,6 +2,13 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.2.2 - 2026-11-15
+
+- Add-on `mfi-controller` 0.1.2: versions aligned (`ARG BUILD_VERSION` in
+  `Dockerfile` equals `config.yaml`; version headers removed from add-on files).
+- New test: `ARG BUILD_VERSION` must equal the add-on version, and stale
+  version headers left in add-on files are reported.
+
 ## 0.2.1 - 2026-11-15
 
 - Repository renamed from `mfi-home-assistant` to `oce-mfi-home-assistant`

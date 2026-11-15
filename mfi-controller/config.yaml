@@ -1,11 +1,11 @@
 # =============================================================================
 # Home Assistant app (add-on) "Ubiquiti mFi Controller" - configuration
-# Version: 0.1.0 (full history in CHANGELOG.md)
+# Full history in CHANGELOG.md
 # Format: https://developers.home-assistant.io/docs/apps/configuration
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "Ubiquiti mFi Controller"
-version: "0.1.1"
+version: "0.1.2"
 slug: "mfi_controller"
 description: >-
   Original Ubiquiti mFi Controller 2.1.11 (Java 7, MongoDB 2.4) for mPower

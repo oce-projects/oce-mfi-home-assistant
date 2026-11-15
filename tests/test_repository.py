@@ -1,8 +1,9 @@
 """Offline structure tests for the oce-mfi-home-assistant repository.
 
-Version: 1.0.0
+Version: 1.1.0
 
 Changelog:
+1.1.0 - 2026-11-15 - Dockerfile BUILD_VERSION must equal the add-on version; stale version headers in add-on files are reported.
 1.0.0 - 2026-11-15 - first version: versions vs changelogs, repository.yaml,
         add-on folder layout, AGENTS.md size, no vendor files, no private data.
         Each scanner is also tested on planted samples, so a green run cannot
@@ -61,6 +62,22 @@ def addon_version(config: Path) -> str | None:
     return m.group(1) if m else None
 
 
+def dockerfile_build_version(dockerfile: Path) -> str | None:
+    m = re.search(r'^ARG BUILD_VERSION="' + SEMVER + r'"\s*$', dockerfile.read_text(encoding="utf-8"), flags=re.M)
+    return m.group(1) if m else None
+
+
+def stale_version_headers(name: str, text: str, version: str) -> list[str]:
+    hits = []
+    for rx in (re.compile(r"^#\s*Version:\s*" + SEMVER, flags=re.M), re.compile(r"^Version\s+" + SEMVER, flags=re.M)):
+        for m in rx.finditer(text):
+            found = m.group(1)
+            if found != version:
+                line = text.count("\n", 0, m.start()) + 1
+                hits.append(f"{name}:{line}: {found} != {version}")
+    return hits
+
+
 def addon_dirs() -> list[Path]:
     return sorted(p.parent for p in ROOT.glob("*/config.yaml"))
 
@@ -101,6 +118,12 @@ class TestScannersCatchPlantedSamples(unittest.TestCase):
         planted = [Path("x/ace.jar"), Path("x/mFi.unix.zip"), Path("x/backup.unf"), Path("x/firmware.bin")]
         self.assertEqual(len(vendor_hits(planted)), 4)
         self.assertEqual(vendor_hits([Path("x/README.md"), Path("x/Dockerfile")]), [])
+
+    def test_stale_version_scanner_flags_old_header(self):
+        self.assertEqual(len(stale_version_headers("x", "# Version: 0.1.0 (old)\n", "0.1.2")), 1)
+        self.assertEqual(len(stale_version_headers("x", "Version 0.1.0 - history\n", "0.1.2")), 1)
+        self.assertEqual(stale_version_headers("x", "# Version: 0.1.2\n", "0.1.2"), [])
+        self.assertEqual(stale_version_headers("x", "Controller version 2.1.11\n", "0.1.2"), [])
 
 
 class TestRepository(unittest.TestCase):
@@ -148,6 +171,26 @@ class TestAddons(unittest.TestCase):
                 v = addon_version(d / "config.yaml")
                 self.assertIsNotNone(v, f"{d.name}/config.yaml has no semantic version")
                 self.assertEqual(v, newest_changelog_version(d / "CHANGELOG.md"))
+
+    def test_each_addon_build_version_matches_config(self):
+        for d in addon_dirs():
+            with self.subTest(addon=d.name):
+                build = dockerfile_build_version(d / "Dockerfile")
+                self.assertIsNotNone(build, f"{d.name}/Dockerfile has no ARG BUILD_VERSION")
+                self.assertEqual(build, addon_version(d / "config.yaml"))
+
+    def test_addon_files_have_no_stale_version_header(self):
+        for d in addon_dirs():
+            with self.subTest(addon=d.name):
+                version = addon_version(d / "config.yaml")
+                hits = []
+                for p in sorted(d.rglob("*")):
+                    if not p.is_file() or p.name == "CHANGELOG.md":
+                        continue
+                    if p.suffix.lower() not in TEXT_SUFFIXES and p.name != "Dockerfile":
+                        continue
+                    hits += stale_version_headers(str(p.relative_to(d)), p.read_text(encoding="utf-8"), version)
+                self.assertEqual(hits, [], "\n".join(hits))
 
     def test_each_addon_declares_slug_and_arch(self):
         for d in addon_dirs():
