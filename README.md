@@ -15,9 +15,10 @@ Home Assistant OS, locally, without the vendor cloud.
 | Phase | Add-on | What it does | Status |
 |---|---|---|---|
 | 1 | `mfi-controller` | runs the original mFi Controller 2.1.11 in a container; Home Assistant talks to it with the core `mfi` integration | tested with Docker, not yet on HAOS (version in `mfi-controller/config.yaml`) |
-| 2 | `mfi-server` | our own server that speaks the device protocol directly and creates Home Assistant entities, without vendor code | not started |
+| 2 | `mfi-server` | our own server that speaks the device protocol directly and creates Home Assistant entities, without vendor code | in progress: inform core in pure Python (encryption, keys from .unf backups, states, commands, measurements); no Home Assistant entities yet (version in mfi-server/config.yaml) |
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Phase 2 add-on notes: [mfi-server/DOCS.md](mfi-server/DOCS.md).
 
 ## Install (when an add-on is ready)
 
@@ -41,11 +42,12 @@ its sha256. You are responsible for complying with Ubiquiti's license.
 ## Security
 
 The mFi firmware and the 2015 controller are old. Keep mFi devices on an
-isolated network and never expose ports 6080 or 6443 to the internet.
+isolated network and never expose ports 6080, 6443 or 3478 to the internet.
 
 ## For contributors and agents
 
 Read [AGENTS.md](AGENTS.md). Tests: `python3 -m unittest discover -s tests -v`.
+mfi-server tests: `python3 -m unittest discover -s mfi-server/tests -t mfi-server -v`.
 
 ## License
 

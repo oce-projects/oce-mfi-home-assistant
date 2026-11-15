@@ -47,6 +47,9 @@ flowchart LR
 | 2026-11-15 | Two phases: original controller first, own server second |
 | 2026-11-15 | No vendor files in the repository; download at build time with sha256 |
 | 2026-11-15 | Repository files in English; offline stdlib tests |
+| 2026-11-15 | mfi-server uses the Python standard library only (own AES-128 and BSON reader) |
+| 2026-11-15 | mfi-server is a full controller: the same code runs as a Home Assistant add-on and as a standalone program |
+| 2026-11-15 | Home Assistant entities will come through MQTT discovery (next epic) |
 
 ## Existing work (checked 2026-11-15)
 
