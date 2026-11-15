@@ -15,9 +15,11 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
 
 from mfi_server import aes, bson, packet, unf
 from mfi_server.__main__ import main
+from mfi_server.auth import load_password_hash, verify_password
 from mfi_server.store import DeviceStore
 
 MAC = "02aabbccdd01"
@@ -152,6 +154,37 @@ class ServerModeTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertEqual(out.getvalue(), "")
         self.assertIn("inform_port must be 1-65535", err.getvalue())
+
+
+class SetPasswordTest(unittest.TestCase):
+    def test_set_password_writes_auth_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp) / "data"
+            with patch("getpass.getpass", side_effect=["longenoughpw1", "longenoughpw1"]):
+                code, out, err = run_main(["set-password", "--data", str(data_dir)])
+            stored = load_password_hash(data_dir)
+        self.assertEqual(code, 0)
+        self.assertIsNotNone(stored)
+        self.assertTrue(verify_password("longenoughpw1", stored))
+        self.assertNotIn("longenoughpw1", out)
+        self.assertNotIn("longenoughpw1", err)
+
+    def test_mismatched_passwords_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("getpass.getpass", side_effect=["longenoughpw1", "different12345"]):
+                code, out, err = run_main(["set-password", "--data", tmp])
+            stored = load_password_hash(Path(tmp))
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertTrue(err.startswith("error:"), err)
+        self.assertIsNone(stored)
+
+    def test_short_password_fail(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("getpass.getpass", side_effect=["short", "short"]):
+                code, out, err = run_main(["set-password", "--data", tmp])
+        self.assertEqual(code, 2)
+        self.assertIn("at least 12", err)
 
 
 if __name__ == "__main__":
