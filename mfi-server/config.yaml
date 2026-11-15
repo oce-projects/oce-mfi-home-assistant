@@ -1,0 +1,34 @@
+# =============================================================================
+# Home Assistant app (add-on) "mFi Server" - configuration
+# Full history in CHANGELOG.md
+# Format: https://developers.home-assistant.io/docs/apps/configuration
+# No "image" key: the Supervisor builds the container locally from the Dockerfile.
+# =============================================================================
+name: "mFi Server"
+version: "0.1.0"
+slug: "mfi_server"
+description: >-
+  Our own mFi controller in pure Python: speaks the inform protocol with already
+  adopted mPower and mPort devices, using the keys of an old controller backup.
+url: "https://github.com/oce-projects/oce-mfi-home-assistant"
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+stage: experimental
+ports:
+  6080/tcp: 6080
+  3478/udp: 3478
+ports_description:
+  6080/tcp: "Inform: mFi devices report to the server (HTTP)"
+  3478/udp: "Wake-up packets to the devices (UDP)"
+map:
+  - "share:ro"
+options:
+  backup_file: ""
+  log_level: info
+schema:
+  backup_file: "str?"
+  log_level: "list(debug|info|warning|error)"
