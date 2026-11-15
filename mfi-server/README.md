@@ -15,6 +15,16 @@ Home Assistant OS.
 - Device states and outlet commands.
 - Measurements.
 - Never sends a factory reset to a device.
+- MQTT discovery for Home Assistant (optional in standalone mode)
+
+### Home Assistant entities
+
+With MQTT, each outlet gets:
+
+- a switch for its output (ON and OFF);
+- sensors for power (W), voltage (V), current (A), power factor and energy (Wh).
+
+Entity names use the port label, for example `Port 1 Power`.
 
 ## Requirements
 
