@@ -146,6 +146,7 @@ found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is
 | `api/v1/health` | GET | status and version, no login |
 | `api/v1/login` | POST | start a session (standalone mode) |
 | `api/v1/logout` | POST | end the session |
+| `api/v1/status` | GET | import status of the controller backup, as `{"backup": {...}}` with the keys `configured`, `file`, `devices` and `error`; same access rules as the other routes (not public like `api/v1/health`) |
 | `api/v1/devices` | GET | devices, ports and latest values |
 | `api/v1/devices/<mac>` | GET | one device, same fields; unknown MAC answers 404 |
 | `api/v1/devices/<mac>/ports/<port>/output` | POST | body `{"value": 0}` or `{"value": 1}`; 202 when queued |
@@ -175,7 +176,8 @@ The page shows:
 - the ON/OFF switch of each outlet;
 - the measurements of each outlet: power, voltage, current, power factor and energy;
 - a chart of the last 24 hours, drawn as SVG, with the minimum and maximum values;
-- a section of the devices found on the network by UDP discovery (port 10001, see [Network](#network)), with a search button that starts a new scan: MAC, IP, model, firmware, factory default (yes or no) and whether the device is already known to the server (yes or no). The server also scans once at startup. The results are kept in memory only.
+- a message at the top of the page when the backup in `backup_file` fails to import (with the error), has no devices, or, when no backup is set and there are no devices, asks to set `backup_file`;
+- a section of the devices found on the network by UDP discovery (port 10001, see [Network](#network)), with a search button that starts a new scan. The main table shows only the mFi devices, with name, MAC (with colons), IP, model, firmware and a state: factory default, on this server, or not on this server. Adopt is shown only for factory-default devices, and Repoint only for devices already on this server. The other Ubiquiti devices found are listed below the table in a closed section, without buttons. The server also scans once at startup. The results are kept in memory only.
 
 Security warning: never expose 8099/tcp to the internet. The page has no built-in HTTPS (see Web API).
 
