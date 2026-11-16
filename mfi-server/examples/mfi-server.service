@@ -1,0 +1,16 @@
+[Unit]
+Description=mFi Server (standalone)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 -m mfi_server --data /var/lib/mfi-server
+WorkingDirectory=/opt/mfi-server
+DynamicUser=yes
+StateDirectory=mfi-server
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

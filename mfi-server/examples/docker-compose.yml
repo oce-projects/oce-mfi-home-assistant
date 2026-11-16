@@ -1,0 +1,18 @@
+# mfi-server standalone with Docker Compose.
+# Publish the ports only on the isolated network where the mFi devices live,
+# never on the Internet.
+services:
+  mfi-server:
+    build: ..
+    command: ["python3", "-m", "mfi_server", "--data", "/data"]
+    volumes:
+      - ./data:/data
+    ports:
+      - "6080:6080"
+      - "3478:3478/udp"
+      - "8099:8099"
+    restart: unless-stopped
+    # To use the environment file, copy mfi-server.env.example to mfi-server.env
+    # and uncomment the lines below:
+    # env_file:
+    #   - mfi-server.env
