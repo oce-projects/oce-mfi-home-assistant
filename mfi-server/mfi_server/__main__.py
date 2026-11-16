@@ -22,6 +22,7 @@ import time
 from collections.abc import Mapping
 from pathlib import Path
 
+from mfi_server.adoption import Adoption
 from mfi_server.api import make_api_server
 from mfi_server.auth import Sessions, LoginLimiter, hash_password, save_password_hash
 from mfi_server.automation_engine import AutomationEngine
@@ -346,8 +347,9 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     sessions = Sessions(time.time)
     limiter = LoginLimiter(time.time)
     scanner = Scanner()
+    adoption = Adoption(settings, store, scanner)
     api_server = make_api_server(
-        settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner
+        settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner, adoption
     )
     threading.Thread(target=api_server.serve_forever, daemon=True).start()
     server = make_server(settings, store, states, queue, measurements)
