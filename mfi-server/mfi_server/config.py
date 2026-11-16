@@ -242,7 +242,7 @@ def _ingress_peer(value: object, default: str) -> str:
         ipaddress.ip_address(text)
     except ValueError as exc:
         raise ValueError("ingress_peer must be an IP address") from exc
-    return text
+    return str(ipaddress.ip_address(text))
 
 
 def _log_level(value: object) -> str:
