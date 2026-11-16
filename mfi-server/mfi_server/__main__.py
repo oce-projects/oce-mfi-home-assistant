@@ -29,7 +29,7 @@ from mfi_server.automation_engine import AutomationEngine
 from mfi_server.automation_store import AutomationStore
 from mfi_server.bridge import MqttBridge
 from mfi_server.commands import CommandQueue
-from mfi_server.config import Settings, load_settings, supervisor_mqtt
+from mfi_server.config import Settings, load_settings, resolve_backup_path, supervisor_mqtt
 from mfi_server.control import OutputControl
 from mfi_server.history import History
 from mfi_server.measurements import Measurements
@@ -312,10 +312,16 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     except ValueError as exc:
         logger.error("cannot open the device archive: %s", exc)
         return 2
+    backup_status = {"configured": bool(settings.backup_file), "file": "", "devices": 0, "error": None}
     if settings.backup_file:
+        backup_path = resolve_backup_path(settings.backup_file)
+        backup_status["file"] = str(backup_path)
         try:
-            store.import_records(import_backup(Path(settings.backup_file).read_bytes()))
+            records = import_backup(backup_path.read_bytes())
+            store.import_records(records)
+            backup_status["devices"] = len(records)
         except (OSError, ValueError) as exc:
+            backup_status["error"] = str(exc)
             logger.error("backup import failed: %s", exc)
     states = DeviceStates()
     queue = CommandQueue()
@@ -351,6 +357,7 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     api_server = make_api_server(
         settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner, adoption
     )
+    api_server.backup_status = backup_status
     threading.Thread(target=api_server.serve_forever, daemon=True).start()
     server = make_server(settings, store, states, queue, measurements)
     logger.info(
