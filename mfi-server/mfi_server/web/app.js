@@ -241,8 +241,35 @@ function renderDevice(device) {
   for (const port of device.ports) {
     ports.appendChild(renderPort(device.mac, port));
   }
-  card.append(head, meta, ports);
+  card.append(head, meta);
+  if (state !== "connected") {
+    card.appendChild(renderRepointActions(device));
+  }
+  card.appendChild(ports);
   return card;
+}
+
+function renderRepointActions(device) {
+  const actions = el("div", "auto__actions");
+  const b = el("button", "button", t("repoint"));
+  b.type = "button";
+  b.addEventListener("click", () => {
+    repointDevice(device, b).catch(reportError);
+  });
+  actions.appendChild(b);
+  return actions;
+}
+
+async function repointDevice(device, button) {
+  if (!window.confirm(t("repoint_confirm"))) return;
+  button.disabled = true;
+  try {
+    const response = await fetch("api/v1/devices/" + encodeURIComponent(device.mac) + "/repoint", { method: "POST" });
+    window.alert(t(response.status === 202 ? "repoint_done" : "action_error"));
+  } finally {
+    button.disabled = false;
+  }
+  refreshDevices().catch(reportError);
 }
 
 function renderState(state) {
@@ -447,6 +474,7 @@ function renderDiscovery() {
     "discovery_col_firmware",
     "discovery_col_default",
     "discovery_col_known",
+    "discovery_col_actions",
   ];
   const table = el("table");
   const thead = el("thead");
@@ -464,12 +492,38 @@ function renderDiscovery() {
       el("td", "", device.model || ""),
       el("td", "", device.firmware || ""),
       el("td", "", t(device.is_default ? "discovery_yes" : "discovery_no")),
-      el("td", "", t(device.known ? "discovery_yes" : "discovery_no"))
+      el("td", "", t(device.known ? "discovery_yes" : "discovery_no")),
+      renderAdoptCell(device)
     );
     tbody.appendChild(row);
   }
   table.append(thead, tbody);
   discoveryEl.appendChild(table);
+}
+
+function renderAdoptCell(device) {
+  const cell = el("td", "", "");
+  if (device.is_default || !device.known) {
+    const b = el("button", "button", t("adopt"));
+    b.type = "button";
+    b.addEventListener("click", () => {
+      adoptDevice(device, b).catch(reportError);
+    });
+    cell.appendChild(b);
+  }
+  return cell;
+}
+
+async function adoptDevice(device, button) {
+  if (!window.confirm(t("adopt_confirm"))) return;
+  button.disabled = true;
+  try {
+    const response = await fetch("api/v1/discovery/" + encodeURIComponent(device.mac) + "/adopt", { method: "POST" });
+    window.alert(t(response.status === 202 ? "adopt_done" : "action_error"));
+  } finally {
+    button.disabled = false;
+  }
+  loadDiscovery().catch(reportError);
 }
 
 // ---------------------------------------------------------------- start

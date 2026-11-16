@@ -110,6 +110,13 @@ class TestWebPage(unittest.TestCase):
             with self.subTest(route=route):
                 self.assertIn(route, text)
 
+    def test_app_js_uses_adopt_and_repoint_routes(self):
+        text = self.js["app.js"]
+        self.assertIn("/adopt", text)
+        self.assertIn("/repoint", text)
+        self.assertIn('"button"', text)
+        self.assertIn("window.confirm", text)
+
 
 if __name__ == "__main__":
     unittest.main()
