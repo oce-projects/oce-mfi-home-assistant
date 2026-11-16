@@ -247,18 +247,10 @@ The add-on uses the network of the host (`host_network`), so its ports open dire
 | 6080 | tcp | Inform: mFi devices report to the server (HTTP) |
 | 3478 | udp | Wake-up packets sent to the devices |
 | 8099 | tcp | Web API and web page |
-| 10001 | udp | Outgoing discovery: the server asks the devices who they are, broadcast to 255.255.255.255 and multicast to 233.89.188.1 |
+| 10001 | udp | Outgoing discovery (UNVERIFIED on a device, from the controller code, see docs/PROTOCOL.md): the server asks the devices who they are, broadcast to 255.255.255.255 and multicast to 233.89.188.1 |
 
 With the host network, port 8099 is reachable from the whole LAN, not only from Home Assistant. In add-on mode the server answers only the requests that come from the ingress peer, the address of the Home Assistant ingress (default 172.30.32.2). Requests from any other address get 403.
 
 If the page answers 403, read the server log: the server writes a WARNING with the address that made the request. Put that address in the `ingress_peer` option of the add-on. In standalone mode, set the variable `MFI_INGRESS_PEER`, or the key `ingress_peer` in `settings.json`.
 
 Keep the devices on an isolated network without internet access. Never expose 6080/tcp, 3478/udp or 8099/tcp to the internet.
-
-## Ports
-
-| Port | Protocol | Use |
-|---|---|---|
-| 6080 | tcp | Inform: mFi devices report to the server (HTTP) |
-| 3478 | udp | Wake-up packets to the devices |
-| 8099 | tcp | Web API (JSON); never expose it to the internet |

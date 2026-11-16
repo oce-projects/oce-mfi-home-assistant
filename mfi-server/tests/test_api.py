@@ -372,6 +372,23 @@ class TestApi(unittest.TestCase):
         status, _, _ = self._request("POST", "/api/v1/discovery/scan")
         self.assertEqual(status, 401)
 
+    def test_discovery_addon_mode_refuses_other_peers(self):
+        server = self._start("addon")
+        for method, path in (("GET", "/api/v1/discovery"), ("POST", "/api/v1/discovery/scan")):
+            with self.assertLogs("mfi_server.api", level="WARNING") as cm:
+                status, _, body = self._request(method, path, server=server)
+            self.assertEqual(status, 403, path)
+            self.assertEqual(json.loads(body), {"error": "forbidden"})
+            self.assertIn("127.0.0.1", "".join(cm.output))
+
+    def test_discovery_scan_response_marks_known(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", "/api/v1/discovery/scan", headers=headers)
+        self.assertEqual(status, 200)
+        devices = {device["mac"]: device for device in json.loads(body)["devices"]}
+        self.assertIs(devices[MAC]["known"], True)
+        self.assertIs(devices["02aabbccdd02"]["known"], False)
+
 
 if __name__ == "__main__":
     unittest.main()

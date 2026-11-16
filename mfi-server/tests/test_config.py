@@ -280,6 +280,25 @@ class TestIngressPeerSetting(unittest.TestCase):
             Path(d, "settings.json").write_text('{"ingress_peer": "127.0.0.1"}', encoding="utf-8")
             self.assertEqual(_load({}, d).ingress_peer, "127.0.0.1")
 
+    def test_empty_ingress_peer_in_options_falls_back_to_default(self):
+        with tempfile.TemporaryDirectory() as d:
+            options = Path(d) / "options.json"
+            options.write_text('{"ingress_peer": ""}', encoding="utf-8")
+            s = load_settings([], {}, options_path=options)
+            self.assertEqual(s.mode, "addon")
+            self.assertEqual(s.ingress_peer, "172.30.32.2")
+
+    def test_whitespace_ingress_peer_is_stripped(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"ingress_peer": " 127.0.0.1 "}', encoding="utf-8")
+            self.assertEqual(_load({}, d).ingress_peer, "127.0.0.1")
+
+    def test_invalid_ingress_peer_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"ingress_peer": "not-an-ip"}', encoding="utf-8")
+            with self.assertRaises(ValueError):
+                _load({}, d)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -176,6 +176,7 @@ async function refreshDevices() {
     // Without a login (Home Assistant ingress) there is nothing to log out from.
     logoutButton.hidden = !loggedIn;
     renderDevices();
+    loadDiscovery().catch(reportError);
     return;
   }
   if (response.status === 401) {
@@ -400,6 +401,10 @@ function closeChart() {
 
 async function loadDiscovery() {
   const response = await fetch("api/v1/discovery");
+  if (response.status === 401) {
+    showLogin();
+    return;
+  }
   if (response.status !== 200) return;
   const body = await response.json();
   discoveryDevices = Array.isArray(body.devices) ? body.devices : [];
@@ -414,6 +419,8 @@ async function searchDiscovery() {
     if (response.status === 200) {
       const body = await response.json();
       discoveryDevices = Array.isArray(body.devices) ? body.devices : [];
+    } else if (response.status === 401) {
+      showLogin();
     }
   } finally {
     discoverySearching = false;
