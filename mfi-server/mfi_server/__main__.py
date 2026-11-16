@@ -37,6 +37,7 @@ from mfi_server.packet import PacketError, decode
 from mfi_server.server import make_server
 from mfi_server.states import DeviceStates
 from mfi_server.store import DeviceStore
+from mfi_server.ubnt_discovery import Scanner
 from mfi_server.unf import import_backup
 
 logger = logging.getLogger(__name__)
@@ -195,6 +196,14 @@ def _purge_history(history: History, stop_event: threading.Event) -> None:
         history.purge()
 
 
+def _initial_scan(scanner: Scanner) -> None:
+    """Run one discovery scan at startup; a failure is logged and the server keeps running."""
+    try:
+        scanner.scan()
+    except Exception as exc:
+        logger.warning("initial discovery scan failed: %s", type(exc).__name__)
+
+
 def _parse_entity(entity_id: str) -> tuple[str, str, int, str] | None:
     """Split 'switch.mfi_<mac>_<port>' or 'sensor.mfi_<mac>_<port>_<tag>' into (domain, mac, port, tag).
 
@@ -336,8 +345,9 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     measurements.add_listener(history.record)
     sessions = Sessions(time.time)
     limiter = LoginLimiter(time.time)
+    scanner = Scanner()
     api_server = make_api_server(
-        settings, store, states, measurements, history, control, sessions, limiter, automations, engine
+        settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner
     )
     threading.Thread(target=api_server.serve_forever, daemon=True).start()
     server = make_server(settings, store, states, queue, measurements)
@@ -350,6 +360,7 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     stop_event = threading.Event()
     threading.Thread(target=_purge_history, args=(history, stop_event), daemon=True).start()
     threading.Thread(target=_run_automations, args=(engine, stop_event), daemon=True).start()
+    threading.Thread(target=_initial_scan, args=(scanner,), daemon=True).start()
     _start_bridge(settings, environ, store, states, control, measurements, stop_event)
     try:
         server.serve_forever()

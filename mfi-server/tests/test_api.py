@@ -10,7 +10,6 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 import mfi_server
 from mfi_server.api import STATIC_CSP, make_api_server
@@ -23,6 +22,7 @@ from mfi_server.control import OutputControl
 from mfi_server.history import History
 from mfi_server.measurements import Measurements
 from mfi_server.states import DeviceStates
+from mfi_server.ubnt_discovery import ScanInProgress
 
 PASSWORD = "passw0rd1234"
 WRONG_PASSWORD = "not-the-password"
@@ -42,6 +42,24 @@ AUTOMATION = {
     "triggers": [{"trigger": "time", "at": "08:00:00"}],
     "actions": [{"action": "switch.turn_on", "target": {"entity_id": "switch.mfi_02aabbccdd01_1"}}],
 }
+
+
+class FakeScanner:
+    """Stands in for Scanner: the API only calls scan() and last_results()."""
+
+    def __init__(self, results: list[dict] | None = None, in_progress: bool = False) -> None:
+        self._results = results or []
+        self._in_progress = in_progress
+        self.scanned = 0
+
+    def scan(self, timeout_s: float = 3.0) -> list[dict]:
+        if self._in_progress:
+            raise ScanInProgress()
+        self.scanned += 1
+        return self._results
+
+    def last_results(self) -> list[dict]:
+        return self._results
 
 
 class FakeStore:
@@ -77,6 +95,12 @@ class TestApi(unittest.TestCase):
             resolve=lambda e: None,
             clock=lambda: 0.0,
         )
+        self.scanner = FakeScanner(
+            [
+                {"mac": MAC, "ip": "192.168.1.20", "model": "mPower", "seen_ms": 0},
+                {"mac": "02aabbccdd02", "ip": "192.168.1.20", "model": "mPort", "seen_ms": 0},
+            ]
+        )
         self.servers: list = []
         self.server = self._start("standalone")
 
@@ -86,8 +110,14 @@ class TestApi(unittest.TestCase):
             server.server_close()
         self._tmp.cleanup()
 
-    def _start(self, mode: str):
-        settings = Settings(data_dir=self.data_dir, mode=mode, bind_address="127.0.0.1", web_port=0)
+    def _start(self, mode: str, ingress_peer: str = "172.30.32.2"):
+        settings = Settings(
+            data_dir=self.data_dir,
+            mode=mode,
+            bind_address="127.0.0.1",
+            web_port=0,
+            ingress_peer=ingress_peer,
+        )
         server = make_api_server(
             settings,
             self.store,
@@ -99,6 +129,7 @@ class TestApi(unittest.TestCase):
             self.limiter,
             self.automations,
             self.engine,
+            self.scanner,
         )
         threading.Thread(target=server.serve_forever, daemon=True).start()
         self.servers.append(server)
@@ -208,17 +239,18 @@ class TestApi(unittest.TestCase):
         self.assertEqual(json.loads(body), {"points": [[1000, 12.5]]})
 
     def test_addon_mode_serves_ingress_without_login(self):
-        with patch("mfi_server.api.INGRESS_PEER", "127.0.0.1"):
-            server = self._start("addon")
-            status, _, body = self._request("GET", ADDON_DEVICES_PATH, server=server)
+        server = self._start("addon", ingress_peer="127.0.0.1")
+        status, _, body = self._request("GET", ADDON_DEVICES_PATH, server=server)
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(body)[0]["mac"], MAC)
 
     def test_addon_mode_refuses_other_peers(self):
         server = self._start("addon")
-        status, _, body = self._request("GET", ADDON_DEVICES_PATH, server=server)
+        with self.assertLogs("mfi_server.api", level="WARNING") as cm:
+            status, _, body = self._request("GET", ADDON_DEVICES_PATH, server=server)
         self.assertEqual(status, 403)
         self.assertEqual(json.loads(body), {"error": "forbidden"})
+        self.assertIn("127.0.0.1", "".join(cm.output))
 
     def test_root_serves_index_with_csp(self):
         status, headers, body = self._request("GET", "/")
@@ -309,6 +341,53 @@ class TestApi(unittest.TestCase):
         status, _, body = self._request("GET", AUTOMATIONS_PATH)
         self.assertEqual(status, 401)
         self.assertEqual(json.loads(body), {"error": "unauthorized"})
+
+    def test_discovery_lists_known_and_unknown(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("GET", "/api/v1/discovery", headers=headers)
+        self.assertEqual(status, 200)
+        devices = {device["mac"]: device for device in json.loads(body)["devices"]}
+        self.assertIs(devices[MAC]["known"], True)
+        self.assertIs(devices["02aabbccdd02"]["known"], False)
+
+    def test_discovery_scan_returns_devices(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", "/api/v1/discovery/scan", headers=headers)
+        self.assertEqual(status, 200)
+        self.assertEqual(len(json.loads(body)["devices"]), 2)
+        self.assertEqual(self.scanner.scanned, 1)
+
+    def test_discovery_scan_in_progress_is_409(self):
+        self.scanner._in_progress = True
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", "/api/v1/discovery/scan", headers=headers)
+        self.assertEqual(status, 409)
+        self.assertEqual(json.loads(body), {"error": "scan_in_progress"})
+
+    def test_discovery_without_cookie_is_401(self):
+        self._set_password()
+        status, _, body = self._request("GET", "/api/v1/discovery")
+        self.assertEqual(status, 401)
+        self.assertEqual(json.loads(body), {"error": "unauthorized"})
+        status, _, _ = self._request("POST", "/api/v1/discovery/scan")
+        self.assertEqual(status, 401)
+
+    def test_discovery_addon_mode_refuses_other_peers(self):
+        server = self._start("addon")
+        for method, path in (("GET", "/api/v1/discovery"), ("POST", "/api/v1/discovery/scan")):
+            with self.assertLogs("mfi_server.api", level="WARNING") as cm:
+                status, _, body = self._request(method, path, server=server)
+            self.assertEqual(status, 403, path)
+            self.assertEqual(json.loads(body), {"error": "forbidden"})
+            self.assertIn("127.0.0.1", "".join(cm.output))
+
+    def test_discovery_scan_response_marks_known(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", "/api/v1/discovery/scan", headers=headers)
+        self.assertEqual(status, 200)
+        devices = {device["mac"]: device for device in json.loads(body)["devices"]}
+        self.assertIs(devices[MAC]["known"], True)
+        self.assertIs(devices["02aabbccdd02"]["known"], False)
 
 
 if __name__ == "__main__":

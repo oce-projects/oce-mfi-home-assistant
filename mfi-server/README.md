@@ -14,6 +14,7 @@ Home Assistant OS.
 - Keys read from `.unf` controller backups.
 - Device states and outlet commands.
 - Measurements.
+- UDP discovery of the devices on the local network (port 10001, UNVERIFIED on a device), shown on the web page.
 - Never sends a factory reset to a device.
 - MQTT discovery for Home Assistant (optional in standalone mode).
 - JSON web API on port 8099, and measurement history in `history.sqlite3` (30 days by default).
@@ -115,6 +116,7 @@ Each setting can come from an environment variable, from `settings.json` in the 
 | `MFI_MQTT_DISCOVERY_PREFIX` | homeassistant | Prefix of the Home Assistant discovery topics |
 | `MFI_WEB_PORT` | 8099 | TCP port of the web page and the JSON API |
 | `MFI_HISTORY_DAYS` | 30 | Days of measurement history kept |
+| `MFI_INGRESS_PEER` | 172.30.32.2 | Add-on mode: only requests from this address (Home Assistant ingress) are served; others get 403 |
 
 ### Data folder
 

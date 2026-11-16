@@ -5,7 +5,7 @@
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "mFi Server"
-version: "0.7.0"
+version: "0.8.0"
 slug: "mfi_server"
 description: >-
   Our own mFi controller in pure Python: speaks the inform protocol with already
@@ -17,6 +17,7 @@ arch:
 startup: application
 boot: auto
 init: false
+host_network: true
 stage: experimental
 ingress: true
 ingress_port: 8099
@@ -24,12 +25,6 @@ panel_icon: mdi:power-socket-eu
 panel_title: mFi
 services:
   - mqtt:want
-ports:
-  6080/tcp: 6080
-  3478/udp: 3478
-ports_description:
-  6080/tcp: "Inform: mFi devices report to the server (HTTP)"
-  3478/udp: "Wake-up packets to the devices (UDP)"
 map:
   - "share:ro"
 options:
@@ -37,8 +32,10 @@ options:
   log_level: info
   mqtt_topic_prefix: mfi
   mqtt_discovery_prefix: homeassistant
+  ingress_peer: ""
 schema:
   backup_file: "str?"
   log_level: "list(debug|info|warning|error)"
   mqtt_topic_prefix: str
   mqtt_discovery_prefix: str
+  ingress_peer: "str?"

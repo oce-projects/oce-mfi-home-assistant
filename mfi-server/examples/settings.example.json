@@ -11,5 +11,6 @@
   "mqtt_topic_prefix": "mfi",
   "mqtt_discovery_prefix": "homeassistant",
   "web_port": 8099,
-  "history_days": 30
+  "history_days": 30,
+  "ingress_peer": "172.30.32.2"
 }

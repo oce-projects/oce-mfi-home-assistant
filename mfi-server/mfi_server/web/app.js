@@ -1,6 +1,6 @@
 "use strict";
 
-// Behaviour of the mFi Server web page: login, devices, outlet switches and history chart.
+// Behaviour of the mFi Server web page: login, devices, outlet switches, history chart and device discovery.
 // Hand-written, no libraries. Every request uses a relative address, so it works under the ingress prefix.
 
 const REFRESH_MS = 10000;
@@ -25,6 +25,8 @@ let devices = [];
 let devicesLoaded = false;
 let loginMessageKey = "";
 let chartState = null;
+let discoveryDevices = [];
+let discoverySearching = false;
 const busyOutputs = new Set();
 const outputErrors = new Set();
 
@@ -43,6 +45,9 @@ let chartSvg;
 let chartMin;
 let chartMax;
 let chartClose;
+let discoveryHeading;
+let discoverySearchButton;
+let discoveryEl;
 
 function loadRefs() {
   versionEl = document.getElementById("version");
@@ -60,6 +65,9 @@ function loadRefs() {
   chartMin = document.getElementById("chart-min");
   chartMax = document.getElementById("chart-max");
   chartClose = document.getElementById("chart-close");
+  discoveryHeading = document.querySelector('[data-i18n="discovery_heading"]');
+  discoverySearchButton = document.getElementById("discovery-search");
+  discoveryEl = document.getElementById("discovery");
 }
 
 function reportError(err) {
@@ -106,6 +114,9 @@ function showLogin(key) {
   loginSection.hidden = false;
   devicesHeading.hidden = true;
   devicesEl.hidden = true;
+  discoveryHeading.hidden = true;
+  discoverySearchButton.hidden = true;
+  discoveryEl.hidden = true;
   logoutButton.hidden = true;
   if (key !== undefined) setLoginMessage(key);
 }
@@ -114,6 +125,9 @@ function showDevices() {
   loginSection.hidden = true;
   devicesHeading.hidden = false;
   devicesEl.hidden = false;
+  discoveryHeading.hidden = false;
+  discoverySearchButton.hidden = false;
+  discoveryEl.hidden = false;
 }
 
 async function login() {
@@ -162,6 +176,7 @@ async function refreshDevices() {
     // Without a login (Home Assistant ingress) there is nothing to log out from.
     logoutButton.hidden = !loggedIn;
     renderDevices();
+    loadDiscovery().catch(reportError);
     return;
   }
   if (response.status === 401) {
@@ -382,6 +397,81 @@ function closeChart() {
   chartPanel.hidden = true;
 }
 
+// ---------------------------------------------------------------- discovery
+
+async function loadDiscovery() {
+  if (discoverySearching) return;
+  const response = await fetch("api/v1/discovery");
+  if (response.status === 401) {
+    showLogin();
+    return;
+  }
+  if (response.status !== 200) return;
+  const body = await response.json();
+  discoveryDevices = Array.isArray(body.devices) ? body.devices : [];
+  renderDiscovery();
+}
+
+async function searchDiscovery() {
+  discoverySearching = true;
+  renderDiscovery();
+  try {
+    const response = await fetch("api/v1/discovery/scan", { method: "POST" });
+    if (response.status === 200) {
+      const body = await response.json();
+      discoveryDevices = Array.isArray(body.devices) ? body.devices : [];
+    } else if (response.status === 401) {
+      showLogin();
+    }
+  } finally {
+    discoverySearching = false;
+    renderDiscovery();
+  }
+}
+
+function renderDiscovery() {
+  discoveryEl.replaceChildren();
+  discoverySearchButton.disabled = discoverySearching;
+  if (discoverySearching) {
+    discoveryEl.appendChild(el("p", "empty", t("discovery_searching")));
+    return;
+  }
+  if (discoveryDevices.length === 0) {
+    discoveryEl.appendChild(el("p", "empty", t("discovery_empty")));
+    return;
+  }
+  const columns = [
+    "discovery_col_mac",
+    "discovery_col_ip",
+    "discovery_col_model",
+    "discovery_col_firmware",
+    "discovery_col_default",
+    "discovery_col_known",
+  ];
+  const table = el("table");
+  const thead = el("thead");
+  const headRow = el("tr");
+  for (const key of columns) {
+    headRow.appendChild(el("th", "", t(key)));
+  }
+  thead.appendChild(headRow);
+  const tbody = el("tbody");
+  for (const device of discoveryDevices) {
+    const row = el("tr");
+    row.append(
+      el("td", "", device.mac),
+      el("td", "", device.ip || ""),
+      el("td", "", device.model || ""),
+      el("td", "", device.firmware || ""),
+      el("td", "", t(device.is_default ? "discovery_yes" : "discovery_no")),
+      el("td", "", t(device.known ? "discovery_yes" : "discovery_no"))
+    );
+    tbody.appendChild(row);
+  }
+  table.append(thead, tbody);
+  discoveryEl.appendChild(table);
+}
+
 // ---------------------------------------------------------------- start
 
 function bindEvents() {
@@ -391,6 +481,7 @@ function bindEvents() {
       setLoginMessage(loginMessageKey);
       renderDevices();
       renderChart();
+      renderDiscovery();
     });
   });
   loginButton.addEventListener("click", () => {
@@ -403,6 +494,9 @@ function bindEvents() {
     logout().catch(reportError);
   });
   chartClose.addEventListener("click", closeChart);
+  discoverySearchButton.addEventListener("click", () => {
+    searchDiscovery().catch(reportError);
+  });
 }
 
 async function start() {
@@ -414,6 +508,7 @@ async function start() {
   applyTranslations();
   renderVersion();
   renderDevices();
+  renderDiscovery();
   loadHealth().catch(reportError);
   refreshDevices().catch(reportError);
   window.setInterval(() => {

@@ -66,5 +66,17 @@
   "trace_skipped": "Saltata",
   "trace_error": "Errore",
   "auto_action_error": "Azione non riuscita",
-  "auto_run_done": "Automazione avviata"
+  "auto_run_done": "Automazione avviata",
+  "discovery_heading": "Dispositivi trovati",
+  "discovery_search": "Cerca",
+  "discovery_searching": "Ricerca in corso\u2026",
+  "discovery_empty": "Nessun dispositivo trovato",
+  "discovery_col_mac": "MAC",
+  "discovery_col_ip": "IP",
+  "discovery_col_model": "Modello",
+  "discovery_col_firmware": "Firmware",
+  "discovery_col_default": "Di fabbrica",
+  "discovery_col_known": "Già nel server",
+  "discovery_yes": "Sì",
+  "discovery_no": "No"
 }
