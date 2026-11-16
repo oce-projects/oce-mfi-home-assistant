@@ -157,6 +157,65 @@ The page shows:
 
 Security warning: never expose 8099/tcp to the internet. The page has no built-in HTTPS (see Web API).
 
+## Automations
+
+Automations use the same format as Home Assistant automations (`triggers`, `conditions`,
+`actions`, and the old keys `trigger`, `condition`, `action`, `platform` and `service` are
+also accepted). They are optional: without any automation the engine does nothing.
+Automations are stored in `automations.json` inside the data folder.
+Each automation has an `id` of 1 to 64 characters, using only lowercase letters, digits and `_`. `mode` defaults to `single`, and `enabled` defaults to `true`.
+
+Example:
+
+```yaml
+id: evening_outlet
+enabled: true
+mode: single
+triggers:
+  - trigger: numeric_state
+    entity_id: sensor.mfi_aabbccddeeff_1_active_pwr
+    above: 1500
+    for: "00:00:30"
+conditions:
+  - condition: time
+    after: "18:00:00"
+    before: "23:00:00"
+actions:
+  - action: switch.turn_on
+    target:
+      entity_id: switch.mfi_aabbccddeeff_2
+  - delay: "00:05:00"
+  - action: switch.turn_off
+    target:
+      entity_id: switch.mfi_aabbccddeeff_2
+```
+
+Supported and not supported compared with Home Assistant:
+
+| Area | Supported | Not supported yet |
+|---|---|---|
+| Triggers | `state`, `numeric_state`, `time`, `time_pattern` | `{{ }}` templates, `sun`, `mqtt`, `event` |
+| Conditions | `state`, `numeric_state`, `time`, `and`, `or`, `not` | `{{ }}` templates, `sun` |
+| Actions | `switch.turn_on`, `switch.turn_off`, `switch.toggle`, `delay`, `if`, `choose` | `{{ }}` templates, `repeat`, `wait_template`, `wait_for_trigger`, `variables`, `event` |
+| Modes | `single`, `restart`, `queued`, `parallel` | none |
+
+A value that is not supported yet is rejected with `not supported yet` and the path of the field.
+
+Routes (found by the `api/v1/` part of the path, same access rules as the other routes):
+
+| Route | Method | Use |
+|---|---|---|
+| `api/v1/automations` | GET | list of the automations |
+| `api/v1/automations` | POST | create one automation; 409 if the id exists, 400 with `details` if invalid |
+| `api/v1/automations/<id>` | GET | one automation; 404 if unknown |
+| `api/v1/automations/<id>` | PUT | replace one automation; the `id` in the body must match the URL; 400 if invalid |
+| `api/v1/automations/<id>` | DELETE | delete one automation; 204, 404 if unknown |
+| `api/v1/automations/<id>/trigger` | POST | run the actions now (conditions are still checked); 202, 404 if unknown |
+| `api/v1/automations/<id>/enable` | POST | body `{"enabled": true}` or `{"enabled": false}`; 200, 400 if the body is wrong, 404 if unknown |
+| `api/v1/automations/<id>/traces` | GET | last 5 runs as `{"traces": [...]}`; 404 if unknown |
+| `api/v1/automations/validate` | POST | body `{"yaml": "..."}`; 200 with the normalized automations, 400 with `details` |
+| `api/v1/automations/import` | POST | body `{"yaml": "..."}`; 200 `{"imported": [ids]}`, 400 with `details` |
+
 ## Security
 
 - Keep the devices on an isolated network without internet access.

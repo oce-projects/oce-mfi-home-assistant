@@ -18,6 +18,7 @@ Home Assistant OS.
 - MQTT discovery for Home Assistant (optional in standalone mode).
 - JSON web API on port 8099, and measurement history in `history.sqlite3` (30 days by default).
 - Web page on port 8099, served by the same server: hand-written HTML, CSS and JavaScript, English and Italian, no build tools.
+- Automations in the Home Assistant format, run by our own engine (optional, see DOCS.md).
 
 ### Home Assistant entities
 

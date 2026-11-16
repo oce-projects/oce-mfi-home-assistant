@@ -15,7 +15,9 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import mfi_server
+from mfi_server import yaml_lite
 from mfi_server.auth import load_password_hash, verify_password
+from mfi_server.automation_model import normalize, validate
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,9 @@ LOGIN_ROUTE = "api/v1/login"
 LOGOUT_ROUTE = "api/v1/logout"
 HISTORY_ROUTE = "api/v1/history"
 DEVICES_ROUTE = "api/v1/devices"
+AUTOMATIONS_ROUTE = "api/v1/automations"
+AUTOMATIONS_VALIDATE_ROUTE = "api/v1/automations/validate"
+AUTOMATIONS_IMPORT_ROUTE = "api/v1/automations/import"
 SESSION_COOKIE = "mfi_session"
 WEB_DIR = Path(__file__).resolve().parent / "web"
 STATIC_FILES = {
@@ -48,7 +53,9 @@ class ApiServer(ThreadingHTTPServer):
 
     daemon_threads = True
 
-    def __init__(self, settings, store, states, measurements, history, control, sessions, limiter) -> None:
+    def __init__(
+        self, settings, store, states, measurements, history, control, sessions, limiter, automations, engine
+    ) -> None:
         self.settings = settings
         self.store = store
         self.states = states
@@ -57,16 +64,22 @@ class ApiServer(ThreadingHTTPServer):
         self.control = control
         self.sessions = sessions
         self.limiter = limiter
+        self.automations = automations
+        self.engine = engine
         super().__init__((settings.bind_address, getattr(settings, "web_port", DEFAULT_WEB_PORT)), ApiHandler)
 
 
-def make_api_server(settings, store, states, measurements, history, control, sessions, limiter) -> ThreadingHTTPServer:
+def make_api_server(
+    settings, store, states, measurements, history, control, sessions, limiter, automations, engine
+) -> ThreadingHTTPServer:
     """Build the API server bound to settings.bind_address and the web port."""
-    return ApiServer(settings, store, states, measurements, history, control, sessions, limiter)
+    return ApiServer(
+        settings, store, states, measurements, history, control, sessions, limiter, automations, engine
+    )
 
 
 class ApiHandler(BaseHTTPRequestHandler):
-    """Answers GET and POST requests of the JSON API."""
+    """Answers GET, POST, PUT and DELETE requests of the JSON API."""
 
     def setup(self) -> None:
         # Bound the time a slow client can hold a worker thread (body is read before auth).
@@ -82,6 +95,12 @@ class ApiHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         self._dispatch("POST")
 
+    def do_PUT(self) -> None:
+        self._dispatch("PUT")
+
+    def do_DELETE(self) -> None:
+        self._dispatch("DELETE")
+
     def _dispatch(self, method: str) -> None:
         idx = urlparse(self.path).path.find(API_MARKER)
         if idx == -1:
@@ -92,7 +111,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             return
         route = self.path[idx:].split("?")[0]
         body = b""
-        if method == "POST":
+        if method in ("POST", "PUT"):
             # The body is read before any refusal, so the client always gets the answer.
             read = self._read_body()
             if read is None:
@@ -103,6 +122,10 @@ class ApiHandler(BaseHTTPRequestHandler):
         parts = route.split("/")
         if method == "GET":
             self._get(route, parts)
+        elif method == "PUT":
+            self._put(parts, body)
+        elif method == "DELETE":
+            self._delete(parts)
         else:
             self._post(route, parts, body)
 
@@ -115,7 +138,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 self._error(403, "forbidden")
                 return False
             return True
-        if method == "POST" and not self._origin_allowed():
+        if method in ("POST", "PUT", "DELETE") and not self._origin_allowed():
             self._error(403, "forbidden")
             return False
         if method == "POST" and route == LOGIN_ROUTE:
@@ -141,6 +164,19 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._send_json(200, self._device_view(record))
         elif route == HISTORY_ROUTE:
             self._history()
+        elif route == AUTOMATIONS_ROUTE:
+            self._send_json(200, self.server.automations.list())
+        elif len(parts) == 4 and parts[2] == "automations":
+            obj = self.server.automations.get(parts[3])
+            if obj is None:
+                self._error(404, "not_found")
+                return
+            self._send_json(200, obj)
+        elif len(parts) == 5 and parts[2] == "automations" and parts[4] == "traces":
+            if self.server.automations.get(parts[3]) is None:
+                self._error(404, "not_found")
+                return
+            self._send_json(200, {"traces": self.server.engine.traces(parts[3])})
         else:
             self._error(404, "not_found")
 
@@ -152,8 +188,142 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._send_empty(204)
         elif len(parts) == 7 and parts[2] == "devices" and parts[4] == "ports" and parts[6] == "output":
             self._set_output(parts[3], parts[5], body)
+        elif route == AUTOMATIONS_ROUTE:
+            self._automation_create(body)
+        elif route == AUTOMATIONS_VALIDATE_ROUTE:
+            self._automation_validate(body)
+        elif route == AUTOMATIONS_IMPORT_ROUTE:
+            self._automation_import(body)
+        elif len(parts) == 5 and parts[2] == "automations" and parts[4] == "trigger":
+            self._automation_trigger(parts[3])
+        elif len(parts) == 5 and parts[2] == "automations" and parts[4] == "enable":
+            self._automation_enable(parts[3], body)
         else:
             self._error(404, "not_found")
+
+    def _put(self, parts: list[str], body: bytes) -> None:
+        if len(parts) == 4 and parts[2] == "automations":
+            self._automation_put(parts[3], body)
+        else:
+            self._error(404, "not_found")
+
+    def _delete(self, parts: list[str]) -> None:
+        if len(parts) == 4 and parts[2] == "automations":
+            self._automation_delete(parts[3])
+        else:
+            self._error(404, "not_found")
+
+    def _store_automation(self, obj: dict) -> bool:
+        """Store one automation and reload the engine; answer 400 with the problems and return False when invalid."""
+        try:
+            self.server.automations.put(obj)
+        except ValueError as exc:
+            self._send_json(400, {"error": "invalid", "details": list(exc.args[0])})
+            return False
+        self._reload_engine()
+        return True
+
+    def _reload_engine(self) -> None:
+        self.server.engine.load(self.server.automations.list())
+
+    def _automation_create(self, body: bytes) -> None:
+        obj = self._json_object(body)
+        if obj is None:
+            return
+        automation_id = obj.get("id")
+        if isinstance(automation_id, str) and self.server.automations.get(automation_id) is not None:
+            self._send_json(409, {"error": "conflict"})
+            return
+        if self._store_automation(obj):
+            self._send_json(201, self.server.automations.get(obj["id"]))
+
+    def _automation_put(self, automation_id: str, body: bytes) -> None:
+        obj = self._json_object(body)
+        if obj is None:
+            return
+        if obj.get("id") != automation_id:
+            self._send_json(400, {"error": "invalid", "details": ["id: must match the URL"]})
+            return
+        if self._store_automation(obj):
+            self._send_json(200, self.server.automations.get(automation_id))
+
+    def _automation_delete(self, automation_id: str) -> None:
+        try:
+            self.server.automations.delete(automation_id)
+        except KeyError:
+            self._error(404, "not_found")
+            return
+        self._reload_engine()
+        self._send_empty(204)
+
+    def _automation_trigger(self, automation_id: str) -> None:
+        if self.server.automations.get(automation_id) is None:
+            self._error(404, "not_found")
+            return
+        self.server.engine.trigger(automation_id)
+        self._send_empty(202)
+
+    def _automation_enable(self, automation_id: str, body: bytes) -> None:
+        data = self._json_object(body)
+        if data is None:
+            return
+        enabled = data.get("enabled")
+        if not isinstance(enabled, bool):
+            self._error(400, "bad_request")
+            return
+        obj = self.server.automations.get(automation_id)
+        if obj is None:
+            self._error(404, "not_found")
+            return
+        obj["enabled"] = enabled
+        if self._store_automation(obj):
+            self._send_json(200, self.server.automations.get(automation_id))
+
+    def _yaml_field(self, body: bytes) -> str | None:
+        """Return the 'yaml' text of the body; answer 400 and return None when it is missing or not a string."""
+        data = self._json_object(body)
+        if data is None:
+            return None
+        text = data.get("yaml")
+        if not isinstance(text, str):
+            self._error(400, "bad_request")
+            return None
+        return text
+
+    def _automation_validate(self, body: bytes) -> None:
+        text = self._yaml_field(body)
+        if text is None:
+            return
+        try:
+            parsed = yaml_lite.loads(text)
+        except yaml_lite.YamlError as exc:
+            self._send_json(400, {"error": "invalid", "details": [str(exc)]})
+            return
+        items = parsed if isinstance(parsed, list) else [parsed]
+        details: list[str] = []
+        normalized: list[dict] = []
+        for index, item in enumerate(items):
+            prefix = f"[{index}] " if isinstance(parsed, list) else ""
+            problems = validate(item)
+            details.extend(prefix + problem for problem in problems)
+            if not problems:
+                normalized.append(normalize(item))
+        if details:
+            self._send_json(400, {"error": "invalid", "details": details})
+            return
+        self._send_json(200, {"errors": [], "automations": normalized})
+
+    def _automation_import(self, body: bytes) -> None:
+        text = self._yaml_field(body)
+        if text is None:
+            return
+        try:
+            imported = self.server.automations.import_yaml(text)
+        except ValueError as exc:
+            self._send_json(400, {"error": "invalid", "details": list(exc.args[0])})
+            return
+        self._reload_engine()
+        self._send_json(200, {"imported": imported})
 
     def _login(self, body: bytes) -> None:
         ip = self.client_address[0]
