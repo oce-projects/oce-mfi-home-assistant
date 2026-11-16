@@ -1,4 +1,4 @@
-"""Checks of the mFi Server web page: translations, markup and script rules.
+"""Checks of the mFi Server web pages: translations, markup and script rules.
 
 The page files are read as text: no browser, no Node, no network.
 """
@@ -18,17 +18,25 @@ SCRIPT_RE = re.compile(r"<script\b.*?</script>", re.DOTALL | re.IGNORECASE)
 STYLE_RE = re.compile(r"<style\b.*?</style>", re.DOTALL | re.IGNORECASE)
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 TEXT_RE = re.compile(r">([^<]*)<")
+NAV_LINK_RE = re.compile(r'<a\b[^>]*\bclass="([^"]*\btopbar__nav-link\b[^"]*)"[^>]*\bhref="([^"]*)"[^>]*>')
+AUTOMATION_ROUTES = (
+    "api/v1/automations/validate",
+    "api/v1/automations/import",
+    "/enable",
+    "/trigger",
+    "/traces",
+)
 
 
-def read_text(name: str) -> str:
+def read_text(name):
     return (WEB / name).read_text(encoding="utf-8")
 
 
 class TestWebPage(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.index = read_text("index.html")
-        cls.app = read_text("app.js")
+        cls.html = {p.name: p.read_text(encoding="utf-8") for p in sorted(WEB.glob("*.html"))}
+        cls.js = {p.name: p.read_text(encoding="utf-8") for p in sorted(WEB.glob("*.js"))}
         cls.en = json.loads(read_text("i18n/en.json"))
         cls.it = json.loads(read_text("i18n/it.json"))
 
@@ -36,44 +44,71 @@ class TestWebPage(unittest.TestCase):
         self.assertEqual(set(self.en), set(self.it))
 
     def test_every_used_key_exists_in_both_languages(self):
-        used_index = set(I18N_ATTR_RE.findall(self.index))
-        used_js = set(JS_KEY_RE.findall(self.app))
-        self.assertTrue(used_index, "no data-i18n keys found in index.html")
-        self.assertTrue(used_js, "no t(...) keys found in app.js")
-        for key in sorted(used_index | used_js):
+        used = set()
+        for text in self.html.values():
+            used |= set(I18N_ATTR_RE.findall(text))
+        for text in self.js.values():
+            used |= set(JS_KEY_RE.findall(text))
+        self.assertTrue(used, "no i18n keys found")
+        for key in sorted(used):
             with self.subTest(key=key):
                 self.assertIn(key, self.en)
                 self.assertIn(key, self.it)
 
     def test_at_least_80_percent_of_italian_values_differ_from_english(self):
         different = [key for key in self.en if self.it.get(key) != self.en[key]]
-        self.assertGreaterEqual(
-            len(different) * 100,
-            80 * len(self.en),
-            f"only {len(different)} of {len(self.en)} Italian values differ",
-        )
+        self.assertGreaterEqual(len(different) * 100, 80 * len(self.en))
 
-    def test_index_has_no_visible_text_outside_i18n_elements(self):
-        markup = SCRIPT_RE.sub("", self.index)
-        markup = STYLE_RE.sub("", markup)
-        markup = COMMENT_RE.sub("", markup)
-        for text in TEXT_RE.findall(markup):
-            self.assertEqual(text.strip(), "", f"visible text outside data-i18n: {text.strip()!r}")
+    def test_pages_have_no_visible_text_outside_i18n_elements(self):
+        for name, text in self.html.items():
+            markup = SCRIPT_RE.sub("", text)
+            markup = STYLE_RE.sub("", markup)
+            markup = COMMENT_RE.sub("", markup)
+            for chunk in TEXT_RE.findall(markup):
+                with self.subTest(file=name, text=chunk.strip()):
+                    self.assertEqual(chunk.strip(), "", f"{name}: visible text {chunk.strip()!r}")
 
     def test_no_absolute_or_external_addresses(self):
-        for name, text in (("index.html", self.index), ("app.js", self.app)):
+        for name, text in {**self.html, **self.js}.items():
             with self.subTest(file=name):
-                found = [match.group(0) for match in FORBIDDEN_ADDRESS_RE.finditer(text)]
+                found = [m.group(0) for m in FORBIDDEN_ADDRESS_RE.finditer(text)]
                 self.assertEqual(found, [], f"{name}: absolute or external address")
 
-    def test_app_does_not_use_innerhtml(self):
-        self.assertNotIn("innerHTML", self.app)
+    def test_scripts_do_not_use_innerhtml(self):
+        for name, text in self.js.items():
+            with self.subTest(file=name):
+                self.assertNotIn("innerHTML", text)
 
     def test_language_selector_and_storage(self):
-        self.assertIn('<select id="lang"', self.index)
-        self.assertIn("mfi_lang", self.app)
-        self.assertIn("localStorage", self.app)
-        self.assertIn("navigator.language", self.app)
+        self.assertIn('<select id="lang"', self.html["index.html"])
+        combined = "".join(self.js.values())
+        self.assertIn("mfi_lang", combined)
+        self.assertIn("localStorage", combined)
+        self.assertIn("navigator.language", combined)
+
+    def test_header_nav_links_are_relative_and_share_classes(self):
+        links = []
+        for name, text in self.html.items():
+            for classes, href in NAV_LINK_RE.findall(text):
+                links.append((name, classes.split(), href))
+        self.assertTrue(links, "no header nav link found")
+        for name, _c, href in links:
+            with self.subTest(file=name, href=href):
+                self.assertFalse(href.startswith("/") or href.startswith("http"), href)
+        class_sets = {tuple(sorted(c)) for _n, c, _h in links}
+        self.assertEqual(len(class_sets), 1, "header nav links differ in classes")
+
+    def test_index_links_to_automations_and_back(self):
+        self.assertIn('href="automations.html"', self.html["index.html"])
+        if "automations.html" in self.html:
+            self.assertIn('href="index.html"', self.html["automations.html"])
+
+    def test_automations_js_uses_relative_automation_routes(self):
+        if "automations.js" in self.js:
+            text = self.js["automations.js"]
+            for route in AUTOMATION_ROUTES:
+                with self.subTest(route=route):
+                    self.assertIn(route, text)
 
 
 if __name__ == "__main__":
