@@ -16,6 +16,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from mfi_server.ssh_adopt import parse_extra_options
+
 logger = logging.getLogger(__name__)
 
 ADDON_OPTIONS_PATH = Path("/data/options.json")
@@ -35,6 +37,10 @@ FILE_KEYS = (
     "web_port",
     "history_days",
     "ingress_peer",
+    "server_address",
+    "device_ssh_username",
+    "device_ssh_password",
+    "ssh_extra_options",
 )
 ENV_NAMES = {
     "inform_port": "MFI_INFORM_PORT",
@@ -51,6 +57,10 @@ ENV_NAMES = {
     "web_port": "MFI_WEB_PORT",
     "history_days": "MFI_HISTORY_DAYS",
     "ingress_peer": "MFI_INGRESS_PEER",
+    "server_address": "MFI_SERVER_ADDRESS",
+    "device_ssh_username": "MFI_DEVICE_SSH_USERNAME",
+    "device_ssh_password": "MFI_DEVICE_SSH_PASSWORD",
+    "ssh_extra_options": "MFI_SSH_EXTRA_OPTIONS",
 }
 
 
@@ -76,6 +86,10 @@ class Settings:
     web_port: int = 8099
     history_days: int = 30
     ingress_peer: str = "172.30.32.2"
+    server_address: str = ""
+    device_ssh_username: str = ""
+    device_ssh_password: str = field(default="", repr=False)
+    ssh_extra_options: str = "KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa,ssh-dss;Ciphers=+aes128-cbc,3des-cbc"
 
 
 def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Path = ADDON_OPTIONS_PATH) -> Settings:
@@ -119,6 +133,10 @@ def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Pat
         web_port=_port("web_port", values.get("web_port", base.web_port)),
         history_days=_history_days(values.get("history_days", base.history_days)),
         ingress_peer=_ingress_peer(values.get("ingress_peer", base.ingress_peer), base.ingress_peer),
+        server_address=_server_address(values.get("server_address", base.server_address)),
+        device_ssh_username=_text("device_ssh_username", values.get("device_ssh_username", base.device_ssh_username)),
+        device_ssh_password=_text("device_ssh_password", values.get("device_ssh_password", base.device_ssh_password)),
+        ssh_extra_options=_ssh_extra_options(values.get("ssh_extra_options", base.ssh_extra_options)),
     )
     logger.debug("settings loaded: mode=%s data_dir=%s", mode, data_dir)
     return settings
@@ -243,6 +261,28 @@ def _ingress_peer(value: object, default: str) -> str:
     except ValueError as exc:
         raise ValueError("ingress_peer must be an IP address") from exc
     return str(ipaddress.ip_address(text))
+
+
+def _server_address(value: object) -> str:
+    """Return the server address; empty or blank means auto-detect, otherwise a valid IPv4 address."""
+    if not isinstance(value, str):
+        raise ValueError("server_address must be a string")
+    text = value.strip()
+    if text == "":
+        return ""
+    try:
+        ipaddress.IPv4Address(text)
+    except ValueError as exc:
+        raise ValueError("server_address must be an IPv4 address") from exc
+    return text
+
+
+def _ssh_extra_options(value: object) -> str:
+    """Validate and return the ssh extra options string."""
+    if not isinstance(value, str):
+        raise ValueError("ssh_extra_options must be a string")
+    parse_extra_options(value)
+    return value
 
 
 def _log_level(value: object) -> str:
