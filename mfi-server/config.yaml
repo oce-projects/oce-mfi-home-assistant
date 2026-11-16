@@ -5,7 +5,7 @@
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "mFi Server"
-version: "0.8.0"
+version: "0.9.0"
 slug: "mfi_server"
 description: >-
   Our own mFi controller in pure Python: speaks the inform protocol with already
@@ -33,9 +33,17 @@ options:
   mqtt_topic_prefix: mfi
   mqtt_discovery_prefix: homeassistant
   ingress_peer: ""
+  server_address: ""
+  device_ssh_username: ""
+  device_ssh_password: ""
+  ssh_extra_options: "KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa,ssh-dss;Ciphers=+aes128-cbc,3des-cbc"
 schema:
   backup_file: "str?"
   log_level: "list(debug|info|warning|error)"
   mqtt_topic_prefix: str
   mqtt_discovery_prefix: str
   ingress_peer: "str?"
+  server_address: "str?"
+  device_ssh_username: "str?"
+  device_ssh_password: "password?"
+  ssh_extra_options: "str?"
