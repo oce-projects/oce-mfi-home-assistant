@@ -25,6 +25,7 @@
       </div>
     </header>
     <main class="page">
+      <p id="backup-message" class="message" hidden></p>
       <section id="login" class="panel" hidden>
         <h2 data-i18n="login_heading"></h2>
         <input id="password" type="password" autocomplete="current-password" data-i18n-placeholder="password_label">
@@ -40,11 +41,17 @@
           <span id="chart-max"></span>
         </div>
       </section>
-      <h2 data-i18n="devices_heading"></h2>
-      <div id="devices"></div>
-      <h2 data-i18n="discovery_heading"></h2>
-      <button id="discovery-search" type="button" data-i18n="discovery_search"></button>
-      <div id="discovery"></div>
+      <section class="panel">
+        <h2 data-i18n="devices_heading"></h2>
+        <div id="devices"></div>
+      </section>
+      <section class="panel">
+        <div class="section__head">
+          <h2 data-i18n="discovery_heading"></h2>
+          <button id="discovery-search" type="button" class="button button--primary" data-i18n="discovery_search"></button>
+        </div>
+        <div id="discovery"></div>
+      </section>
     </main>
   </body>
 </html>
