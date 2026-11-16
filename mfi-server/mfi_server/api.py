@@ -4,7 +4,7 @@ Standard library only. Routes are found by the 'api/v1/' part of the path, so
 the Home Assistant ingress prefix ('/api/hassio_ingress/<token>/') is accepted.
 Standalone mode needs a session cookie and answers 503 until a password is set
 with 'python3 -m mfi_server set-password'. Add-on mode serves only the requests
-that come from the Home Assistant ingress address.
+that come from settings.ingress_peer (the Home Assistant ingress address by default).
 """
 from __future__ import annotations
 
@@ -18,11 +18,10 @@ import mfi_server
 from mfi_server import yaml_lite
 from mfi_server.auth import load_password_hash, verify_password
 from mfi_server.automation_model import normalize, validate
+from mfi_server.ubnt_discovery import ScanInProgress
 
 logger = logging.getLogger(__name__)
 
-# Home Assistant Supervisor ingress address, see developers.home-assistant.io (add-on ingress).
-INGRESS_PEER = "172.30.32.2"
 MAX_BODY = 65536
 # After a refused oversized body, up to this many bytes are read so the client receives the answer.
 MAX_DRAIN = 1048576
@@ -36,6 +35,8 @@ DEVICES_ROUTE = "api/v1/devices"
 AUTOMATIONS_ROUTE = "api/v1/automations"
 AUTOMATIONS_VALIDATE_ROUTE = "api/v1/automations/validate"
 AUTOMATIONS_IMPORT_ROUTE = "api/v1/automations/import"
+DISCOVERY_ROUTE = "api/v1/discovery"
+DISCOVERY_SCAN_ROUTE = "api/v1/discovery/scan"
 SESSION_COOKIE = "mfi_session"
 WEB_DIR = Path(__file__).resolve().parent / "web"
 STATIC_FILES = {
@@ -57,7 +58,7 @@ class ApiServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(
-        self, settings, store, states, measurements, history, control, sessions, limiter, automations, engine
+        self, settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner
     ) -> None:
         self.settings = settings
         self.store = store
@@ -69,15 +70,16 @@ class ApiServer(ThreadingHTTPServer):
         self.limiter = limiter
         self.automations = automations
         self.engine = engine
+        self.scanner = scanner
         super().__init__((settings.bind_address, getattr(settings, "web_port", DEFAULT_WEB_PORT)), ApiHandler)
 
 
 def make_api_server(
-    settings, store, states, measurements, history, control, sessions, limiter, automations, engine
+    settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner
 ) -> ThreadingHTTPServer:
     """Build the API server bound to settings.bind_address and the web port."""
     return ApiServer(
-        settings, store, states, measurements, history, control, sessions, limiter, automations, engine
+        settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner
     )
 
 
@@ -137,7 +139,8 @@ class ApiHandler(BaseHTTPRequestHandler):
         if route == HEALTH_ROUTE:
             return True
         if self.server.settings.mode == "addon":
-            if self.client_address[0] != INGRESS_PEER:
+            if self.client_address[0] != self.server.settings.ingress_peer:
+                logger.warning("addon: refused request from %s; set ingress_peer to this address", self.client_address[0])
                 self._error(403, "forbidden")
                 return False
             return True
@@ -159,6 +162,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._send_json(200, {"status": "ok", "version": mfi_server.__version__})
         elif route == DEVICES_ROUTE:
             self._send_json(200, [self._device_view(record) for record in self.server.store.all()])
+        elif route == DISCOVERY_ROUTE:
+            self._discovery()
         elif len(parts) == 4 and parts[2] == "devices":
             record = self.server.store.get(parts[3])
             if record is None:
@@ -191,6 +196,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._send_empty(204)
         elif len(parts) == 7 and parts[2] == "devices" and parts[4] == "ports" and parts[6] == "output":
             self._set_output(parts[3], parts[5], body)
+        elif route == DISCOVERY_SCAN_ROUTE:
+            self._discovery_scan()
         elif route == AUTOMATIONS_ROUTE:
             self._automation_create(body)
         elif route == AUTOMATIONS_VALIDATE_ROUTE:
@@ -383,6 +390,20 @@ class ApiHandler(BaseHTTPRequestHandler):
             return
         points = self.server.history.query(mac, sensor_id, tag, from_ms, to_ms)
         self._send_json(200, {"points": [[t, v] for t, v in points]})
+
+    def _discovery_view(self, results: list[dict]) -> dict:
+        return {"devices": [dict(r, known=self.server.store.get(r["mac"]) is not None) for r in results]}
+
+    def _discovery(self) -> None:
+        self._send_json(200, self._discovery_view(self.server.scanner.last_results()))
+
+    def _discovery_scan(self) -> None:
+        try:
+            results = self.server.scanner.scan()
+        except ScanInProgress:
+            self._send_json(409, {"error": "scan_in_progress"})
+            return
+        self._send_json(200, self._discovery_view(results))
 
     def _device_view(self, record: dict) -> dict:
         mac = record["mac"]
