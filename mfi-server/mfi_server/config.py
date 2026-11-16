@@ -142,6 +142,18 @@ def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Pat
     return settings
 
 
+def resolve_backup_path(value: str, share_dir: Path = Path("/share")) -> Path:
+    """Resolve a backup file path. An absolute path is used as is; a bare name is
+    looked up in share_dir (/share) when the file is there, else returned as given."""
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    candidate = share_dir / value
+    if candidate.is_file():
+        return candidate
+    return path
+
+
 SUPERVISOR_MQTT_URL = "http://supervisor/services/mqtt"
 SUPERVISOR_TIMEOUT_S = 10
 

@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mfi_server.config import Settings, load_settings, supervisor_mqtt
+from mfi_server.config import Settings, load_settings, resolve_backup_path, supervisor_mqtt
 
 
 def _load(environ: dict[str, str], folder: str):
@@ -349,6 +349,30 @@ class TestSshSettings(unittest.TestCase):
     def test_device_ssh_password_not_in_repr(self):
         s = Settings(data_dir=Path("."), device_ssh_password="topsecret9")
         self.assertNotIn("topsecret9", repr(s))
+
+
+class TestResolveBackupPath(unittest.TestCase):
+    def test_absolute_path_is_unchanged(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(
+                resolve_backup_path("/data/backup.unf", share_dir=Path(d)),
+                Path("/data/backup.unf"),
+            )
+
+    def test_bare_name_found_in_share(self):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "backup.unf").write_bytes(b"x")
+            self.assertEqual(
+                resolve_backup_path("backup.unf", share_dir=Path(d)),
+                Path(d) / "backup.unf",
+            )
+
+    def test_bare_name_absent_is_returned_as_is(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(
+                resolve_backup_path("missing.unf", share_dir=Path(d)),
+                Path("missing.unf"),
+            )
 
 
 if __name__ == "__main__":
