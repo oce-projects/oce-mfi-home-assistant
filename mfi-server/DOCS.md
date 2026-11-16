@@ -163,6 +163,7 @@ Automations use the same format as Home Assistant automations (`triggers`, `cond
 `actions`, and the old keys `trigger`, `condition`, `action`, `platform` and `service` are
 also accepted). They are optional: without any automation the engine does nothing.
 Automations are stored in `automations.json` inside the data folder.
+Each automation has an `id` of 1 to 64 characters, using only lowercase letters, digits and `_`. `mode` defaults to `single`, and `enabled` defaults to `true`.
 
 Example:
 
