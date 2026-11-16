@@ -149,7 +149,7 @@ class TestWebPage(unittest.TestCase):
             ".tag--known", ".tag--other", ".other",
         ):
             with self.subTest(selector=selector):
-                self.assertIn(selector, css)
+                self.assertRegex(css, re.escape(selector) + r"[\s{,:]")
 
     def test_app_js_discovery_filters_mfi(self):
         app = self.js["app.js"]
@@ -160,8 +160,7 @@ class TestWebPage(unittest.TestCase):
 
     def test_app_js_groups_other_devices(self):
         app = self.js["app.js"]
-        self.assertIn("details", app)
-        self.assertIn("other", app)
+        self.assertIn('el("details", "other")', app)
         self.assertIn("discovery_other_heading", app)
 
     def test_new_discovery_keys_present_and_old_removed(self):

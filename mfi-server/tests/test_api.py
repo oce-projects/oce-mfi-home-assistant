@@ -493,6 +493,21 @@ class TestApi(unittest.TestCase):
         self.assertEqual(status, 401)
         self.assertEqual(json.loads(body), {"error": "unauthorized"})
 
+    def test_status_returns_set_backup_status(self):
+        self.server.backup_status = {
+            "configured": True,
+            "file": "backup.unf",
+            "devices": 0,
+            "error": "import failed",
+        }
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("GET", "/api/v1/status", headers=headers)
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            json.loads(body),
+            {"backup": {"configured": True, "file": "backup.unf", "devices": 0, "error": "import failed"}},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
