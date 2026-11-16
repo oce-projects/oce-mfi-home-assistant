@@ -216,9 +216,21 @@ Routes (found by the `api/v1/` part of the path, same access rules as the other 
 | `api/v1/automations/validate` | POST | body `{"yaml": "..."}`; 200 with the normalized automations, 400 with `details` |
 | `api/v1/automations/import` | POST | body `{"yaml": "..."}`; 200 `{"imported": [ids]}`, 400 with `details` |
 
-## Security
+### Automations web page
 
-- Keep the devices on an isolated network without internet access.
+Open the mFi panel from the Home Assistant sidebar, or in standalone mode open `http://<host>:8099/` and log in. Follow the "Automations" link in the header; the link back to the devices is "Devices". The page uses relative addresses, so it also works under the ingress prefix. The texts are in English and Italian, with the same language selector as the devices page.
+
+The list shows the alias (or the id), the mode, and a switch to enable or disable each automation. Next to it are the **Run** button, which runs the actions at once (the conditions are still checked), and the **Delete** button, which asks for confirmation first.
+
+The YAML editor at the bottom accepts one automation or a list of automations. The buttons work as follows:
+
+- **Check** validates the text and shows the errors, one per line, each with its path.
+- **Save** creates a new automation, updates an existing one with the same id, or imports a list of automations.
+- **New** inserts a ready example, to be edited before saving.
+
+The history shows the last 5 runs of an automation, each with its start, its end, its result and its steps. The examples in this section use the entity names of the outlets, for example `switch.mfi_02aabbccdd01_1`.
+
+Keep the devices on an isolated network without internet access.
 - Never expose 6080/tcp, 3478/udp or 8099/tcp to the internet.
 - Inform packets without encryption are refused with HTTP 400.
 - The server never sends a factory reset to a device.
