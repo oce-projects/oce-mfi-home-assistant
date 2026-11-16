@@ -18,7 +18,7 @@ The container is built on the Home Assistant machine: there is no prebuilt image
 
 1. Open **Settings > Apps > App store**.
 2. For a local copy: top-right menu, **Check for updates**. The app appears under **Local apps**.
-3. Open **Ubiquiti mFi Controller** and press **Install**. Wait until the build ends.
+3. Open **Ubiquiti mFi Controller (original)** and press **Install**. Wait until the build ends.
 4. Press **Start**.
 5. Open `https://HOME-ASSISTANT-IP:6443/`. The certificate is self-signed: the browser asks for confirmation.
 6. Follow the controller setup wizard and create the administrator.

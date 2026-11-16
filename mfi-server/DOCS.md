@@ -20,7 +20,7 @@ connect_request), UNVERIFIED on a real device.
 
 Add the repository `https://github.com/oce-projects/oce-mfi-home-assistant` in
 the app store (Settings, Apps, App store, menu, Repositories), then install
-`mFi Server` from the store. The first build takes a few minutes.
+`mFi Server (new)` from the store. The first build takes a few minutes.
 
 To test a local change, copy the `mfi-server` folder into the local apps folder,
 as for `mfi-controller`: the `local_apps` share of the Samba app, or `/addons` in

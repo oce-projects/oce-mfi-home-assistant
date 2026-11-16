@@ -36,7 +36,7 @@ this repository (experimental, not yet tested with a real device).
    example Mosquitto. MQTT is optional: without a broker the server still runs.
 2. In Home Assistant: Settings, Apps, App store, menu (three dots), Repositories.
    Add the URL `https://github.com/oce-projects/oce-mfi-home-assistant`.
-3. Install the app `mFi Server` from the store. The first build takes a few minutes.
+3. Install the app `mFi Server (new)` from the store. The first build takes a few minutes.
 4. Copy the controller backup (`.unf`) into `/share` and write its path in the
    `backup_file` option, for example `/share/backup.unf`.
 5. Start the app.
