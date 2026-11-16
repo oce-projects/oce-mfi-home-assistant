@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title data-i18n="app_title"></title>
+    <link rel="stylesheet" href="style.css">
+    <script src="common.js" defer></script>
+    <script src="automations.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__title">
+        <h1 data-i18n="app_title"></h1>
+        <span id="version" class="topbar__version"></span>
+      </div>
+      <div class="topbar__controls">
+        <a class="topbar__nav-link" href="index.html" data-i18n="nav_devices"></a>
+        <label class="topbar__label" for="lang" data-i18n="lang_label"></label>
+        <select id="lang">
+          <option value="en" data-i18n="lang_en"></option>
+          <option value="it" data-i18n="lang_it"></option>
+        </select>
+      </div>
+    </header>
+    <main class="page">
+      <h2 data-i18n="automations_heading"></h2>
+      <p id="auto-login" class="message" hidden data-i18n="auto_login_required"></p>
+      <div id="auto-layout" class="auto-layout">
+        <section class="panel auto-list">
+          <div id="automations"></div>
+        </section>
+        <section class="panel auto-editor">
+          <h3 data-i18n="auto_editor_heading"></h3>
+          <label class="editor__label" for="yaml" data-i18n="auto_yaml_label"></label>
+          <textarea id="yaml" spellcheck="false" data-i18n-placeholder="auto_yaml_label"></textarea>
+          <div class="editor__actions">
+            <button type="button" id="auto-new" class="button" data-i18n="auto_new"></button>
+            <button type="button" id="auto-check" class="button" data-i18n="auto_check"></button>
+            <button type="button" id="auto-save" class="button button--primary" data-i18n="auto_save"></button>
+          </div>
+          <div id="auto-message" aria-live="polite"></div>
+        </section>
+        <section id="auto-history" class="panel auto-history" hidden>
+          <h3 data-i18n="auto_history_heading"></h3>
+          <p id="history-for" class="history__for"></p>
+          <div id="traces"></div>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>
