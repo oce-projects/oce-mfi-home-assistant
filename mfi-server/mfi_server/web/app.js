@@ -1,11 +1,10 @@
 "use strict";
 
-// Behaviour of the mFi Server web page: translations, login, devices, outlet switches and history chart.
+// Behaviour of the mFi Server web page: login, devices, outlet switches and history chart.
 // Hand-written, no libraries. Every request uses a relative address, so it works under the ingress prefix.
 
 const REFRESH_MS = 10000;
 const HISTORY_MS = 86400000;
-const LANG_KEY = "mfi_lang";
 const SVG_NS = "http://www.w3.org/2000/svg";
 const CHART_WIDTH = 600;
 const CHART_HEIGHT = 200;
@@ -20,8 +19,6 @@ const METRICS = [
   { key: "energy_sum", label: "metric_energy_sum", unit: "Wh", digits: 0 },
 ];
 
-const strings = {};
-let lang = "en";
 let healthVersion = "";
 let loggedIn = false;
 let devices = [];
@@ -69,12 +66,6 @@ function reportError(err) {
   console.error(err);
 }
 
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
 
 function svgNode(name, attributes) {
   const node = document.createElementNS(SVG_NS, name);
@@ -84,59 +75,10 @@ function svgNode(name, attributes) {
   return node;
 }
 
-// ---------------------------------------------------------------- i18n
 
-async function loadStrings() {
-  const enResponse = await fetch("i18n/en.json");
-  const itResponse = await fetch("i18n/it.json");
-  if (!enResponse.ok || !itResponse.ok) {
-    throw new Error("translations not loaded: " + enResponse.status + " " + itResponse.status);
-  }
-  strings.en = await enResponse.json();
-  strings.it = await itResponse.json();
-}
 
-function t(key, params) {
-  const table = strings[lang] || {};
-  let text = Object.prototype.hasOwnProperty.call(table, key) ? table[key] : key;
-  if (params) {
-    text = text.replace(/\{([a-z0-9_]+)\}/g, (match, name) =>
-      Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match
-    );
-  }
-  return text;
-}
 
-function detectLanguage() {
-  const saved = localStorage.getItem(LANG_KEY);
-  if (saved === "en" || saved === "it") return saved;
-  return String(navigator.language || "").toLowerCase().startsWith("it") ? "it" : "en";
-}
 
-function applyTranslations() {
-  document.querySelectorAll("[data-i18n]").forEach((node) => {
-    node.textContent = t(node.dataset.i18n);
-  });
-  document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
-    node.placeholder = t(node.dataset.i18nPlaceholder);
-  });
-  document.querySelectorAll("[data-i18n-title]").forEach((node) => {
-    node.title = t(node.dataset.i18nTitle);
-  });
-  document.title = t("app_title");
-  langSelect.value = lang;
-}
-
-function setLanguage(code) {
-  lang = code;
-  localStorage.setItem(LANG_KEY, code);
-  document.documentElement.lang = code;
-  applyTranslations();
-  renderVersion();
-  setLoginMessage(loginMessageKey);
-  renderDevices();
-  renderChart();
-}
 
 // ---------------------------------------------------------------- header and login
 
@@ -444,7 +386,12 @@ function closeChart() {
 
 function bindEvents() {
   langSelect.addEventListener("change", () => {
-    setLanguage(langSelect.value);
+    setLang(langSelect.value, () => {
+      renderVersion();
+      setLoginMessage(loginMessageKey);
+      renderDevices();
+      renderChart();
+    });
   });
   loginButton.addEventListener("click", () => {
     login().catch(reportError);

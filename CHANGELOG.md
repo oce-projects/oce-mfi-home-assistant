@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.8.0 - 2026-11-16
+
+- Epic F-UI of `mfi-server` 0.6.0 (phase 2): automations web page (list, enable/disable, run, delete, YAML editor with errors, run history) and the shared `web/common.js` loaded by both pages.
+- Versions aligned: `mfi-server` 0.6.0 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`; repository 0.8.0 in `VERSION` and `CHANGELOG.md`.
+
 ## 0.7.0 - 2026-11-15
 
 - Epic F of `mfi-server` 0.5.0 (phase 2): automation engine in the Home Assistant format (level 1), with a reduced YAML reader (`yaml_lite`), the automation model with validation, the engine (triggers, conditions, actions, modes and traces), the `automations.json` store, the `api/v1/automations*` routes, and the wiring in `__main__`. Automations are optional.
