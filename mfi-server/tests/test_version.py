@@ -29,8 +29,8 @@ class TestVersion(unittest.TestCase):
         self.assertIsNotNone(m)
         self.assertEqual(m.group(1), __version__)
 
-    def test_version_is_0_6_0(self):
-        self.assertEqual(__version__, "0.6.0")
+    def test_version_is_0_7_0(self):
+        self.assertEqual(__version__, "0.7.0")
 
 
 if __name__ == "__main__":
