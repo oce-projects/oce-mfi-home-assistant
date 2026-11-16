@@ -18,6 +18,7 @@ const METRICS = [
   { key: "pf", label: "metric_pf", unit: "", digits: 2 },
   { key: "energy_sum", label: "metric_energy_sum", unit: "Wh", digits: 0 },
 ];
+const MFI_MODELS = new Set(["M2M","M2S","P1U","P3U","P8U","P1E","P3E","P6E","IWO2U","IWS1U","IWD1U","EM3","EM24","THERM"]);
 
 let healthVersion = "";
 let loggedIn = false;
@@ -48,6 +49,7 @@ let chartClose;
 let discoveryHeading;
 let discoverySearchButton;
 let discoveryEl;
+let backupMessage;
 
 function loadRefs() {
   versionEl = document.getElementById("version");
@@ -68,6 +70,7 @@ function loadRefs() {
   discoveryHeading = document.querySelector('[data-i18n="discovery_heading"]');
   discoverySearchButton = document.getElementById("discovery-search");
   discoveryEl = document.getElementById("discovery");
+  backupMessage = document.getElementById("backup-message");
 }
 
 function reportError(err) {
@@ -177,6 +180,7 @@ async function refreshDevices() {
     logoutButton.hidden = !loggedIn;
     renderDevices();
     loadDiscovery().catch(reportError);
+    loadStatus().catch(reportError);
     return;
   }
   if (response.status === 401) {
@@ -467,16 +471,77 @@ function renderDiscovery() {
     discoveryEl.appendChild(el("p", "empty", t("discovery_empty")));
     return;
   }
-  const columns = [
-    "discovery_col_mac",
-    "discovery_col_ip",
-    "discovery_col_model",
-    "discovery_col_firmware",
-    "discovery_col_default",
-    "discovery_col_known",
-    "discovery_col_actions",
-  ];
-  const table = el("table");
+  const mfiDevices = discoveryDevices.filter(isMfi);
+  const otherDevices = discoveryDevices.filter((device) => !isMfi(device));
+  if (mfiDevices.length === 0) {
+    discoveryEl.appendChild(el("p", "empty", t("discovery_no_mfi")));
+  } else {
+    discoveryEl.appendChild(discoveryTable(mfiDevices, true));
+  }
+  if (otherDevices.length > 0) {
+    const details = el("details", "other");
+    details.appendChild(el("summary", "", t("discovery_other_heading", { n: otherDevices.length })));
+    details.appendChild(discoveryTable(otherDevices, false));
+    discoveryEl.appendChild(details);
+  }
+}
+
+function formatMac(mac) {
+  const s = String(mac);
+  if (/^[0-9a-fA-F]{12}$/.test(s)) {
+    return s.toLowerCase().match(/.{2}/g).join(":");
+  }
+  return s;
+}
+
+function isMfi(device) {
+  if (device.known || device.is_default) return true;
+  const model = String(device.model || "").toUpperCase();
+  const platform = String(device.platform || "").toUpperCase();
+  return MFI_MODELS.has(model) || MFI_MODELS.has(platform);
+}
+
+function discoveryStateTag(device) {
+  let key;
+  let cls;
+  if (device.is_default) {
+    key = "discovery_state_default";
+    cls = "tag tag--default";
+  } else if (device.known) {
+    key = "discovery_state_known";
+    cls = "tag tag--known";
+  } else {
+    key = "discovery_state_other";
+    cls = "tag tag--other";
+  }
+  return el("span", cls, t(key));
+}
+
+function renderDiscoveryActions(device) {
+  const cell = el("td", "", "");
+  if (device.is_default === true) {
+    const b = el("button", "button", t("adopt"));
+    b.type = "button";
+    b.addEventListener("click", () => {
+      adoptDevice(device, b).catch(reportError);
+    });
+    cell.appendChild(b);
+  } else if (device.known === true) {
+    const b = el("button", "button", t("repoint"));
+    b.type = "button";
+    b.addEventListener("click", () => {
+      repointDevice(device, b).catch(reportError);
+    });
+    cell.appendChild(b);
+  }
+  return cell;
+}
+
+function discoveryTable(list, withActions) {
+  const columns = ["discovery_col_name", "discovery_col_mac", "discovery_col_ip", "discovery_col_model", "discovery_col_firmware"];
+  if (withActions) columns.splice(5, 0, "discovery_col_state", "discovery_col_actions");
+  const wrap = el("div", "table-wrap");
+  const table = el("table", "table");
   const thead = el("thead");
   const headRow = el("tr");
   for (const key of columns) {
@@ -484,34 +549,57 @@ function renderDiscovery() {
   }
   thead.appendChild(headRow);
   const tbody = el("tbody");
-  for (const device of discoveryDevices) {
+  for (const device of list) {
     const row = el("tr");
     row.append(
-      el("td", "", device.mac),
+      el("td", "", device.hostname || ""),
+      el("td", "mono", formatMac(device.mac)),
       el("td", "", device.ip || ""),
       el("td", "", device.model || ""),
-      el("td", "", device.firmware || ""),
-      el("td", "", t(device.is_default ? "discovery_yes" : "discovery_no")),
-      el("td", "", t(device.known ? "discovery_yes" : "discovery_no")),
-      renderAdoptCell(device)
+      el("td", "", device.firmware || "")
     );
+    if (withActions) {
+      const stateCell = el("td", "");
+      stateCell.appendChild(discoveryStateTag(device));
+      row.appendChild(stateCell);
+      row.appendChild(renderDiscoveryActions(device));
+    }
     tbody.appendChild(row);
   }
   table.append(thead, tbody);
-  discoveryEl.appendChild(table);
+  wrap.appendChild(table);
+  return wrap;
 }
 
-function renderAdoptCell(device) {
-  const cell = el("td", "", "");
-  if (device.is_default || !device.known) {
-    const b = el("button", "button", t("adopt"));
-    b.type = "button";
-    b.addEventListener("click", () => {
-      adoptDevice(device, b).catch(reportError);
+function loadStatus() {
+  return fetch("api/v1/status").then((response) => {
+    if (response.status !== 200) return;
+    return response.json().then((body) => {
+      renderBackupMessage(body.backup || {});
     });
-    cell.appendChild(b);
+  });
+}
+
+function renderBackupMessage(status) {
+  let key = "";
+  let params;
+  if (status.configured && status.error) {
+    key = "backup_error";
+    params = { error: status.error };
+  } else if (status.configured && status.devices === 0) {
+    key = "backup_empty";
+  } else if (!status.configured && devices.length === 0) {
+    key = "backup_missing";
   }
-  return cell;
+  if (key) {
+    backupMessage.textContent = t(key, params);
+    backupMessage.className = key === "backup_error" ? "message message--error" : "message";
+    backupMessage.hidden = false;
+  } else {
+    backupMessage.textContent = "";
+    backupMessage.className = "message";
+    backupMessage.hidden = true;
+  }
 }
 
 async function adoptDevice(device, button) {
