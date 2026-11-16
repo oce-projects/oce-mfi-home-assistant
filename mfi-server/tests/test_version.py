@@ -29,8 +29,12 @@ class TestVersion(unittest.TestCase):
         self.assertIsNotNone(m)
         self.assertEqual(m.group(1), __version__)
 
-    def test_version_is_0_8_0(self):
-        self.assertEqual(__version__, "0.8.0")
+    def test_version_is_0_9_0(self):
+        self.assertEqual(__version__, "0.9.0")
+
+    def test_dockerfile_installs_openssh_client(self):
+        text = (ADDON / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("openssh-client", text)
 
     def test_config_yaml_uses_host_network_and_ingress_peer(self):
         text = (ADDON / "config.yaml").read_text(encoding="utf-8")

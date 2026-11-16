@@ -78,5 +78,13 @@
   "discovery_col_default": "Di fabbrica",
   "discovery_col_known": "Già nel server",
   "discovery_yes": "Sì",
-  "discovery_no": "No"
+  "discovery_no": "No",
+  "discovery_col_actions": "Azioni",
+  "adopt": "Adotta",
+  "repoint": "Ripunta",
+  "adopt_confirm": "Adottare questo dispositivo?",
+  "repoint_confirm": "Ripuntare questo dispositivo sul server?",
+  "adopt_done": "Adozione inviata",
+  "repoint_done": "Ripuntamento inviato",
+  "action_error": "Richiesta non riuscita"
 }

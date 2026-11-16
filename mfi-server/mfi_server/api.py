@@ -18,6 +18,7 @@ import mfi_server
 from mfi_server import yaml_lite
 from mfi_server.auth import load_password_hash, verify_password
 from mfi_server.automation_model import normalize, validate
+from mfi_server.ssh_adopt import SshError
 from mfi_server.ubnt_discovery import ScanInProgress
 
 logger = logging.getLogger(__name__)
@@ -58,7 +59,19 @@ class ApiServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(
-        self, settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner
+        self,
+        settings,
+        store,
+        states,
+        measurements,
+        history,
+        control,
+        sessions,
+        limiter,
+        automations,
+        engine,
+        scanner,
+        adoption,
     ) -> None:
         self.settings = settings
         self.store = store
@@ -71,15 +84,38 @@ class ApiServer(ThreadingHTTPServer):
         self.automations = automations
         self.engine = engine
         self.scanner = scanner
+        self.adoption = adoption
         super().__init__((settings.bind_address, getattr(settings, "web_port", DEFAULT_WEB_PORT)), ApiHandler)
 
 
 def make_api_server(
-    settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner
+    settings,
+    store,
+    states,
+    measurements,
+    history,
+    control,
+    sessions,
+    limiter,
+    automations,
+    engine,
+    scanner,
+    adoption,
 ) -> ThreadingHTTPServer:
     """Build the API server bound to settings.bind_address and the web port."""
     return ApiServer(
-        settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner
+        settings,
+        store,
+        states,
+        measurements,
+        history,
+        control,
+        sessions,
+        limiter,
+        automations,
+        engine,
+        scanner,
+        adoption,
     )
 
 
@@ -208,6 +244,10 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._automation_trigger(parts[3])
         elif len(parts) == 5 and parts[2] == "automations" and parts[4] == "enable":
             self._automation_enable(parts[3], body)
+        elif len(parts) == 5 and parts[2] == "discovery" and parts[4] == "adopt":
+            self._adopt(parts[3])
+        elif len(parts) == 5 and parts[2] == "devices" and parts[4] == "repoint":
+            self._repoint(parts[3], body)
         else:
             self._error(404, "not_found")
 
@@ -404,6 +444,40 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._send_json(409, {"error": "scan_in_progress"})
             return
         self._send_json(200, self._discovery_view(results))
+
+    def _adopt(self, mac: str) -> None:
+        """Adopt a factory-default device found by discovery."""
+        self._adoption_call(self.server.adoption.adopt, mac)
+
+    def _repoint(self, mac: str, body: bytes) -> None:
+        """Re-point an adopted device to this server; the optional body may give its current ip."""
+        ip = None
+        if body:
+            data = self._json_object(body)
+            if data is None:
+                return
+            if "ip" in data:
+                ip = data["ip"]
+                if not isinstance(ip, str):
+                    self._error(400, "bad_request")
+                    return
+        self._adoption_call(self.server.adoption.repoint, mac, ip)
+
+    def _adoption_call(self, action, *args) -> None:
+        """Run one adoption action and answer 202, or the error code of the API contract."""
+        try:
+            action(*args)
+        except LookupError:
+            self._error(404, "not_found")
+        except PermissionError as exc:
+            self._send_json(409, {"error": str(exc)})
+        except SshError as exc:
+            if exc.code == "invalid_input":
+                self._send_json(400, {"error": "invalid_input"})
+            else:
+                self._send_json(502, {"error": exc.code})
+        else:
+            self._send_json(202, {"result": "sent"})
 
     def _device_view(self, record: dict) -> dict:
         mac = record["mac"]

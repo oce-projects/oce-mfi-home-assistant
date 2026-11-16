@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from mfi_server.config import load_settings, supervisor_mqtt
+from mfi_server.config import Settings, load_settings, supervisor_mqtt
 
 
 def _load(environ: dict[str, str], folder: str):
@@ -298,6 +298,57 @@ class TestIngressPeerSetting(unittest.TestCase):
             Path(d, "settings.json").write_text('{"ingress_peer": "not-an-ip"}', encoding="utf-8")
             with self.assertRaises(ValueError):
                 _load({}, d)
+
+
+class TestSshSettings(unittest.TestCase):
+    def test_ssh_settings_from_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text(
+                '{"server_address": "192.168.1.20", "device_ssh_username": "ubnt", "device_ssh_password": "pass", "ssh_extra_options": "KexAlgorithms=+diffie-hellman-group1-sha1"}',
+                encoding="utf-8",
+            )
+            s = _load({}, d)
+            self.assertEqual(s.server_address, "192.168.1.20")
+            self.assertEqual(s.device_ssh_username, "ubnt")
+            self.assertEqual(s.device_ssh_password, "pass")
+            self.assertEqual(s.ssh_extra_options, "KexAlgorithms=+diffie-hellman-group1-sha1")
+
+    def test_ssh_settings_from_environment(self):
+        environ = {
+            "MFI_SERVER_ADDRESS": "172.30.32.2",
+            "MFI_DEVICE_SSH_USERNAME": "ubnt",
+            "MFI_DEVICE_SSH_PASSWORD": "pass",
+            "MFI_SSH_EXTRA_OPTIONS": "KexAlgorithms=+diffie-hellman-group1-sha1",
+        }
+        with tempfile.TemporaryDirectory() as d:
+            s = _load(environ, d)
+            self.assertEqual(s.server_address, "172.30.32.2")
+            self.assertEqual(s.device_ssh_username, "ubnt")
+            self.assertEqual(s.device_ssh_password, "pass")
+            self.assertEqual(s.ssh_extra_options, "KexAlgorithms=+diffie-hellman-group1-sha1")
+
+    def test_server_address_invalid_raises_value_error(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"server_address": "abc"}', encoding="utf-8")
+            with self.assertRaises(ValueError) as cm:
+                _load({}, d)
+            self.assertIn("server_address", str(cm.exception))
+
+    def test_ssh_extra_options_valid_accepted(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"ssh_extra_options": "KexAlgorithms=+diffie-hellman-group1-sha1"}', encoding="utf-8")
+            s = _load({}, d)
+            self.assertEqual(s.ssh_extra_options, "KexAlgorithms=+diffie-hellman-group1-sha1")
+
+    def test_ssh_extra_options_invalid_raises_value_error(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"ssh_extra_options": "ProxyCommand=x"}', encoding="utf-8")
+            with self.assertRaises(ValueError):
+                _load({}, d)
+
+    def test_device_ssh_password_not_in_repr(self):
+        s = Settings(data_dir=Path("."), device_ssh_password="topsecret9")
+        self.assertNotIn("topsecret9", repr(s))
 
 
 if __name__ == "__main__":

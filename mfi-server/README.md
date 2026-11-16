@@ -15,6 +15,7 @@ Home Assistant OS.
 - Device states and outlet commands.
 - Measurements.
 - UDP discovery of the devices on the local network (port 10001, UNVERIFIED on a device), shown on the web page.
+- Adoption and re-pointing of devices over SSH, with the system `ssh` program (see DOCS.md; not tested on a real device).
 - Never sends a factory reset to a device.
 - MQTT discovery for Home Assistant (optional in standalone mode).
 - JSON web API on port 8099, and measurement history in `history.sqlite3` (30 days by default).
@@ -117,6 +118,10 @@ Each setting can come from an environment variable, from `settings.json` in the 
 | `MFI_WEB_PORT` | 8099 | TCP port of the web page and the JSON API |
 | `MFI_HISTORY_DAYS` | 30 | Days of measurement history kept |
 | `MFI_INGRESS_PEER` | 172.30.32.2 | Add-on mode: only requests from this address (Home Assistant ingress) are served; others get 403 |
+| `MFI_SERVER_ADDRESS` | empty (auto-detect) | Address of the server for the inform URL |
+| `MFI_DEVICE_SSH_USERNAME` | empty (adoption off) | SSH user name for the devices |
+| `MFI_DEVICE_SSH_PASSWORD` | empty (adoption off) | SSH password for the devices |
+| `MFI_SSH_EXTRA_OPTIONS` | legacy algorithms | Extra SSH options for the devices |
 
 ### Data folder
 

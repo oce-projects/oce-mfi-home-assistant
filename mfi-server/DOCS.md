@@ -3,7 +3,8 @@
 ## Status
 
 In progress. Not yet tested with a real device. Home Assistant entities come
-through MQTT discovery (a broker is needed). No adoption of new devices. A
+through MQTT discovery (a broker is needed). Adoption and re-pointing by SSH are in
+place but not yet tested on a real device (see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices)). A
 wake-up packet is sent to a device when its address is known (from its inform
 connect_request), UNVERIFIED on a real device.
 
@@ -22,6 +23,10 @@ Terminal app. Reload the store, then install the app.
 | `mqtt_topic_prefix` | Prefix of the MQTT topics. Default `mfi`. |
 | `mqtt_discovery_prefix` | Prefix of the Home Assistant discovery topics. Default `homeassistant`. |
 | `ingress_peer` | Add-on mode: the only address served by the web page (Home Assistant ingress). Default `172.30.32.2`. See [Network](#network). |
+| `server_address` | IPv4 address of the host where mfi-server runs. Empty = automatic. See [Adopting and re-pointing devices](#adopting-and-re-pointing-devices). |
+| `device_ssh_username` | Administrator name of the old controller, used to re-point devices. |
+| `device_ssh_password` | Administrator password of the old controller, used to re-point devices. Never shown in the API or in the logs. |
+| `ssh_extra_options` | Extra SSH algorithm options. The default is UNVERIFIED, see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices). |
 
 ## Import the keys from a controller backup
 
@@ -63,6 +68,10 @@ An optional file `data/settings.json` may hold the same keys as the options.
 | `MFI_WEB_PORT` | 8099 |
 | `MFI_HISTORY_DAYS` | 30 |
 | `MFI_INGRESS_PEER` | 172.30.32.2 |
+| `MFI_SERVER_ADDRESS` | empty (automatic) | Address of the server in the inform URL, see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices) |
+| `MFI_DEVICE_SSH_USERNAME` | empty | SSH user of the old controller, used to re-point devices |
+| `MFI_DEVICE_SSH_PASSWORD` | empty | SSH password of the old controller, never logged or shown in the API |
+| `MFI_SSH_EXTRA_OPTIONS` | see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices) | Extra SSH algorithm options (the default is UNVERIFIED) |
 
 Precedence: variable, then file, then default.
 
@@ -139,6 +148,8 @@ found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is
 | `api/v1/history` | GET | `mac`, `sensor_id`, `tag`, `from` and `to` (milliseconds); returns `points` as `[time_ms, value]` |
 | `api/v1/discovery` | GET | devices found on the network by the last UDP discovery scan, as `{"devices": [...]}`; each has `known` (already in the server) |
 | `api/v1/discovery/scan` | POST | run a new scan now (3 s by default) and return the devices found; 409 `scan_in_progress` if a scan is already running |
+| `api/v1/discovery/<mac>/adopt` | POST | adopt a factory-default device over SSH; 202 `{"result": "sent"}` |
+| `api/v1/devices/<mac>/repoint` | POST | re-point a known device over SSH; optional body `{"ip": "..."}`; 202 |
 
 History is kept for `history_days` (default 30) in `history.sqlite3` inside the data folder.
 
@@ -243,12 +254,51 @@ Keep the devices on an isolated network without internet access.
 - The server never sends a factory reset to a device.
 - The add-on runs as root because the Supervisor `/data` volume belongs to root.
 
+## Adopting and re-pointing devices
+
+An mFi device reaches a server in one of two ways:
+
+- **Adoption**: a device that is factory new or was reset is adopted. The server sets the device's inform address and a new authentication key over SSH.
+- **Re-pointing**: a device already adopted by an old controller is pointed at the new server over SSH. The device keeps the key it already has, so it does not have to be reset.
+
+Adopt a device from the discovery table of the web page with the **Adopt** button, or with `POST api/v1/discovery/<mac>/adopt`. Re-point a device with the **Repoint** button in the device list (for devices that are not connected), or with `POST api/v1/devices/<mac>/repoint`; the body may hold `{"ip": "..."}` to give the device address, otherwise the address from the last discovery scan is used.
+
+Adoption is refused with 409 `not_factory_default` when the discovery scan does not report the device as factory default. Re-pointing needs the device to be known (it must have an authentication key) and the two `device_ssh_*` options to be set.
+
+### Server address
+
+The address written into the device is the address of the machine where mfi-server runs: the IP of the Home Assistant host, or of the network card of the PC where the server runs. It is **not** the address of the old controller. Set it with the `server_address` option. Empty means automatic: the server uses the address of the local network card that routes to the device. The device then informs at `http://<address>:6080/inform`.
+
+### Options
+
+| Option | Meaning |
+|---|---|
+| `server_address` | IPv4 address of the host where mfi-server runs. Empty = automatic. |
+| `device_ssh_username` | Administrator name of the old controller. Used only to re-point devices. |
+| `device_ssh_password` | Administrator password of the old controller. Used only to re-point devices. It is never shown in the API or in the logs. |
+| `ssh_extra_options` | Extra SSH algorithm options, as `KEY=value` pairs separated by `;`. Allowed keys: `KexAlgorithms`, `HostKeyAlgorithms`, `Ciphers`, `MACs`, `PubkeyAcceptedAlgorithms`, `PubkeyAcceptedKeyTypes`. Other text is rejected. Default: `KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa,ssh-dss;Ciphers=+aes128-cbc,3des-cbc`. The default is UNVERIFIED: which old algorithms are really needed is known only from a test on a device (question 12 in docs/PROTOCOL.md). |
+
+### Factory adoption
+
+Factory-new devices use the public factory credentials `ubnt` / `ubnt` (docs/PROTOCOL.md). The host key check of the SSH connection is **disabled**, as in the original controller: a device can be impersonated by another host on the same network. Keep the devices on an isolated network without internet access.
+
+The server runs the system `ssh` program without a shell. Passwords never go on the command line: they are given through a temporary askpass script, removed after each call. The adoption command sends the inform address and the new key to the device (`/usr/bin/syswrapper.sh set-adopt`). The configuration of the device is not sent yet: that step follows once it has been tested on a real device.
+
+Errors, from the `api/v1/discovery/<mac>/adopt` and `api/v1/devices/<mac>/repoint` routes: 404 `not_found` for an unknown device, 400 `invalid_input` for a bad value, 409 for a device or a setting that does not allow the action, 502 with the reason (`ssh_not_installed`, `timeout`, `connection_failed` or `command_failed`). The device state becomes `adopt_failed` when adoption fails.
+
+### SSH program
+
+In add-on mode the `ssh` program is included in the add-on. In standalone mode the host must provide `ssh` from OpenSSH 8.4 or newer, because the askpass method needs the `SSH_ASKPASS_REQUIRE` variable.
+
+Not tested on a real device.
+
 ## Network
 
 The add-on uses the network of the host (`host_network`), so its ports open directly on the Home Assistant OS host, without a Docker port mapping.
 
 | Port | Protocol | Use |
 |---|---|---|
+| 22 | tcp | Outgoing SSH to the devices, for adoption and re-pointing |
 | 6080 | tcp | Inform: mFi devices report to the server (HTTP) |
 | 3478 | udp | Wake-up packets sent to the devices |
 | 8099 | tcp | Web API and web page |

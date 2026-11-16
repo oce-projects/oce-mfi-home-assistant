@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.11.0 - 2026-11-16
+
+- Epic D2 of `mfi-server` 0.9.0 (phase 2): adoption of factory-default devices and re-pointing of adopted ones, through the system `ssh` program (`openssh-client` in the add-on image). The device password reaches ssh only through an askpass helper, never on the command line and never in the logs.
+- New routes `api/v1/discovery/<mac>/adopt` and `api/v1/devices/<mac>/repoint`, and «Adopt» and «Re-point» buttons in the web page.
+- Versions aligned: `mfi-server` 0.9.0 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`; repository 0.11.0 in `VERSION` and `CHANGELOG.md`.
+
 ## 0.10.0 - 2026-11-16
 
 - Epic D1 of `mfi-server` 0.8.0 (phase 2): UDP discovery on port 10001 (`ubnt_discovery.py`), with the routes `api/v1/discovery` and `api/v1/discovery/scan`, a scan at startup, and a table of the discovered devices in the web page. The add-on runs with the host network (`host_network: true`, no `ports` block), and the new `ingress_peer` option sets the address allowed in add-on mode.

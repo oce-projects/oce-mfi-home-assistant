@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0 - 2026-11-16
+
+- Adoption of new devices through the system `ssh` program: `adoption.py` sends `set-adopt` to a factory-default device found by discovery, with a new authkey (16 random bytes, hex). The record is saved as `adopting` before ssh runs, and becomes `adopt_failed` on failure.
+- Re-pointing of adopted devices: `repoint` sends `set-adopt` with the authkey already stored, so the device informs this server again. It needs the device SSH credentials.
+- New module `ssh_adopt.py`: ssh runs with an argument list, never through a shell. The password reaches ssh only through an SSH_ASKPASS helper in a temporary folder that is removed afterwards. Only the allowed `ssh -o` keys are accepted. The device host key is not checked (`StrictHostKeyChecking=no`), so run it on the isolated device network only.
+- The image installs `openssh-client` (`Dockerfile`).
+- New routes `api/v1/discovery/<mac>/adopt` and `api/v1/devices/<mac>/repoint`. The web page has «Adopt» and «Re-point» buttons, each with a confirmation first.
+- New options `server_address` (IPv4; empty means the local address toward the device), `device_ssh_username`, `device_ssh_password` and `ssh_extra_options` (allowed `ssh -o` keys only). The default of `ssh_extra_options` is UNVERIFIED (question 12 in `docs/PROTOCOL.md`: whether a modern ssh accepts the legacy algorithms of the devices).
+- Versions aligned: `mfi-server` 0.9.0 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`.
+
 ## 0.8.0 - 2026-11-16
 
 - UDP discovery on port 10001: new module `ubnt_discovery` (`parse_reply` and `Scanner`), a scan at startup, and the routes `api/v1/discovery` (list) and `api/v1/discovery/scan` (scan now).
