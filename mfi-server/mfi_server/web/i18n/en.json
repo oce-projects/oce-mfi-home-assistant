@@ -85,8 +85,6 @@
   "backup_error": "Backup import failed: {error}",
   "backup_empty": "The backup has no devices",
   "backup_missing": "No devices. Set the backup_file option on the Configuration tab to import a controller backup.",
-  "discovery_yes": "Yes",
-  "discovery_no": "No",
   "discovery_col_actions": "Actions",
   "adopt": "Adopt",
   "repoint": "Re-point",
