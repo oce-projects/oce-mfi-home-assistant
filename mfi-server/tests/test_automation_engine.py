@@ -378,6 +378,35 @@ class ErrorAndTraceTest(unittest.TestCase):
         self.assertEqual(trace["result"], "error")
         self.assertEqual(trace["message"], "device lost")
 
+    def test_unknown_service_is_an_error_and_sets_no_output(self):
+        fake = FakeDevice()
+        engine = make_engine(fake)
+        engine.load(
+            [
+                {
+                    "id": "weird",
+                    "actions": [
+                        {"action": "switch.explode", "target": {"entity_id": SWITCH_1}},
+                        turn_on(SWITCH_2),
+                    ],
+                }
+            ]
+        )
+        engine.trigger("weird")
+        trace = engine.traces("weird")[0]
+        self.assertEqual(trace["result"], "error")
+        self.assertIn("unknown service", trace["message"])
+        self.assertEqual(fake.calls, [])
+
+    def test_trigger_and_traces_reject_an_unknown_id(self):
+        fake = FakeDevice()
+        engine = make_engine(fake)
+        engine.load([{"id": "good", "actions": [turn_on(SWITCH_1)]}])
+        with self.assertRaises(KeyError):
+            engine.trigger("missing")
+        with self.assertRaises(KeyError):
+            engine.traces("missing")
+
     def test_traces_keep_only_the_last_five_runs(self):
         fake = FakeDevice()
         engine = make_engine(fake)

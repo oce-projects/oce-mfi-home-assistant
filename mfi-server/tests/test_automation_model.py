@@ -95,6 +95,18 @@ class ValidateTest(unittest.TestCase):
         obj["color"] = "red"
         self.assertEqual(validate(obj), ["unknown key 'color'"])
 
+    def test_alias_and_description_are_accepted(self):
+        obj = valid_automation()
+        obj["alias"] = "Evening lights"
+        obj["description"] = "Turns the lights on in the evening"
+        self.assertEqual(validate(obj), [])
+
+    def test_non_finite_number_is_reported(self):
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(above=value):
+                obj = small_automation(triggers=[{"trigger": "numeric_state", "entity_id": SENSOR_1, "above": value}])
+                self.assertEqual(validate(obj), ["triggers[0].above: must be a number"])
+
     def test_unknown_key_in_trigger(self):
         obj = valid_automation()
         obj["triggers"][2]["foo"] = 1
@@ -278,6 +290,12 @@ class ParseDurationTest(unittest.TestCase):
             ["00:01:00"],
         ]
         for value in bad_values:
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    parse_duration(value)
+
+    def test_non_finite_mapping_raises(self):
+        for value in ({"seconds": float("nan")}, {"minutes": float("inf")}):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError):
                     parse_duration(value)
