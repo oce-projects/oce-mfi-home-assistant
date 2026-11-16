@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.11.2 - 2026-11-16
+
+- Repository ready for public release: `SECURITY.md`, `CONTRIBUTING.md` and the CI workflow `.github/workflows/tests.yml`.
+- Personal name stored base64-encoded in `tests/test_repository.py` (version 1.4.0), so the public test file does not contain it; new publication checks in the same file.
+- English and Italian translations of the `mfi-server` options in `mfi-server/translations/`, checked by `mfi-server/tests/test_translations.py`.
+- `README.md` with the CI badge and the installation steps from the add-on store; decision line in `docs/ARCHITECTURE.md`.
+- Versions aligned: `mfi-server` 0.9.2 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`; repository 0.11.2 in `VERSION` and `CHANGELOG.md`.
+
 ## 0.11.1 - 2026-11-16
 
 - Apache License 2.0 for the repository: full text in `LICENSE`, a `License` section in `README.md` and `mfi-server/README.md`, and a badge in `README.md`. The mFi Controller stays proprietary Ubiquiti software and is not covered by the license.
