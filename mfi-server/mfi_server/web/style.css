@@ -801,6 +801,7 @@ h3 {
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--rule);
   vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 
 .table tbody tr:nth-child(even) {

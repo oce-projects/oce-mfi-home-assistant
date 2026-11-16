@@ -18,6 +18,7 @@ const METRICS = [
   { key: "pf", label: "metric_pf", unit: "", digits: 2 },
   { key: "energy_sum", label: "metric_energy_sum", unit: "Wh", digits: 0 },
 ];
+// Models accepted as mFi, from docs/PROTOCOL.md (section Devices, "Models accepted as mFi"). INFERRED from device names in real backups; UNVERIFIED on a live device.
 const MFI_MODELS = new Set(["M2M","M2S","P1U","P3U","P8U","P1E","P3E","P6E","IWO2U","IWS1U","IWD1U","EM3","EM24","THERM"]);
 
 let healthVersion = "";
