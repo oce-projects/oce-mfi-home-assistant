@@ -64,5 +64,7 @@
   "trace_condition_false": "Condizione non soddisfatta",
   "trace_stopped": "Interrotta",
   "trace_skipped": "Saltata",
-  "trace_error": "Errore"
+  "trace_error": "Errore",
+  "auto_action_error": "Azione non riuscita",
+  "auto_run_done": "Automazione avviata"
 }
