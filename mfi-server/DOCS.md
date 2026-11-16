@@ -21,6 +21,7 @@ Terminal app. Reload the store, then install the app.
 | `log_level` | `debug`, `info`, `warning` or `error`. |
 | `mqtt_topic_prefix` | Prefix of the MQTT topics. Default `mfi`. |
 | `mqtt_discovery_prefix` | Prefix of the Home Assistant discovery topics. Default `homeassistant`. |
+| `ingress_peer` | Add-on mode: the only address served by the web page (Home Assistant ingress). Default `172.30.32.2`. See [Network](#network). |
 
 ## Import the keys from a controller backup
 
@@ -61,6 +62,7 @@ An optional file `data/settings.json` may hold the same keys as the options.
 | `MFI_MQTT_DISCOVERY_PREFIX` | homeassistant |
 | `MFI_WEB_PORT` | 8099 |
 | `MFI_HISTORY_DAYS` | 30 |
+| `MFI_INGRESS_PEER` | 172.30.32.2 |
 
 Precedence: variable, then file, then default.
 
@@ -117,7 +119,7 @@ The JSON API listens on port 8099 (`web_port`, variable `MFI_WEB_PORT`). Routes 
 found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is accepted.
 
 - Add-on mode: open the mFi panel from the Home Assistant sidebar. There is no login;
-  only the Supervisor ingress address (172.30.32.2) is served, other addresses get 403.
+  only the address set in the `ingress_peer` option (default 172.30.32.2, see [Network](#network)) is served, other addresses get 403.
 - Standalone mode: a session is needed. Start one with `POST api/v1/login` and a JSON
   body `{"password": "..."}`: the answer sets the `mfi_session` cookie (204). Set the
   password with `python3 -m mfi_server set-password --data DIR`: it is asked twice,
@@ -135,6 +137,8 @@ found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is
 | `api/v1/devices/<mac>` | GET | one device, same fields; unknown MAC answers 404 |
 | `api/v1/devices/<mac>/ports/<port>/output` | POST | body `{"value": 0}` or `{"value": 1}`; 202 when queued |
 | `api/v1/history` | GET | `mac`, `sensor_id`, `tag`, `from` and `to` (milliseconds); returns `points` as `[time_ms, value]` |
+| `api/v1/discovery` | GET | devices found on the network by the last UDP discovery scan, as `{"devices": [...]}`; each has `known` (already in the server) |
+| `api/v1/discovery/scan` | POST | run a new scan now (3 s by default) and return the devices found; 409 `scan_in_progress` if a scan is already running |
 
 History is kept for `history_days` (default 30) in `history.sqlite3` inside the data folder.
 
@@ -155,7 +159,8 @@ The page shows:
 - the device list: name, model, state and last contact;
 - the ON/OFF switch of each outlet;
 - the measurements of each outlet: power, voltage, current, power factor and energy;
-- a chart of the last 24 hours, drawn as SVG, with the minimum and maximum values.
+- a chart of the last 24 hours, drawn as SVG, with the minimum and maximum values;
+- a section of the devices found on the network by UDP discovery (port 10001, see [Network](#network)), with a search button that starts a new scan: MAC, IP, model, firmware, factory default (yes or no) and whether the device is already known to the server (yes or no). The server also scans once at startup. The results are kept in memory only.
 
 Security warning: never expose 8099/tcp to the internet. The page has no built-in HTTPS (see Web API).
 
