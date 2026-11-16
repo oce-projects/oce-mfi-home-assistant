@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.10.0 - 2026-11-16
+
+- Epic D1 of `mfi-server` 0.8.0 (phase 2): UDP discovery on port 10001 (`ubnt_discovery.py`), with the routes `api/v1/discovery` and `api/v1/discovery/scan`, a scan at startup, and a table of the discovered devices in the web page. The add-on runs with the host network (`host_network: true`, no `ports` block), and the new `ingress_peer` option sets the address allowed in add-on mode.
+- Versions aligned: `mfi-server` 0.8.0 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`; repository 0.10.0 in `VERSION` and `CHANGELOG.md`.
+
 ## 0.9.0 - 2026-11-16
 
 - Epic T-MWIEDB3M: `mfi-server` runs as a standalone program, outside Home Assistant. Added systemd and Docker Compose examples, a settings example (`settings.example.json`), an environment example (`mfi-server.env.example`), a «Run without Home Assistant» guide in the `mfi-server` README, and the test `tests/test_examples.py` that keeps the examples aligned with the real settings.

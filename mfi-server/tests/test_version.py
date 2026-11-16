@@ -29,8 +29,15 @@ class TestVersion(unittest.TestCase):
         self.assertIsNotNone(m)
         self.assertEqual(m.group(1), __version__)
 
-    def test_version_is_0_7_0(self):
-        self.assertEqual(__version__, "0.7.0")
+    def test_version_is_0_8_0(self):
+        self.assertEqual(__version__, "0.8.0")
+
+    def test_config_yaml_uses_host_network_and_ingress_peer(self):
+        text = (ADDON / "config.yaml").read_text(encoding="utf-8")
+        self.assertIn("host_network: true", text)
+        self.assertNotIn("\nports:", text)
+        self.assertNotIn("ports_description:", text)
+        self.assertIn("ingress_peer:", text)
 
 
 if __name__ == "__main__":
