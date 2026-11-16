@@ -42,6 +42,9 @@ STATIC_FILES = {
     "index.html": "text/html; charset=utf-8",
     "app.js": "text/javascript; charset=utf-8",
     "style.css": "text/css; charset=utf-8",
+    "automations.html": "text/html; charset=utf-8",
+    "automations.js": "text/javascript; charset=utf-8",
+    "common.js": "text/javascript; charset=utf-8",
     "i18n/en.json": "application/json; charset=utf-8",
     "i18n/it.json": "application/json; charset=utf-8",
 }
