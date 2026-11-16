@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.12.0 - 2026-11-16
+
+- mfi-server web page fixed: styled discovery table and panels, discovery lists
+  only mFi devices with the right Adopt/Re-point buttons, backup resolved in
+  /share and the import error shown on the page.
+
 ## 0.11.2 - 2026-11-16
 
 - Repository ready for public release: `SECURITY.md`, `CONTRIBUTING.md` and the CI workflow `.github/workflows/tests.yml`.

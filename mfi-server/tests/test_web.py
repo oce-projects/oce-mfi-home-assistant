@@ -117,6 +117,66 @@ class TestWebPage(unittest.TestCase):
         self.assertIn('"button"', text)
         self.assertIn("window.confirm", text)
 
+    def test_buttons_have_class_or_known_id(self):
+        css = read_text("style.css")
+        html = self.html["index.html"]
+        known_ids = {"login-button", "logout-button", "chart-close"}
+        for tag in re.findall(r"<button\b[^>]*>", html):
+            cls = re.search(r'class="([^"]*)"', tag)
+            if cls and "button" in cls.group(1):
+                continue
+            bid = re.search(r'id="([^"]*)"', tag)
+            self.assertIsNotNone(bid, tag)
+            self.assertIn(bid.group(1), known_ids, tag)
+            self.assertIn("#" + bid.group(1), css, tag)
+
+    def test_discovery_search_is_primary(self):
+        self.assertRegex(
+            self.html["index.html"],
+            r'<button id="discovery-search"[^>]*class="button button--primary"',
+        )
+
+    def test_devices_and_discovery_in_panels(self):
+        html = self.html["index.html"]
+        self.assertEqual(html.count('<section class="panel">'), 2)
+        self.assertIn('<div class="section__head">', html)
+
+    def test_style_has_table_and_tag_rules(self):
+        css = read_text("style.css")
+        for selector in (
+            ".table-wrap", ".table", ".table th", ".table td",
+            ".section__head", ".mono", ".tag", ".tag--default",
+            ".tag--known", ".tag--other", ".other",
+        ):
+            with self.subTest(selector=selector):
+                self.assertRegex(css, re.escape(selector) + r"[\s{,:]")
+
+    def test_app_js_discovery_filters_mfi(self):
+        app = self.js["app.js"]
+        self.assertNotIn("device.is_default || !device.known", app)
+        self.assertIn("MFI_MODELS", app)
+        self.assertIn("repointDevice(", app)
+        self.assertIn("formatMac", app)
+
+    def test_app_js_groups_other_devices(self):
+        app = self.js["app.js"]
+        self.assertIn('el("details", "other")', app)
+        self.assertIn("discovery_other_heading", app)
+
+    def test_new_discovery_keys_present_and_old_removed(self):
+        for key in (
+            "discovery_col_name", "discovery_col_state", "discovery_state_default",
+            "discovery_state_known", "discovery_state_other", "discovery_other_heading",
+            "discovery_no_mfi", "backup_error", "backup_empty", "backup_missing",
+        ):
+            with self.subTest(key=key):
+                self.assertIn(key, self.en)
+                self.assertIn(key, self.it)
+        for key in ("discovery_col_default", "discovery_col_known"):
+            with self.subTest(key=key):
+                self.assertNotIn(key, self.en)
+                self.assertNotIn(key, self.it)
+
 
 if __name__ == "__main__":
     unittest.main()
