@@ -114,7 +114,7 @@ Each setting can come from an environment variable, from `settings.json` in the 
 | `MFI_MQTT_TOPIC_PREFIX` | mfi | Prefix of the MQTT topics |
 | `MFI_MQTT_DISCOVERY_PREFIX` | homeassistant | Prefix of the Home Assistant discovery topics |
 | `MFI_WEB_PORT` | 8099 | TCP port of the web page and the JSON API |
-| `MFI_HISTORY_DAYS` | 30 | Days of measurement history kept (1-3650) |
+| `MFI_HISTORY_DAYS` | 30 | Days of measurement history kept |
 
 ### Data folder
 
