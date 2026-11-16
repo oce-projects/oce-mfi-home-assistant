@@ -1,8 +1,9 @@
 """Offline structure tests for the oce-mfi-home-assistant repository.
 
-Version: 1.3.0
+Version: 1.4.0
 
 Changelog:
+1.4.0 - 2026-11-16 - personal names stored base64-encoded so the public test file does not contain them; publication files checked.
 1.3.0 - 2026-11-15 - private data scan allows 172.30.32.2 (Home Assistant ingress address used by mfi-server/mfi_server/api.py).
 1.2.0 - 2026-11-15 - private data scan covers every private IPv4 range (10/8, 172.16/12, 192.168/16) instead of three home addresses; documented exceptions in ALLOWED_MATCHES.
 1.1.0 - 2026-11-15 - Dockerfile BUILD_VERSION must equal the add-on version; stale version headers in add-on files are reported.
@@ -19,6 +20,7 @@ a container without network).
 """
 from __future__ import annotations
 
+import base64
 import re
 import unittest
 from pathlib import Path
@@ -30,11 +32,13 @@ SKIP_DIRS = {".git", ".tickets", "__pycache__", ".venv", "node_modules"}
 VENDOR_SUFFIXES = {".jar", ".zip", ".deb", ".bin", ".unf", ".exe", ".dmg", ".pkg"}
 VENDOR_NAMES = {"db.gz", "ace.jar", "mfi.unix.zip", "firmware.bin"}
 
+PRIVATE_NAMES_B64 = ("b3NjYXI=",)  # personal names, base64 so the file itself does not contain them
+
 PRIVATE_PATTERNS = {
     "private IPv4 address": re.compile(r"(?<![\d.])(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(?!\d|\.\d)"),
     "UNC path to a LAN share": re.compile(r"\\\\\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\\"),
     "local Windows drive path": re.compile(r"\b[A-Z]:\\[A-Za-z_]"),
-    "personal name": re.compile(r"(?i)\boscar\b"),
+    "personal name": re.compile(r"(?i)\b(?:" + "|".join(re.escape(base64.b64decode(n).decode("ascii")) for n in PRIVATE_NAMES_B64) + r")\b"),
     "e-mail address": re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}"),
     "MAC address": re.compile(r"(?i)\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b"),
 }
@@ -112,7 +116,7 @@ class TestScannersCatchPlantedSamples(unittest.TestCase):
             "private IPv4 address": "host 192.168.1.228 here",
             "UNC path to a LAN share": r"see \\10.0.0.5\share\x",
             "local Windows drive path": r"open W:\_FOLDER now",
-            "personal name": "written by Oscar",
+            "personal name": "written by " + base64.b64decode(PRIVATE_NAMES_B64[0]).decode("ascii").capitalize(),
             "e-mail address": "mail someone@example.org",
             "MAC address": "mac 24:A4:3C:01:02:03",
         }
@@ -229,6 +233,25 @@ class TestAddons(unittest.TestCase):
             with self.subTest(addon=d.name):
                 self.assertRegex(text, r"(?m)^slug:\s*\S+")
                 self.assertRegex(text, r"(?m)^arch:")
+
+
+class TestPublication(unittest.TestCase):
+    def test_publication_files_exist(self):
+        for f in ("LICENSE", "SECURITY.md", "CONTRIBUTING.md", ".github/workflows/tests.yml"):
+            with self.subTest(file=f):
+                self.assertTrue((ROOT / f).is_file(), f"{f} missing")
+
+    def test_workflow_runs_both_test_suites(self):
+        text = (ROOT / ".github/workflows/tests.yml").read_text(encoding="utf-8")
+        self.assertIn("python3 -m unittest discover -s tests -v", text)
+        self.assertIn("python3 -m unittest discover -s mfi-server/tests -t mfi-server -v", text)
+        self.assertIn("docker build", text)
+
+    def test_readme_is_not_marked_private(self):
+        text = (ROOT / "README.md").read_text(encoding="utf-8").lower()
+        for phrase in ("private repository", "while the repository is private", "to be decided"):
+            with self.subTest(phrase=phrase):
+                self.assertNotIn(phrase, text)
 
 
 if __name__ == "__main__":
