@@ -23,6 +23,7 @@ AUTH_FILE = "auth.json"
 SESSION_TTL_S = 604800
 LIMIT_WINDOW_S = 60
 MAX_FAILURES = 5
+MIN_PASSWORD_LENGTH = 12
 
 
 def hash_password(password: str, salt: bytes | None = None, iterations: int = DEFAULT_ITERATIONS) -> str:
@@ -31,6 +32,22 @@ def hash_password(password: str, salt: bytes | None = None, iterations: int = DE
         salt = os.urandom(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
     return f"{ALGORITHM}${iterations}${salt.hex()}${digest.hex()}"
+
+
+def password_problems(password: str) -> list[str]:
+    """Return the codes of the password rules the password breaks; an empty list means it is acceptable."""
+    problems = []
+    if len(password) < MIN_PASSWORD_LENGTH:
+        problems.append("too_short")
+    if not any(ch.isupper() for ch in password):
+        problems.append("no_upper")
+    if not any(ch.islower() for ch in password):
+        problems.append("no_lower")
+    if not any(ch.isdigit() for ch in password):
+        problems.append("no_digit")
+    if not any(not ch.isalnum() for ch in password):
+        problems.append("no_special")
+    return problems
 
 
 def verify_password(password: str, stored: str) -> bool:

@@ -24,7 +24,7 @@ from pathlib import Path
 
 from mfi_server.adoption import Adoption
 from mfi_server.api import make_api_server
-from mfi_server.auth import Sessions, LoginLimiter, hash_password, save_password_hash
+from mfi_server.auth import Sessions, LoginLimiter, hash_password, save_password_hash, password_problems, MIN_PASSWORD_LENGTH
 from mfi_server.automation_engine import AutomationEngine
 from mfi_server.automation_store import AutomationStore
 from mfi_server.bridge import MqttBridge
@@ -47,7 +47,6 @@ KEY_HEX_RE = re.compile(r"[0-9a-fA-F]{32}")
 KEY_FILE_MESSAGE = "key file must contain 32 hex characters"
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 MQTT_CLIENT_ID = "mfi-server"
-MIN_PASSWORD_LENGTH = 12
 HISTORY_PURGE_INTERVAL_S = 3600
 AUTOMATION_TICK_S = 1
 ENTITY_RE = re.compile(r"(switch|sensor)\.mfi_([0-9a-f]{12})_([0-9]+)(?:_([a-z_]+))?")
@@ -132,8 +131,20 @@ def _set_password_command(args: list[str]) -> int:
         repeat = getpass.getpass("Repeat: ")
         if password != repeat:
             return _fail("passwords do not match")
-        if len(password) < MIN_PASSWORD_LENGTH:
-            return _fail(f"password must be at least {MIN_PASSWORD_LENGTH} characters")
+        problems = password_problems(password)
+        if problems:
+            texts = {
+                "too_short": f"at least {MIN_PASSWORD_LENGTH} characters",
+                "no_upper": "an upper-case letter",
+                "no_lower": "a lower-case letter",
+                "no_digit": "a digit",
+                "no_special": "a special character",
+            }
+            missing = ", ".join(texts[code] for code in problems)
+            return _fail(
+                f"password must have at least {MIN_PASSWORD_LENGTH} characters, an upper-case letter, "
+                f"a lower-case letter, a digit and a special character; missing: {missing}"
+            )
         save_password_hash(data_dir, hash_password(password))
     except OSError as exc:
         return _fail(str(exc))

@@ -97,7 +97,7 @@ UNVERIFIED: the service user is dynamic. Run `set-password` and `import-backup` 
 python3 -m mfi_server set-password --data ./data
 ```
 
-The password is asked twice. It must be at least 12 characters and is never given on the command line. Until it is set, every route except `api/v1/health` answers 503 `password_not_set`.
+The password is asked twice and is never given on the command line. It may contain any character (accents, spaces and symbols included). It must be at least 12 characters and include at least one upper-case letter, one lower-case letter, one digit and one special character (any character that is not a letter or a digit, such as a space, a symbol or punctuation). Until it is set, every route except `api/v1/health` answers 503 `password_not_set`.
 
 ### Import a controller backup
 
