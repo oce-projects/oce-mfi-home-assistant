@@ -13,7 +13,7 @@ import re
 import unittest
 from pathlib import Path
 
-ADON = Path(__file__).resolve().parent.parent
+ADDONS = (Path(__file__).resolve().parents[1], Path(__file__).resolve().parents[2] / "mfi-controller")
 LANGUAGES = ("en", "it")
 
 
@@ -59,36 +59,48 @@ def translation_keys(text: str) -> set[str]:
 
 
 class TestTranslations(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.config = config_keys((ADON / "config.yaml").read_text(encoding="utf-8"))
-        cls.fields = {
-            lang: translation_fields((ADON / "translations" / f"{lang}.yaml").read_text(encoding="utf-8"))
+    def _load(self, addon: Path):
+        config = config_keys((addon / "config.yaml").read_text(encoding="utf-8"))
+        fields = {
+            lang: translation_fields((addon / "translations" / f"{lang}.yaml").read_text(encoding="utf-8"))
             for lang in LANGUAGES
         }
+        return config, fields
 
     def test_config_has_options(self):
-        self.assertTrue(self.config, "no option keys found in config.yaml")
+        for addon in ADDONS:
+            with self.subTest(addon=addon.name):
+                config, _ = self._load(addon)
+                self.assertTrue(config, "no option keys found in config.yaml")
 
     def test_keys_match_config_options(self):
-        for lang in LANGUAGES:
-            with self.subTest(lang=lang):
-                self.assertEqual(set(self.fields[lang]), self.config)
+        for addon in ADDONS:
+            with self.subTest(addon=addon.name):
+                config, fields = self._load(addon)
+                for lang in LANGUAGES:
+                    with self.subTest(lang=lang):
+                        self.assertEqual(set(fields[lang]), config)
 
     def test_every_key_has_name_and_description(self):
-        for lang in LANGUAGES:
-            for key in sorted(self.config):
-                entry = self.fields[lang].get(key, {})
-                for field in ("name", "description"):
-                    with self.subTest(lang=lang, key=key, field=field):
-                        self.assertTrue(entry.get(field, "").strip(), f"{lang}.{key}.{field} is empty or missing")
+        for addon in ADDONS:
+            with self.subTest(addon=addon.name):
+                config, fields = self._load(addon)
+                for lang in LANGUAGES:
+                    for key in sorted(config):
+                        entry = fields[lang].get(key, {})
+                        for field in ("name", "description"):
+                            with self.subTest(lang=lang, key=key, field=field):
+                                self.assertTrue(entry.get(field, "").strip(), f"{lang}.{key}.{field} is empty or missing")
 
     def test_italian_descriptions_differ_from_english(self):
-        for key in sorted(self.config):
-            with self.subTest(key=key):
-                it_text = self.fields["it"].get(key, {}).get("description", "")
-                en_text = self.fields["en"].get(key, {}).get("description", "")
-                self.assertNotEqual(it_text, en_text)
+        for addon in ADDONS:
+            with self.subTest(addon=addon.name):
+                config, fields = self._load(addon)
+                for key in sorted(config):
+                    with self.subTest(key=key):
+                        it_text = fields["it"].get(key, {}).get("description", "")
+                        en_text = fields["en"].get(key, {}).get("description", "")
+                        self.assertNotEqual(it_text, en_text)
 
     def test_key_check_fails_when_italian_key_is_missing(self):
         config_text = 'options:\n  a: ""\n  b: ""\nschema:\n  a: str\n  b: str\n'
