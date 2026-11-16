@@ -37,6 +37,8 @@ in `devices.json` inside the data folder: protect that folder and never publish 
 
 ## Run as a standalone program
 
+The ways to start it, the password, backups, MQTT and the data folder are in the [Run without Home Assistant](README.md#run-without-home-assistant) section of the README.
+
 ```
 cd mfi-server
 python3 -m mfi_server --data ./data
