@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1 - 2026-11-16
+
+- Apache License 2.0: the license text is in the repository `LICENSE` file, and the `License` section of `README.md` points to it. The image label `org.opencontainers.image.licenses` changes from `NOASSERTION` to `Apache-2.0` (`Dockerfile`); the stale comment about the missing LICENSE file is removed.
+- New test `tests/test_license.py` checks the key phrases of the license and the image label.
+- Versions aligned: `mfi-server` 0.9.1 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`.
+
 ## 0.9.0 - 2026-11-16
 
 - Adoption of new devices through the system `ssh` program: `adoption.py` sends `set-adopt` to a factory-default device found by discovery, with a new authkey (16 random bytes, hex). The record is saved as `adopting` before ssh runs, and becomes `adopt_failed` on failure.

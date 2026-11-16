@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.11.1 - 2026-11-16
+
+- Apache License 2.0 for the repository: full text in `LICENSE`, a `License` section in `README.md` and `mfi-server/README.md`, and a badge in `README.md`. The mFi Controller stays proprietary Ubiquiti software and is not covered by the license.
+- `mfi-server` image label `org.opencontainers.image.licenses` set to `Apache-2.0` (it was `NOASSERTION`); new test `mfi-server/tests/test_license.py`.
+- Versions aligned: `mfi-server` 0.9.1 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`; repository 0.11.1 in `VERSION` and `CHANGELOG.md`.
+
 ## 0.11.0 - 2026-11-16
 
 - Epic D2 of `mfi-server` 0.9.0 (phase 2): adoption of factory-default devices and re-pointing of adopted ones, through the system `ssh` program (`openssh-client` in the add-on image). The device password reaches ssh only through an askpass helper, never on the command line and never in the logs.

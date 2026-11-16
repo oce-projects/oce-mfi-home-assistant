@@ -1,5 +1,7 @@
 # oce-mfi-home-assistant
 
+![License](https://img.shields.io/badge/license-Apache--2.0-blue)
+
 Home Assistant add-ons to bring **Ubiquiti mFi** devices back to life:
 mPower and mPower PRO/mini power strips, mPort and mPort Serial sensor hubs,
 in-wall outlets and switches, and mFi sensors (current, door, motion, temperature).
@@ -51,4 +53,4 @@ mfi-server tests: `python3 -m unittest discover -s mfi-server/tests -t mfi-serve
 
 ## License
 
-To be decided.
+Apache License 2.0, see `LICENSE`. The mFi Controller downloaded by the `mfi-controller` add-on at build time is proprietary Ubiquiti software and is not covered by this license.
