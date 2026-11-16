@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 - 2026-11-16
+
+- UDP discovery on port 10001: new module `ubnt_discovery` (`parse_reply` and `Scanner`), a scan at startup, and the routes `api/v1/discovery` (list) and `api/v1/discovery/scan` (scan now).
+- Host network: `host_network: true` in `config.yaml`; the `ports` and `ports_description` blocks are removed, because with the host network the ports open directly.
+- New setting and add-on option `ingress_peer` (default empty in the add-on options, `172.30.32.2` in the settings): the add-on mode check uses `settings.ingress_peer` and logs a WARNING with the refused IP address.
+- «Discovered devices» section in the web page; «Network» section in `DOCS.md`.
+- Versions aligned: `mfi-server` 0.8.0 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`.
+
 ## 0.7.0 - 2026-11-16
 
 - Standalone examples in `examples/`: `settings.example.json` (all 13 keys of `FILE_KEYS`, default values, no secrets), `mfi-server.env.example` (one line per `MFI_*` variable), `docker-compose.yml` (ports only on the isolated device network) and `mfi-server.service` (systemd unit with `DynamicUser` and a read-only system).
