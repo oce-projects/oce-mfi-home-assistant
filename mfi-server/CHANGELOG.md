@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0 - 2026-11-16
+
+- Web page: Devices and Discovery in panels, styled discovery table, Search
+  button styled as a primary button.
+- Discovery lists only mFi devices (known / factory default / model / platform);
+  other Ubiquiti devices collapse under a details panel; MAC addresses are
+  formatted; Adopt only for factory-default devices, Re-point for known ones.
+- New GET api/v1/status route and a page message when the backup is missing,
+  empty or failed to import; backup_file is resolved against /share.
+
 ## 0.9.2 - 2026-11-16
 
 - English and Italian translations of the add-on options in `translations/en.yaml` and `translations/it.yaml`, one name and one description for each option; checked by the new test `tests/test_translations.py`.
