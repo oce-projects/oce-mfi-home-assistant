@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0 - 2026-11-16
+
+- Automations page in the web UI: list with enable/disable, run and delete; YAML editor with validation errors shown one per line with their path; run history (last 5 runs). Shared i18n and DOM helpers moved to `web/common.js`, loaded by both pages. New `web/automations.html` and `web/automations.js`, served from `STATIC_FILES`.
+
 ## 0.5.0 - 2026-11-15
 
 - Automation engine in the Home Assistant format (level 1), in pure Python, standard library only:
