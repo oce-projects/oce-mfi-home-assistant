@@ -16,8 +16,10 @@ Home Assistant OS, locally, without the vendor cloud.
 
 | Phase | Add-on | What it does | Status |
 |---|---|---|---|
-| 1 | `mfi-controller` | runs the original mFi Controller 2.1.11 in a container; Home Assistant talks to it with the core `mfi` integration | tested with Docker, not yet on HAOS (version in `mfi-controller/config.yaml`) |
-| 2 | `mfi-server` | our own server that speaks the device protocol directly and creates Home Assistant entities, without vendor code | in progress: inform core in pure Python (encryption, keys from .unf backups, states, commands, measurements); Home Assistant entities through MQTT discovery (broker optional); not yet tested with a real device (version in mfi-server/config.yaml). It also runs on its own, outside Home Assistant: see [mfi-server/README.md](mfi-server/README.md) |
+| 1 | mFi Controller (original): `mfi-controller` | runs the original mFi Controller 2.1.11 in a container; Home Assistant talks to it with the core `mfi` integration | tested with Docker, not yet on HAOS (version in `mfi-controller/config.yaml`) |
+| 2 | mFi Server (new): `mfi-server` | our own server that speaks the device protocol directly and creates Home Assistant entities, without vendor code | in progress: inform core in pure Python (encryption, keys from .unf backups, states, commands, measurements); Home Assistant entities through MQTT discovery (broker optional); not yet tested with a real device (version in mfi-server/config.yaml). It also runs on its own, outside Home Assistant: see [mfi-server/README.md](mfi-server/README.md) |
+
+**Which one?** For normal use, choose **mFi Server (new)**. **Ubiquiti mFi Controller (original)** is the unchanged Ubiquiti controller from 2015: use it only for comparison and to capture device traffic.
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Phase 2 add-on notes: [mfi-server/DOCS.md](mfi-server/DOCS.md).
@@ -34,7 +36,7 @@ this repository (experimental, not yet tested with a real device).
    example Mosquitto. MQTT is optional: without a broker the server still runs.
 2. In Home Assistant: Settings, Apps, App store, menu (three dots), Repositories.
    Add the URL `https://github.com/oce-projects/oce-mfi-home-assistant`.
-3. Install the app `mFi Server` from the store. The first build takes a few minutes.
+3. Install the app `mFi Server (new)` from the store. The first build takes a few minutes.
 4. Copy the controller backup (`.unf`) into `/share` and write its path in the
    `backup_file` option, for example `/share/backup.unf`.
 5. Start the app.
@@ -60,6 +62,10 @@ isolated network and never expose ports 6080, 6443 or 3478 to the internet.
 
 Read [AGENTS.md](AGENTS.md). Tests: `python3 -m unittest discover -s tests -v`.
 mfi-server tests: `python3 -m unittest discover -s mfi-server/tests -t mfi-server -v`.
+
+## Credits
+
+Add-on icons drawn by `tools/make_icons.py` after the Material Design Icons "power-socket-eu" glyph (Pictogrammers, Apache License 2.0).
 
 ## License
 

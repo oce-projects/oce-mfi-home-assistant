@@ -1,5 +1,13 @@
 # mFi Server
 
+## Quick start
+
+1. If you want the entities in Home Assistant, install the Mosquitto broker app.
+2. Copy the backup of the old controller (`.unf` file) into `/share`.
+3. Write its file name in the `backup_file` option (for example `backup.unf`).
+4. Start the app.
+5. Open "mFi" in the sidebar, press Search, then press Re-point on your devices.
+
 ## Status
 
 In progress. Not yet tested with a real device. Home Assistant entities come
@@ -12,7 +20,7 @@ connect_request), UNVERIFIED on a real device.
 
 Add the repository `https://github.com/oce-projects/oce-mfi-home-assistant` in
 the app store (Settings, Apps, App store, menu, Repositories), then install
-`mFi Server` from the store. The first build takes a few minutes.
+`mFi Server (new)` from the store. The first build takes a few minutes.
 
 To test a local change, copy the `mfi-server` folder into the local apps folder,
 as for `mfi-controller`: the `local_apps` share of the Samba app, or `/addons` in
