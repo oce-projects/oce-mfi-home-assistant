@@ -551,11 +551,17 @@ h3 {
 
 .auto {
   min-width: 0;
-  padding: var(--space-3);
+  padding: var(--space-4);
   background: var(--surface);
   border: 1px solid var(--rule);
   border-left: 4px solid var(--state-unknown);
   border-radius: var(--radius-panel);
+}
+
+@media (max-width: 599px) {
+  .auto {
+    padding: var(--space-3);
+  }
 }
 
 .auto--enabled {
@@ -596,7 +602,7 @@ h3 {
 }
 
 .auto__id {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
 }
 
 .auto__actions {
@@ -661,7 +667,7 @@ h3 {
   color: var(--ink);
   border: 1px solid var(--ink-muted);
   border-radius: var(--radius-control);
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 14px;
   line-height: 1.5;
   tab-size: 2;
@@ -702,7 +708,7 @@ h3 {
 }
 
 .errors code {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 14px;
 }
 
@@ -758,7 +764,7 @@ h3 {
 }
 
 .trace__path {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
 }
 
 /* Motion: colour changes are instant, nothing animates for users who ask for less motion */

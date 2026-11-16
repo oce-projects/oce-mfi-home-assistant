@@ -5,7 +5,6 @@
 // Translations and DOM helpers (t, el, loadStrings, detectLanguage, applyTranslations, setLang) come from common.js.
 
 const HISTORY_LIMIT = 5;
-const LIST_YAML_RE = /^-\s/m;
 const PLAIN_YAML_RE = /^(?:true|false|null|on|off|yes|no|~|[-+]?[0-9][0-9.:_]*)$/i;
 const SPECIAL_START_RE = /^[-?:,[\]{}&*!|>'"%@`#\s]/;
 const EXAMPLE_YAML = [
@@ -60,6 +59,7 @@ function loadRefs() {
 
 function reportError(err) {
   console.error(err);
+  if (messageEl) notify("auto_action_error", "message--error");
 }
 
 // ---------------------------------------------------------------- requests
@@ -104,18 +104,31 @@ async function loadAutomations() {
 
 async function setEnabled(id, enabled) {
   const response = await send("POST", "api/v1/automations/" + encodeURIComponent(id) + "/enable", { enabled: enabled });
+  if (response.status === 401) {
+    showLoginRequired();
+    return;
+  }
   if (!response.ok) throw new Error("enable request failed: " + response.status);
   await loadAutomations();
 }
 
 async function runAutomation(id) {
   const response = await send("POST", "api/v1/automations/" + encodeURIComponent(id) + "/trigger");
+  if (response.status === 401) {
+    showLoginRequired();
+    return;
+  }
   if (!response.ok) throw new Error("trigger request failed: " + response.status);
+  notify("auto_run_done", "message--ok");
 }
 
 async function deleteAutomation(id) {
   if (!window.confirm(t("auto_confirm_delete"))) return;
   const response = await send("DELETE", "api/v1/automations/" + encodeURIComponent(id));
+  if (response.status === 401) {
+    showLoginRequired();
+    return;
+  }
   if (!response.ok) throw new Error("delete request failed: " + response.status);
   if (editingId === id) editingId = "";
   if (historyId === id) {
@@ -141,6 +154,10 @@ async function editAutomation(id) {
 
 async function loadTraces(id, alias) {
   const response = await fetch("api/v1/automations/" + encodeURIComponent(id) + "/traces");
+  if (response.status === 401) {
+    showLoginRequired();
+    return;
+  }
   if (!response.ok) throw new Error("traces request failed: " + response.status);
   const body = await response.json();
   historyId = id;
@@ -162,9 +179,18 @@ async function checkYaml() {
   throw new Error("validate request failed: " + response.status);
 }
 
+function isYamlList(text) {
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (line === "" || line.startsWith("#")) continue;
+    return line === "-" || line.startsWith("- ");
+  }
+  return false;
+}
+
 async function saveYaml() {
   const text = yamlEl.value;
-  if (LIST_YAML_RE.test(text)) {
+  if (isYamlList(text)) {
     const imported = await send("POST", "api/v1/automations/import", { yaml: text });
     if (imported.ok) {
       editingId = "";
@@ -376,7 +402,9 @@ function yamlLines(value, indent) {
   const lines = [];
   if (Array.isArray(value)) {
     for (const item of value) {
-      if (item !== null && typeof item === "object") {
+      if (item !== null && typeof item === "object" && Object.keys(item).length === 0) {
+        lines.push(pad + "- {}");
+      } else if (item !== null && typeof item === "object") {
         const nested = yamlLines(item, indent + 1);
         lines.push(pad + "- " + (nested.length > 0 ? nested[0].trimStart() : ""));
         lines.push(...nested.slice(1));
@@ -390,6 +418,8 @@ function yamlLines(value, indent) {
     const item = value[key];
     if (Array.isArray(item) && item.length === 0) {
       lines.push(pad + key + ": []");
+    } else if (item !== null && typeof item === "object" && Object.keys(item).length === 0) {
+      lines.push(pad + key + ": {}");
     } else if (item !== null && typeof item === "object") {
       lines.push(pad + key + ":");
       lines.push(...yamlLines(item, indent + 1));

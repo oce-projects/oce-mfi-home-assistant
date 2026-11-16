@@ -99,16 +99,16 @@ class TestWebPage(unittest.TestCase):
         self.assertEqual(len(class_sets), 1, "header nav links differ in classes")
 
     def test_index_links_to_automations_and_back(self):
+        self.assertIn("automations.html", self.html)
         self.assertIn('href="automations.html"', self.html["index.html"])
-        if "automations.html" in self.html:
-            self.assertIn('href="index.html"', self.html["automations.html"])
+        self.assertIn('href="index.html"', self.html["automations.html"])
 
     def test_automations_js_uses_relative_automation_routes(self):
-        if "automations.js" in self.js:
-            text = self.js["automations.js"]
-            for route in AUTOMATION_ROUTES:
-                with self.subTest(route=route):
-                    self.assertIn(route, text)
+        self.assertIn("automations.js", self.js)
+        text = self.js["automations.js"]
+        for route in AUTOMATION_ROUTES:
+            with self.subTest(route=route):
+                self.assertIn(route, text)
 
 
 if __name__ == "__main__":

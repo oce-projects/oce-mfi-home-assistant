@@ -64,5 +64,7 @@
   "trace_condition_false": "Condition not met",
   "trace_stopped": "Stopped",
   "trace_skipped": "Skipped",
-  "trace_error": "Error"
+  "trace_error": "Error",
+  "auto_action_error": "The action could not be completed",
+  "auto_run_done": "Automation triggered"
 }
