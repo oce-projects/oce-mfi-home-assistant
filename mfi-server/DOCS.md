@@ -23,6 +23,10 @@ Terminal app. Reload the store, then install the app.
 | `mqtt_topic_prefix` | Prefix of the MQTT topics. Default `mfi`. |
 | `mqtt_discovery_prefix` | Prefix of the Home Assistant discovery topics. Default `homeassistant`. |
 | `ingress_peer` | Add-on mode: the only address served by the web page (Home Assistant ingress). Default `172.30.32.2`. See [Network](#network). |
+| `server_address` | IPv4 address of the host where mfi-server runs. Empty = automatic. See [Adopting and re-pointing devices](#adopting-and-re-pointing-devices). |
+| `device_ssh_username` | Administrator name of the old controller, used to re-point devices. |
+| `device_ssh_password` | Administrator password of the old controller, used to re-point devices. Never shown in the API or in the logs. |
+| `ssh_extra_options` | Extra SSH algorithm options. The default is UNVERIFIED, see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices). |
 
 ## Import the keys from a controller backup
 
@@ -64,6 +68,10 @@ An optional file `data/settings.json` may hold the same keys as the options.
 | `MFI_WEB_PORT` | 8099 |
 | `MFI_HISTORY_DAYS` | 30 |
 | `MFI_INGRESS_PEER` | 172.30.32.2 |
+| `MFI_SERVER_ADDRESS` | empty (automatic) | Address of the server in the inform URL, see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices) |
+| `MFI_DEVICE_SSH_USERNAME` | empty | SSH user of the old controller, used to re-point devices |
+| `MFI_DEVICE_SSH_PASSWORD` | empty | SSH password of the old controller, never logged or shown in the API |
+| `MFI_SSH_EXTRA_OPTIONS` | see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices) | Extra SSH algorithm options (the default is UNVERIFIED) |
 
 Precedence: variable, then file, then default.
 
@@ -140,6 +148,8 @@ found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is
 | `api/v1/history` | GET | `mac`, `sensor_id`, `tag`, `from` and `to` (milliseconds); returns `points` as `[time_ms, value]` |
 | `api/v1/discovery` | GET | devices found on the network by the last UDP discovery scan, as `{"devices": [...]}`; each has `known` (already in the server) |
 | `api/v1/discovery/scan` | POST | run a new scan now (3 s by default) and return the devices found; 409 `scan_in_progress` if a scan is already running |
+| `api/v1/discovery/<mac>/adopt` | POST | adopt a factory-default device over SSH; 202 `{"result": "sent"}` |
+| `api/v1/devices/<mac>/repoint` | POST | re-point a known device over SSH; optional body `{"ip": "..."}`; 202 |
 
 History is kept for `history_days` (default 30) in `history.sqlite3` inside the data folder.
 
@@ -251,7 +261,7 @@ An mFi device reaches a server in one of two ways:
 - **Adoption**: a device that is factory new or was reset is adopted. The server sets the device's inform address and a new authentication key over SSH.
 - **Re-pointing**: a device already adopted by an old controller is pointed at the new server over SSH. The device keeps the key it already has, so it does not have to be reset.
 
-Adopt a device from the discovery table of the web page with the **Adopt** button, or with `POST api/v1/discovery/<mac>/adopt`. Re-point a device with the **Repoint** button on its card, or with `POST api/v1/devices/<mac>/repoint`; the body may hold `{"ip": "..."}` to give the device address, otherwise the address from the last discovery scan is used.
+Adopt a device from the discovery table of the web page with the **Adopt** button, or with `POST api/v1/discovery/<mac>/adopt`. Re-point a device with the **Repoint** button in the device list (for devices that are not connected), or with `POST api/v1/devices/<mac>/repoint`; the body may hold `{"ip": "..."}` to give the device address, otherwise the address from the last discovery scan is used.
 
 Adoption is refused with 409 `not_factory_default` when the discovery scan does not report the device as factory default. Re-pointing needs the device to be known (it must have an authentication key) and the two `device_ssh_*` options to be set.
 
@@ -288,6 +298,7 @@ The add-on uses the network of the host (`host_network`), so its ports open dire
 
 | Port | Protocol | Use |
 |---|---|---|
+| 22 | tcp | Outgoing SSH to the devices, for adoption and re-pointing |
 | 6080 | tcp | Inform: mFi devices report to the server (HTTP) |
 | 3478 | udp | Wake-up packets sent to the devices |
 | 8099 | tcp | Web API and web page |

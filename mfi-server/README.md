@@ -15,6 +15,7 @@ Home Assistant OS.
 - Device states and outlet commands.
 - Measurements.
 - UDP discovery of the devices on the local network (port 10001, UNVERIFIED on a device), shown on the web page.
+- Adoption and re-pointing of devices over SSH, with the system `ssh` program (see DOCS.md; not tested on a real device).
 - Never sends a factory reset to a device.
 - MQTT discovery for Home Assistant (optional in standalone mode).
 - JSON web API on port 8099, and measurement history in `history.sqlite3` (30 days by default).
