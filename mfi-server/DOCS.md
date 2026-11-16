@@ -22,7 +22,7 @@ the Advanced SSH & Web Terminal app. Reload the store, then install the app.
 
 | Option | Meaning |
 |---|---|
-| `backup_file` | Path of an old controller backup, for example `/share/mfi/backup.unf`. Imported at every start; the import is idempotent. |
+| `backup_file` | Path of an old controller backup, for example `/share/mfi/backup.unf`. A bare file name (for example `backup.unf`) is looked up in `/share`. Imported at every start; the import is idempotent. |
 | `log_level` | `debug`, `info`, `warning` or `error`. |
 | `mqtt_topic_prefix` | Prefix of the MQTT topics. Default `mfi`. |
 | `mqtt_discovery_prefix` | Prefix of the Home Assistant discovery topics. Default `homeassistant`. |
