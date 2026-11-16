@@ -21,6 +21,7 @@ from mfi_server.config import Settings
 from mfi_server.control import OutputControl
 from mfi_server.history import History
 from mfi_server.measurements import Measurements
+from mfi_server.ssh_adopt import SshError
 from mfi_server.states import DeviceStates
 from mfi_server.ubnt_discovery import ScanInProgress
 
@@ -75,6 +76,24 @@ class FakeStore:
         return self._records.get(mac)
 
 
+class FakeAdoption:
+    """Stands in for Adoption: the API only calls adopt() and repoint()."""
+
+    def __init__(self) -> None:
+        self.exc = None
+        self.calls: list[tuple] = []
+
+    def adopt(self, mac: str) -> None:
+        self.calls.append(("adopt", mac))
+        if self.exc is not None:
+            raise self.exc
+
+    def repoint(self, mac: str, ip: str | None = None) -> None:
+        self.calls.append(("repoint", mac, ip))
+        if self.exc is not None:
+            raise self.exc
+
+
 class TestApi(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
@@ -101,6 +120,7 @@ class TestApi(unittest.TestCase):
                 {"mac": "02aabbccdd02", "ip": "192.168.1.20", "model": "mPort", "seen_ms": 0},
             ]
         )
+        self.adoption = FakeAdoption()
         self.servers: list = []
         self.server = self._start("standalone")
 
@@ -130,6 +150,7 @@ class TestApi(unittest.TestCase):
             self.automations,
             self.engine,
             self.scanner,
+            self.adoption,
         )
         threading.Thread(target=server.serve_forever, daemon=True).start()
         self.servers.append(server)
@@ -388,6 +409,74 @@ class TestApi(unittest.TestCase):
         devices = {device["mac"]: device for device in json.loads(body)["devices"]}
         self.assertIs(devices[MAC]["known"], True)
         self.assertIs(devices["02aabbccdd02"]["known"], False)
+
+    def test_adopt_with_cookie_is_202(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", "/api/v1/discovery/02aabbccdd02/adopt", headers=headers)
+        self.assertEqual(status, 202)
+        self.assertEqual(json.loads(body), {"result": "sent"})
+        self.assertEqual(self.adoption.calls, [("adopt", "02aabbccdd02")])
+
+    def test_adopt_unknown_mac_is_404(self):
+        self.adoption.exc = LookupError()
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", "/api/v1/discovery/02aabbccdd09/adopt", headers=headers)
+        self.assertEqual(status, 404)
+        self.assertEqual(json.loads(body), {"error": "not_found"})
+
+    def test_repoint_without_ssh_credentials_is_409(self):
+        self.adoption.exc = PermissionError("ssh_credentials_not_set")
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", f"/api/v1/devices/{MAC}/repoint", headers=headers)
+        self.assertEqual(status, 409)
+        self.assertEqual(json.loads(body), {"error": "ssh_credentials_not_set"})
+
+    def test_adopt_ssh_failure_is_502_without_secrets(self):
+        self.adoption.exc = SshError("connection_failed")
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", "/api/v1/discovery/02aabbccdd02/adopt", headers=headers)
+        self.assertEqual(status, 502)
+        self.assertEqual(json.loads(body), {"error": "connection_failed"})
+        self.assertNotIn(PASSWORD.encode("utf-8"), body)
+        self.assertNotIn(b"authkey", body)
+
+    def test_adopt_ssh_invalid_input_is_400(self):
+        self.adoption.exc = SshError("invalid_input")
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", "/api/v1/discovery/02aabbccdd02/adopt", headers=headers)
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(body), {"error": "invalid_input"})
+
+    def test_adopt_without_cookie_is_401(self):
+        self._set_password()
+        status, _, body = self._request("POST", "/api/v1/discovery/02aabbccdd02/adopt")
+        self.assertEqual(status, 401)
+        self.assertEqual(json.loads(body), {"error": "unauthorized"})
+        self.assertEqual(self.adoption.calls, [])
+
+    def test_repoint_passes_ip_from_body(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request(
+            "POST", f"/api/v1/devices/{MAC}/repoint", body={"ip": "192.168.1.20"}, headers=headers
+        )
+        self.assertEqual(status, 202)
+        self.assertEqual(json.loads(body), {"result": "sent"})
+        self.assertEqual(self.adoption.calls, [("repoint", MAC, "192.168.1.20")])
+
+    def test_repoint_without_body_passes_no_ip(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, _ = self._request("POST", f"/api/v1/devices/{MAC}/repoint", headers=headers)
+        self.assertEqual(status, 202)
+        self.assertEqual(self.adoption.calls, [("repoint", MAC, None)])
+
+    def test_repoint_non_string_ip_is_400(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request(
+            "POST", f"/api/v1/devices/{MAC}/repoint", body={"ip": 5}, headers=headers
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(body), {"error": "bad_request"})
+        self.assertEqual(self.adoption.calls, [])
 
 
 if __name__ == "__main__":
