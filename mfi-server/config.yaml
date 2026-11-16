@@ -4,12 +4,10 @@
 # Format: https://developers.home-assistant.io/docs/apps/configuration
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
-name: "mFi Server"
-version: "0.10.0"
+name: "mFi Server (new)"
+version: "0.10.1"
 slug: "mfi_server"
-description: >-
-  Our own mFi controller in pure Python: speaks the inform protocol with already
-  adopted mPower and mPort devices, using the keys of an old controller backup.
+description: "New mFi controller written from scratch in pure Python, no Ubiquiti code. Recommended."
 url: "https://github.com/oce-projects/oce-mfi-home-assistant"
 arch:
   - amd64
