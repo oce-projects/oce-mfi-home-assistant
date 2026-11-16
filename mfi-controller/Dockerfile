@@ -11,6 +11,7 @@
 #           Debian 8 jessie with OpenJDK 7 and MongoDB 2.4, data in /data.
 #   0.1.2 - 2026-11-15 - BUILD_VERSION default aligned with config.yaml; version line removed from the header.
 #   0.1.3 - 2026-11-15 - BUILD_VERSION 0.1.3 (security notes in DOCS.md).
+#   0.1.4 - 2026-11-16 - store presentation: name "(original)", short description; version 0.1.4. Image content unchanged.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -42,7 +43,7 @@ RUN curl -fsSL --retry 3 -o /tmp/mFi.unix.zip "${MFI_URL}" \
 # -----------------------------------------------------------------------------
 FROM debian/eol:jessie@sha256:81cc60273fcd009665b917085e8edb4a44af01130e42a9349545bcaaf05236a2
 
-ARG BUILD_VERSION="0.1.3"
+ARG BUILD_VERSION="0.1.4"
 ARG BUILD_ARCH="amd64"
 
 RUN apt-get update \
@@ -76,8 +77,8 @@ LABEL \
     io.hass.version="${BUILD_VERSION}" \
     io.hass.type="app" \
     io.hass.arch="amd64" \
-    io.hass.name="Ubiquiti mFi Controller" \
-    org.opencontainers.image.title="Ubiquiti mFi Controller" \
+    io.hass.name="Ubiquiti mFi Controller (original)" \
+    org.opencontainers.image.title="Ubiquiti mFi Controller (original)" \
     org.opencontainers.image.description="Original Ubiquiti mFi Controller 2.1.11 for Home Assistant" \
     org.opencontainers.image.source="https://github.com/oce-projects/oce-mfi-home-assistant"
 
