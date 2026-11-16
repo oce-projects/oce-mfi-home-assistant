@@ -1,6 +1,6 @@
 # oce-mfi-home-assistant
 
-![License](https://img.shields.io/badge/license-Apache--2.0-blue)
+![License](https://img.shields.io/badge/license-Apache--2.0-blue) [![tests](https://github.com/oce-projects/oce-mfi-home-assistant/actions/workflows/tests.yml/badge.svg)](https://github.com/oce-projects/oce-mfi-home-assistant/actions/workflows/tests.yml)
 
 Home Assistant add-ons to bring **Ubiquiti mFi** devices back to life:
 mPower and mPower PRO/mini power strips, mPort and mPort Serial sensor hubs,
@@ -10,7 +10,7 @@ The mFi product line and its controller software were discontinued by Ubiquiti.
 Many devices still work fine. This repository aims to run them from
 Home Assistant OS, locally, without the vendor cloud.
 
-> Status: **early work, private repository.** Nothing here is ready to install yet.
+> Status: **early work, public.** The `mfi-server` app installs from this repository (experimental, not yet tested with a real device).
 
 ## Plan
 
@@ -22,18 +22,28 @@ Home Assistant OS, locally, without the vendor cloud.
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Phase 2 add-on notes: [mfi-server/DOCS.md](mfi-server/DOCS.md).
 
-## Install (when an add-on is ready)
+Project: [CHANGELOG.md](CHANGELOG.md), [security policy](SECURITY.md),
+[contributing guide](CONTRIBUTING.md), [open issues](https://github.com/oce-projects/oce-mfi-home-assistant/issues).
 
-Home Assistant now calls add-ons "apps".
+## Install
 
-1. In Home Assistant: Settings, Apps, App store, menu, Repositories.
-2. Add the URL of this repository.
-3. Install the app from the store.
+Home Assistant now calls add-ons "apps". The `mFi Server` app is installed from
+this repository (experimental, not yet tested with a real device).
 
-While the repository is private, an app can be tested by copying its folder
-into the local apps folder of Home Assistant OS: the `local_apps` share of the
-Samba app, or `/addons` in the Advanced SSH & Web Terminal app (same folder).
-Step-by-step guide: [mfi-controller/DOCS.md](mfi-controller/DOCS.md).
+1. Optional, for the Home Assistant entities: install an MQTT broker app, for
+   example Mosquitto. MQTT is optional: without a broker the server still runs.
+2. In Home Assistant: Settings, Apps, App store, menu (three dots), Repositories.
+   Add the URL `https://github.com/oce-projects/oce-mfi-home-assistant`.
+3. Install the app `mFi Server` from the store. The first build takes a few minutes.
+4. Copy the controller backup (`.unf`) into `/share` and write its path in the
+   `backup_file` option, for example `/share/backup.unf`.
+5. Start the app.
+6. Open `mFi` in the sidebar.
+
+To test a local change, copy the add-on folder into the local apps folder of
+Home Assistant OS (the `local_apps` share of the Samba app, or `/addons` in the
+Advanced SSH & Web Terminal app). Step-by-step guide for the original controller:
+[mfi-controller/DOCS.md](mfi-controller/DOCS.md).
 
 ## Vendor software
 

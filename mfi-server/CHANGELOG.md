@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.2 - 2026-11-16
+
+- English and Italian translations of the add-on options in `translations/en.yaml` and `translations/it.yaml`, one name and one description for each option; checked by the new test `tests/test_translations.py`.
+- Versions aligned: `mfi-server` 0.9.2 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`.
+
 ## 0.9.1 - 2026-11-16
 
 - Apache License 2.0: the license text is in the repository `LICENSE` file, and the `License` section of `README.md` points to it. The image label `org.opencontainers.image.licenses` changes from `NOASSERTION` to `Apache-2.0` (`Dockerfile`); the stale comment about the missing LICENSE file is removed.
