@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.9.0 - 2026-11-16
+
+- Epic T-MWIEDB3M: `mfi-server` runs as a standalone program, outside Home Assistant. Added systemd and Docker Compose examples, a settings example (`settings.example.json`), an environment example (`mfi-server.env.example`), a «Run without Home Assistant» guide in the `mfi-server` README, and the test `tests/test_examples.py` that keeps the examples aligned with the real settings.
+- Versions aligned: `mfi-server` 0.7.0 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`; repository 0.9.0 in `VERSION` and `CHANGELOG.md`.
+
 ## 0.8.0 - 2026-11-16
 
 - Epic F-UI of `mfi-server` 0.6.0 (phase 2): automations web page (list, enable/disable, run, delete, YAML editor with errors, run history) and the shared `web/common.js` loaded by both pages.
