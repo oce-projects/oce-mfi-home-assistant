@@ -1,0 +1,4 @@
+configuration:
+  java_max_memory_mb:
+    name: "Memoria massima di Java (MB)"
+    description: "Memoria massima (heap) per il processo Java del controller, in megabyte. Valore predefinito 1024. Aumentala solo se il controller esaurisce la memoria."
