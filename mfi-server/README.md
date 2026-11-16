@@ -1,7 +1,20 @@
-# mFi Server
+# mFi Server (new)
 
-Our own controller for Ubiquiti mFi devices: the devices report to this server
-directly, without the 2015 mFi Controller.
+mFi Server (new) is our own controller for Ubiquiti mFi devices, written from scratch in pure Python with no Ubiquiti code. The devices report directly to this server, without the 2015 mFi Controller from Ubiquiti.
+
+## Which one should I install?
+
+Install **mFi Server (new)**: it is the recommended one. **Ubiquiti mFi Controller (original)** is kept only for comparison and for capturing the traffic of the devices.
+
+## Quick start
+
+1. If you want the entities in Home Assistant, install the Mosquitto broker app.
+2. Copy the backup of the old controller (`.unf` file) into `/share`.
+3. Write its file name in the `backup_file` option (for example `backup.unf`).
+4. Start the app.
+5. Open "mFi" in the sidebar, press Search, then press Re-point on your devices.
+
+See [DOCS.md](DOCS.md) for the full documentation.
 
 ## Status
 

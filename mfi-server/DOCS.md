@@ -1,5 +1,13 @@
 # mFi Server
 
+## Quick start
+
+1. If you want the entities in Home Assistant, install the Mosquitto broker app.
+2. Copy the backup of the old controller (`.unf` file) into `/share`.
+3. Write its file name in the `backup_file` option (for example `backup.unf`).
+4. Start the app.
+5. Open "mFi" in the sidebar, press Search, then press Re-point on your devices.
+
 ## Status
 
 In progress. Not yet tested with a real device. Home Assistant entities come
