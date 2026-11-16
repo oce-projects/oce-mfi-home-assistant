@@ -8,6 +8,7 @@ triggers is the job of automation_engine, not of this module.
 from __future__ import annotations
 
 import copy
+import math
 import re
 
 MODES = ("single", "restart", "queued", "parallel")
@@ -25,7 +26,7 @@ UNSUPPORTED_TYPES = frozenset(
     {"sun", "mqtt", "repeat", "wait_template", "wait_for_trigger", "variables", "event", "template"}
 )
 SWITCH_SERVICES = ("switch.turn_on", "switch.turn_off", "switch.toggle")
-TOP_KEYS = frozenset({"id", "enabled", "mode", "max", "triggers", "conditions", "actions"})
+TOP_KEYS = frozenset({"id", "alias", "description", "enabled", "mode", "max", "triggers", "conditions", "actions"})
 TRIGGER_KEYS = {
     "state": frozenset({"trigger", "entity_id", "from", "to", "for"}),
     "numeric_state": frozenset({"trigger", "entity_id", "above", "below", "for"}),
@@ -117,7 +118,12 @@ def parse_duration(value: object) -> float:
             raise ValueError("duration mapping must have hours, minutes or seconds only")
         total = 0.0
         for unit, amount in value.items():
-            if isinstance(amount, bool) or not isinstance(amount, (int, float)) or amount < 0:
+            if (
+                isinstance(amount, bool)
+                or not isinstance(amount, (int, float))
+                or not math.isfinite(amount)
+                or amount < 0
+            ):
                 raise ValueError(f"invalid {unit}")
             total += amount * DURATION_UNITS[unit]
         return float(total)
@@ -223,7 +229,11 @@ def _check_number(item: dict, key: str, path: str, errors: list[str]) -> None:
     if key not in item or _is_template(item[key]):
         return
     value = item[key]
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or (isinstance(value, float) and not math.isfinite(value))
+    ):
         errors.append(_err(_join(path, key), "must be a number"))
 
 

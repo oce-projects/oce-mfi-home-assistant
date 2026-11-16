@@ -370,8 +370,12 @@ class AutomationEngine:
                 mac, port = located
                 if service == "switch.toggle":
                     value = 0 if self._entities(entity_id) == "on" else 1
+                elif service == "switch.turn_on":
+                    value = 1
+                elif service == "switch.turn_off":
+                    value = 0
                 else:
-                    value = 1 if service == "switch.turn_on" else 0
+                    return _fail(trace, path, f"unknown service {service}")
                 self._set_output(mac, port, value)
         except Exception as exc:
             return _fail(trace, path, str(exc) or type(exc).__name__)
