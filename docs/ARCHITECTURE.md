@@ -52,6 +52,7 @@ flowchart LR
 | 2026-11-15 | Home Assistant entities come through MQTT discovery; the server exposes its data over MQTT by default, and MQTT is optional when no broker is configured |
 | 2026-11-15 | Web API: measurement history in sqlite3 for 30 days; standalone login with a salted PBKDF2 password hash; add-on access only through the Home Assistant ingress |
 | 2026-11-16 | Automations use the Home Assistant format; the engine is our own code, written clean room (no Home Assistant code copied) |
+| 2026-11-16 | Repository published on GitHub (public, existing history kept); standard install from the add-on store |
 
 ## Existing work (checked 2026-11-15)
 
