@@ -66,5 +66,17 @@
   "trace_skipped": "Skipped",
   "trace_error": "Error",
   "auto_action_error": "The action could not be completed",
-  "auto_run_done": "Automation triggered"
+  "auto_run_done": "Automation triggered",
+  "discovery_heading": "Devices found",
+  "discovery_search": "Search",
+  "discovery_searching": "Searching\u2026",
+  "discovery_empty": "No devices found yet",
+  "discovery_col_mac": "MAC",
+  "discovery_col_ip": "IP",
+  "discovery_col_model": "Model",
+  "discovery_col_firmware": "Firmware",
+  "discovery_col_default": "Factory",
+  "discovery_col_known": "Already known",
+  "discovery_yes": "Yes",
+  "discovery_no": "No"
 }
