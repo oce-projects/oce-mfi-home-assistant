@@ -400,6 +400,7 @@ function closeChart() {
 // ---------------------------------------------------------------- discovery
 
 async function loadDiscovery() {
+  if (discoverySearching) return;
   const response = await fetch("api/v1/discovery");
   if (response.status === 401) {
     showLogin();
@@ -509,7 +510,6 @@ async function start() {
   renderDevices();
   renderDiscovery();
   loadHealth().catch(reportError);
-  loadDiscovery().catch(reportError);
   refreshDevices().catch(reportError);
   window.setInterval(() => {
     refreshDevices().catch(reportError);
