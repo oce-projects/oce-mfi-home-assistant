@@ -149,4 +149,4 @@ Keep the mFi devices on an isolated network. Never expose ports 6080, 3478 or
 
 ## License
 
-To be decided.
+Apache License 2.0, see `../LICENSE`.

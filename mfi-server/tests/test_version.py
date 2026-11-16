@@ -29,8 +29,8 @@ class TestVersion(unittest.TestCase):
         self.assertIsNotNone(m)
         self.assertEqual(m.group(1), __version__)
 
-    def test_version_is_0_9_0(self):
-        self.assertEqual(__version__, "0.9.0")
+    def test_version_is_0_9_1(self):
+        self.assertEqual(__version__, "0.9.1")
 
     def test_dockerfile_installs_openssh_client(self):
         text = (ADDON / "Dockerfile").read_text(encoding="utf-8")
