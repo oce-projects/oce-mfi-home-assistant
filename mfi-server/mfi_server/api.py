@@ -38,6 +38,7 @@ AUTOMATIONS_VALIDATE_ROUTE = "api/v1/automations/validate"
 AUTOMATIONS_IMPORT_ROUTE = "api/v1/automations/import"
 DISCOVERY_ROUTE = "api/v1/discovery"
 DISCOVERY_SCAN_ROUTE = "api/v1/discovery/scan"
+STATUS_ROUTE = "api/v1/status"
 SESSION_COOKIE = "mfi_session"
 WEB_DIR = Path(__file__).resolve().parent / "web"
 STATIC_FILES = {
@@ -85,6 +86,7 @@ class ApiServer(ThreadingHTTPServer):
         self.engine = engine
         self.scanner = scanner
         self.adoption = adoption
+        self.backup_status = {"configured": False, "file": "", "devices": 0, "error": None}
         super().__init__((settings.bind_address, getattr(settings, "web_port", DEFAULT_WEB_PORT)), ApiHandler)
 
 
@@ -200,6 +202,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._send_json(200, [self._device_view(record) for record in self.server.store.all()])
         elif route == DISCOVERY_ROUTE:
             self._discovery()
+        elif route == STATUS_ROUTE:
+            self._send_json(200, {"backup": self.server.backup_status})
         elif len(parts) == 4 and parts[2] == "devices":
             record = self.server.store.get(parts[3])
             if record is None:
