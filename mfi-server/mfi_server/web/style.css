@@ -767,6 +767,80 @@ h3 {
   font-family: var(--font-ui);
 }
 
+.section__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--rule);
+}
+
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--rule);
+  vertical-align: middle;
+}
+
+.table tbody tr:nth-child(even) {
+  background: var(--paper);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.tag {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tag--default {
+  color: var(--signal);
+}
+
+.tag--known {
+  color: var(--state-connected);
+}
+
+.tag--other {
+  color: var(--ink-muted);
+}
+
+.other {
+  margin-top: var(--space-4);
+}
+
+.other summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
 /* Motion: colour changes are instant, nothing animates for users who ask for less motion */
 @media (prefers-reduced-motion: reduce) {
   *,
