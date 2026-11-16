@@ -2,6 +2,13 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.14.0 - 2026-11-17
+
+- New folder `mfi-wifi-setup/` (0.1.0, not an add-on): Windows helper for the first setup of Wi-Fi devices. Wi-Fi devices without a Wi-Fi configuration serve their setup page only at `https://192.168.2.20` over TLS 1.0, which current browsers refuse. The prototype `prototype/legacy_tls_proxy.py` bridges the browser to that page; verified on an mPower mini (firmware v2.1.11).
+- Specification of the program, tests and proposed tickets W1 to W5 in `docs/WIFI-SETUP.md`.
+- `docs/PROTOCOL.md`: new section "Wi-Fi setup mode" with measured TLS facts, endpoints, form fields and states; factory state of Wi-Fi models and of the mPort from the Quick Start Guides; new label MEASURED; open questions 15 to 17.
+- `docs/ARCHITECTURE.md` and `AGENTS.md`: the new component, and the decision for a Windows program instead of a browser extension.
+
 ## 0.13.2 - 2026-11-17
 
 - Test fix (`tests/test_repository.py` 1.5.0): the private data scan now allows `192.168.2.20`, the fixed address where every mFi Wi-Fi device in setup mode serves its setup page. It is a vendor default, the same on every device in the world, not a site address. The exception is exact: other addresses of the same network are still reported (new check in the planted-sample test).

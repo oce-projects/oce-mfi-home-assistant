@@ -7,6 +7,7 @@ Labels used below:
 - OBSERVED: read in the decompiled code.
 - BYTECODE: also checked with `javap -c` on the original class.
 - INFERRED: deduced from the code or from other facts; the reason is given.
+- MEASURED: seen on a real device; date and model are given.
 - UNVERIFIED: not confirmed.
 
 Anything marked `UNVERIFIED` must not be relied on.
@@ -251,6 +252,62 @@ From public projects, UNVERIFIED on our units:
 - Default credentials `ubnt` / `ubnt`.
 - Direct connection default IP `192.168.1.20`; DHCP on a LAN.
 - Reset: hold the reset button until the LED changes (exact pattern per model in the Quick Start Guides).
+- Wi-Fi models (mPower, mPower mini, in-wall outlet MPW/MPW-W, in-wall switch LD/LD-W) without a Wi-Fi configuration run their own access point; setup page at `https://192.168.2.20` (8 Quick Start Guides). See "Wi-Fi setup mode".
+- mPort and mPort Serial: no access point. Setup page over Ethernet at `http://192.168.1.20` with the computer on a static `192.168.1.x` address, or through DHCP on the LAN (mPort Quick Start Guides). Its TLS: UNVERIFIED.
+
+## Wi-Fi setup mode (access point)
+
+MEASURED on 2026-11-17 on an mPower mini (firmware v2.1.11, from `status.cgi`), from a Windows PC joined to the device access point. Raw captures stay outside the repository: they contain MAC addresses and the names of nearby networks.
+
+- The setup page is at `https://192.168.2.20`, the same address on every device. Ping: 4 of 4 replies, 2 to 7 ms.
+- TLS (OpenSSL 3.2.1 `s_client`): TLSv1 only; TLSv1.1 and TLSv1.2 fail. Accepted suites: `AES256-SHA`, `AES128-SHA`, `DHE-RSA-AES256-SHA`, `DHE-RSA-AES128-SHA`. Refused: `ECDHE-RSA-AES256-SHA`, `ECDHE-RSA-AES128-SHA`, `CAMELLIA256-SHA`, `DHE-RSA-CAMELLIA256-SHA`. Not tested (missing in the client build): `DES-CBC3-SHA`, `RC4-SHA`, `RC4-MD5`, `SEED-SHA`. RSA key 1024 bit, DH 1024 bit, signature digest MD5-SHA1.
+- Certificate: self-signed, `O=Ubiquiti Networks Inc.`, `CN=ubnt`, `sha1WithRSAEncryption`, valid from 2007-05-17 to 2018-04-29 (expired). Web server `lighttpd/1.4.31`.
+- Current browsers refuse TLS 1.0, so the page needs a bridge: `docs/WIFI-SETUP.md`.
+
+Endpoints, OBSERVED in the page script and MEASURED in the responses:
+
+| Endpoint | Method | What | Seen |
+|---|---|---|---|
+| `/` | GET | setup page, sets cookie `AIROS_SESSIONID` | 200, `text/html`, 36,535 bytes |
+| `/captivepoll.cgi` | GET | JSON `{mac, ip, ap}` | 200, 46 bytes |
+| `/status.cgi` | GET | JSON `host`, `lan`, `wlan`, `ppp`, `wireless`, `services`, `firewall`; the page polls it every 1 s | 200, 1,577 bytes |
+| `/survey.json.cgi` | GET | JSON array of visible networks, served as `text/html` | 200, 15 networks, 5,718 bytes |
+| `/captive.cgi` | GET | applies the form; the page sends the form serialized in the query string | not called |
+| `/leaveap.cgi` | POST | the page asks the device to close its access point | not called |
+| `http://<new address>/ping.cgi` | GET, JSONP | the page checks the device on the home network | not called |
+| `jsl10n.cgi` | GET | page translations | not called |
+
+Network object of `survey.json.cgi`: `mac`, `mode`, `frequency`, `channel`, `quality`, `signal_level`, `noise_level`, `encryption`, `essid`, `pairwise_ciphers`, `group_cipher`, `auth_suites`, `htcap`, `airmax_ie`, `mtik_name`, `ieee_mode`.
+
+`status.cgi` before setup: `host.fwversion` `v2.1.11`, `host.hostname` `mFi-mPowerMini-<last 6 MAC digits>`, `host.netrole` `router`, `host.ctrl_state` `default`, `host.cp_state` `none`, `wireless.mode` `sta`, `wireless.essid` empty, `wlan.ip` `0.0.0.0`, `services.dhcpd` 1.
+
+Form `wifiform`, fields sent to `/captive.cgi` (OBSERVED in the page):
+
+| Field | Values |
+|---|---|
+| `type` | `POST` (hidden) |
+| `essid` | network name, 0 to 32 printable ASCII characters; filled from the scan list |
+| `security` | `none`, `wep`, `wpa`, `wpatkip`, `wpaaes`, `wpa2`, `wpa2tkip`, `wpa2aes` |
+| `authtype` | `1`, `2` (WEP) |
+| `wep_key_length`, `wep_key_type` | `wep64`, `wep128`; `1` HEX, `2` ASCII |
+| `wep_key`, `wep_key_id` | WEP key; key index `1` to `4` |
+| `wpa_auth` | `WPA-PSK`, `WPA-EAP` |
+| `wpa_key` | WPA passphrase, 8 to 63 printable ASCII characters |
+| `wpa_eap`, `wpa_inner` | `TTLS`; `auth=MSCHAPV2` |
+| `wpa_ident`, `wpa_user`, `wpa_passwd` | EAP identity, user and password |
+| `inform_addr` | controller address, default `mfi.ubnt.com`, up to 268 characters |
+| `cloud_name`, `cloud_pass` | mFi cloud account; the page labels them "User" and "Password" for a personal controller |
+
+The mPort Quick Start Guide describes the same controller settings on its Configuration tab: the address is "the IP address and http port used by the Controller", usually 6080, for example `mfi.acme.com:6080`; user name and password are the controller administrator credentials. For the Wi-Fi page fields `inform_addr`, `cloud_name` and `cloud_pass` this meaning is INFERRED.
+
+States used by the page script after Apply (OBSERVED):
+
+- `host.cp_state`: `none`, `wifipending`, `wifitimeout`, `iptimeout`, `ctrlconnected`, `ctrltimeout`, `ctrlerror`, `byebye`.
+- `host.ctrl_state`: `unknown`, `default`, `managed`, `selfrun`, `upgrade`.
+- Wi-Fi connected: `wireless.essid` set, `wireless.apmac` not all zeros, `wlan.ip` not `0.0.0.0`.
+- Controller connected: `ctrl_state` `managed`, or `unknown` with `cp_state` `ctrlconnected` or `byebye`. Then the page posts `/leaveap.cgi` and polls `ping.cgi` on the new address.
+
+Open questions for this mode: 15 to 17 below.
 
 ## Controller backups (`.unf`)
 
@@ -276,3 +333,6 @@ The controller 2.1.11 backup format matches UniFi: AES-128-CBC with the public U
 12. Whether a modern SSH library accepts the devices' legacy algorithms.
 13. Real memory of mPower mini and PRO.
 14. After how many seconds without an inform the controller shows a device as heartbeat lost (40 s or 60 s).
+15. The exact `inform_addr` format accepted by the Wi-Fi setup page (`host:6080` like the mPort, or a full inform URL).
+16. What `cloud_name` and `cloud_pass` do with a personal controller, and whether they travel in the inform (see question 10).
+17. What a Wi-Fi device does after Apply when the home network or the controller is not reachable, and whether the mPort setup page is TLS 1.0 only too.

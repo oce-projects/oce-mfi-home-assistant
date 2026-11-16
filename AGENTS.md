@@ -45,6 +45,7 @@ before touching anything that talks to devices.
 | `mfi-controller/` | Phase 1 add-on: original mFi Controller 2.1.11 in a container (tested with Docker, not yet on HAOS) |
 | `tools/` | scripts run by a human (Docker test bench), and `make_icons.py` run by DevAgentAi and loaded by `mfi-server/tests/test_icons.py`; the Docker bench scripts are never part of the offline tests |
 | `mfi-server/` | Phase 2 add-on: our own server speaking the inform protocol (in progress, standard library only) |
+| `mfi-wifi-setup/` | Windows helper for the TLS 1.0 setup page of Wi-Fi devices; not an add-on (no `config.yaml`); spec in `docs/WIFI-SETUP.md` |
 | `docs/ARCHITECTURE.md` | phases, components, decisions |
 | `docs/PROTOCOL.md` | what is known about the devices and the inform protocol |
 | `docs/DEVAGENTAI.md` | project settings proposed for DevAgentAi |
