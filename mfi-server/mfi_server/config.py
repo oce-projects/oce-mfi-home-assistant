@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import http.client
+import ipaddress
 import json
 import logging
 import urllib.request
@@ -117,7 +118,7 @@ def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Pat
         ),
         web_port=_port("web_port", values.get("web_port", base.web_port)),
         history_days=_history_days(values.get("history_days", base.history_days)),
-        ingress_peer=_text("ingress_peer", values.get("ingress_peer", base.ingress_peer)),
+        ingress_peer=_ingress_peer(values.get("ingress_peer", base.ingress_peer), base.ingress_peer),
     )
     logger.debug("settings loaded: mode=%s data_dir=%s", mode, data_dir)
     return settings
@@ -228,6 +229,20 @@ def _text(field: str, value: object) -> str:
     if not isinstance(value, str):
         raise ValueError(f"{field} must be a string")
     return value
+
+
+def _ingress_peer(value: object, default: str) -> str:
+    """Return the ingress peer IP; an empty or blank value falls back to the default."""
+    if not isinstance(value, str):
+        raise ValueError("ingress_peer must be a string")
+    text = value.strip()
+    if text == "":
+        return default
+    try:
+        ipaddress.ip_address(text)
+    except ValueError as exc:
+        raise ValueError("ingress_peer must be an IP address") from exc
+    return text
 
 
 def _log_level(value: object) -> str:
