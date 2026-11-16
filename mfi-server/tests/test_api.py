@@ -244,6 +244,31 @@ class TestApi(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("text/javascript", headers["content-type"])
 
+    def test_automations_html_is_served(self):
+        status, headers, _ = self._request("GET", "/automations.html")
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", headers["content-type"])
+
+    def test_automations_js_is_served(self):
+        status, headers, _ = self._request("GET", "/automations.js")
+        self.assertEqual(status, 200)
+        self.assertIn("text/javascript", headers["content-type"])
+
+    def test_common_js_is_served(self):
+        status, headers, _ = self._request("GET", "/common.js")
+        self.assertEqual(status, 200)
+        self.assertIn("text/javascript", headers["content-type"])
+
+    def test_automations_html_served_under_ingress_prefix(self):
+        status, headers, _ = self._request("GET", "/api/hassio_ingress/abc/automations.html")
+        self.assertEqual(status, 200)
+        self.assertIn("text/html", headers["content-type"])
+
+    def test_unlisted_static_file_is_404(self):
+        status, _, body = self._request("GET", "/automations.json")
+        self.assertEqual(status, 404)
+        self.assertEqual(json.loads(body), {"error": "not_found"})
+
     def test_traversal_is_404(self):
         for path in ("/../config.py", "/%2e%2e/config.py"):
             status, _, body = self._request("GET", path)
