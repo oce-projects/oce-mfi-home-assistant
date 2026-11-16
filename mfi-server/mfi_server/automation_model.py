@@ -15,11 +15,12 @@ MODES = ("single", "restart", "queued", "parallel")
 DEFAULT_MODE = "single"
 DEFAULT_MAX = 10
 MAX_LIMIT = 100
+MAX_DURATION = 10 ** 9  # seconds; larger single values are rejected to avoid overflow
 TEMPLATE_MARK = "{{"
 ID_RE = re.compile(r"[a-z0-9_]{1,64}")
 CLOCK_RE = re.compile(r"([0-9]{2}):([0-9]{2})(?::([0-9]{2}))?")
 DURATION_RE = re.compile(r"([0-9]+):([0-5][0-9]):([0-5][0-9])")
-PATTERN_RE = re.compile(r"/([0-9]+)")
+PATTERN_RE = re.compile(r"/([0-9]{1,4})")
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 DURATION_UNITS = {"hours": 3600, "minutes": 60, "seconds": 1}
 UNSUPPORTED_TYPES = frozenset(
@@ -118,12 +119,11 @@ def parse_duration(value: object) -> float:
             raise ValueError("duration mapping must have hours, minutes or seconds only")
         total = 0.0
         for unit, amount in value.items():
-            if (
-                isinstance(amount, bool)
-                or not isinstance(amount, (int, float))
-                or not math.isfinite(amount)
-                or amount < 0
-            ):
+            if isinstance(amount, bool) or not isinstance(amount, (int, float)):
+                raise ValueError(f"invalid {unit}")
+            if isinstance(amount, float) and not math.isfinite(amount):
+                raise ValueError(f"invalid {unit}")
+            if amount < 0 or amount > MAX_DURATION:
                 raise ValueError(f"invalid {unit}")
             total += amount * DURATION_UNITS[unit]
         return float(total)

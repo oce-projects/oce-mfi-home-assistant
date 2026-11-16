@@ -107,6 +107,17 @@ class ValidateTest(unittest.TestCase):
                 obj = small_automation(triggers=[{"trigger": "numeric_state", "entity_id": SENSOR_1, "above": value}])
                 self.assertEqual(validate(obj), ["triggers[0].above: must be a number"])
 
+    def test_huge_duration_is_reported_not_raised(self):
+        obj = small_automation(actions=[{"delay": {"hours": 10 ** 400}}])
+        self.assertEqual(validate(obj), ["actions[0].delay: invalid duration"])
+
+    def test_long_pattern_is_reported_not_raised(self):
+        obj = small_automation(triggers=[{"trigger": "time_pattern", "minutes": "/" + "9" * 5000}])
+        self.assertEqual(
+            validate(obj),
+            ["triggers[0].minutes: must be an integer from 0 to 59, '*' or '/N'"],
+        )
+
     def test_unknown_key_in_trigger(self):
         obj = valid_automation()
         obj["triggers"][2]["foo"] = 1
@@ -296,6 +307,12 @@ class ParseDurationTest(unittest.TestCase):
 
     def test_non_finite_mapping_raises(self):
         for value in ({"seconds": float("nan")}, {"minutes": float("inf")}):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    parse_duration(value)
+
+    def test_huge_values_raise(self):
+        for value in ({"hours": 10 ** 400}, {"hours": 1e308}, {"seconds": 10 ** 9 + 1}):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError):
                     parse_duration(value)
