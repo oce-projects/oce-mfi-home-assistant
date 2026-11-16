@@ -115,6 +115,7 @@ Each setting can come from an environment variable, from `settings.json` in the 
 | `MFI_MQTT_DISCOVERY_PREFIX` | homeassistant | Prefix of the Home Assistant discovery topics |
 | `MFI_WEB_PORT` | 8099 | TCP port of the web page and the JSON API |
 | `MFI_HISTORY_DAYS` | 30 | Days of measurement history kept |
+| `MFI_INGRESS_PEER` | 172.30.32.2 | Add-on mode: only requests from this address (Home Assistant ingress) are served; others get 403 |
 
 ### Data folder
 

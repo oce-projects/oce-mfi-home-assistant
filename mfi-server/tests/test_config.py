@@ -266,5 +266,20 @@ class TestSupervisorMqtt(unittest.TestCase):
         )
 
 
+class TestIngressPeerSetting(unittest.TestCase):
+    def test_ingress_peer_default(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(_load({}, d).ingress_peer, "172.30.32.2")
+
+    def test_ingress_peer_from_environment(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(_load({"MFI_INGRESS_PEER": "127.0.0.1"}, d).ingress_peer, "127.0.0.1")
+
+    def test_ingress_peer_from_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"ingress_peer": "127.0.0.1"}', encoding="utf-8")
+            self.assertEqual(_load({}, d).ingress_peer, "127.0.0.1")
+
+
 if __name__ == "__main__":
     unittest.main()
