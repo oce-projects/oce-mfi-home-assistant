@@ -1,0 +1,28 @@
+configuration:
+  backup_file:
+    name: "Controller backup file"
+    description: "Path of a backup (.unf) of the old mFi controller. It is imported at every start; the import is idempotent, so running it again changes nothing."
+  log_level:
+    name: "Log level"
+    description: "How much the server writes to the log: debug, info, warning or error."
+  mqtt_topic_prefix:
+    name: "MQTT topic prefix"
+    description: "Prefix of the MQTT topics for states, commands and availability. Default: mfi."
+  mqtt_discovery_prefix:
+    name: "MQTT discovery prefix"
+    description: "Prefix of the Home Assistant discovery topics. Keep the default unless you changed it in the MQTT integration. Default: homeassistant."
+  ingress_peer:
+    name: "Ingress address"
+    description: "The only address the web page answers: the Home Assistant ingress. Leave empty for the default; if the page answers 403, see the documentation."
+  server_address:
+    name: "Server address"
+    description: "IPv4 address of the host where the server runs, written into the devices as their inform address. Empty means automatic."
+  device_ssh_username:
+    name: "Old controller user name"
+    description: "Administrator name of the old controller. Used only to re-point devices that were adopted by it."
+  device_ssh_password:
+    name: "Old controller password"
+    description: "Administrator password of the old controller. Used only to re-point devices. It is never shown in the API or in the logs."
+  ssh_extra_options:
+    name: "Extra SSH options"
+    description: "Extra SSH algorithm options for old devices, as KEY=value pairs separated by semicolons. Keep the default unless a device needs other algorithms."
