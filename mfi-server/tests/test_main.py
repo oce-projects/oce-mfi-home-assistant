@@ -160,18 +160,18 @@ class SetPasswordTest(unittest.TestCase):
     def test_set_password_writes_auth_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             data_dir = Path(tmp) / "data"
-            with patch("getpass.getpass", side_effect=["longenoughpw1", "longenoughpw1"]):
+            with patch("getpass.getpass", side_effect=["Long-enough-pw1", "Long-enough-pw1"]):
                 code, out, err = run_main(["set-password", "--data", str(data_dir)])
             stored = load_password_hash(data_dir)
         self.assertEqual(code, 0)
         self.assertIsNotNone(stored)
-        self.assertTrue(verify_password("longenoughpw1", stored))
-        self.assertNotIn("longenoughpw1", out)
-        self.assertNotIn("longenoughpw1", err)
+        self.assertTrue(verify_password("Long-enough-pw1", stored))
+        self.assertNotIn("Long-enough-pw1", out)
+        self.assertNotIn("Long-enough-pw1", err)
 
     def test_mismatched_passwords_fail(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with patch("getpass.getpass", side_effect=["longenoughpw1", "different12345"]):
+            with patch("getpass.getpass", side_effect=["Long-enough-pw1", "different12345"]):
                 code, out, err = run_main(["set-password", "--data", tmp])
             stored = load_password_hash(Path(tmp))
         self.assertEqual(code, 2)
@@ -185,6 +185,19 @@ class SetPasswordTest(unittest.TestCase):
                 code, out, err = run_main(["set-password", "--data", tmp])
         self.assertEqual(code, 2)
         self.assertIn("at least 12", err)
+
+    def test_password_without_special_character_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp) / "data"
+            with patch("getpass.getpass", side_effect=["Abcdefgh12xy", "Abcdefgh12xy"]):
+                code, out, err = run_main(["set-password", "--data", str(data_dir)])
+            stored = load_password_hash(data_dir)
+        self.assertEqual(code, 2)
+        self.assertIn("special character", err)
+        self.assertIn("at least 12", err)
+        self.assertIsNone(stored)
+        self.assertNotIn("Abcdefgh12xy", out)
+        self.assertNotIn("Abcdefgh12xy", err)
 
 
 if __name__ == "__main__":
