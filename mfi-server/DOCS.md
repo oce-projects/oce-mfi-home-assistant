@@ -144,7 +144,10 @@ found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is
 - Standalone mode: a session is needed. Start one with `POST api/v1/login` and a JSON
   body `{"password": "..."}`: the answer sets the `mfi_session` cookie (204). Set the
   password with `python3 -m mfi_server set-password --data DIR`: it is asked twice,
-  it must be at least 12 characters, and it is never given on the command line.
+  it must be at least 12 characters, include one upper-case letter, one lower-case letter, one digit and one
+  special character (any character that is not a letter or a digit), and it is never given on the command line.
+  Any character is allowed, accents, spaces and symbols included. The `device_ssh_password` option has no such
+  rules: it must match the password of the device.
   A wrong password answers 401; five failures in 60 seconds from one address answer 429.
 - Standalone mode: until the password is set, every route except `api/v1/health` answers 503
   `password_not_set`.

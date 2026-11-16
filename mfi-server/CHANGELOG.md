@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.2 - 2026-11-16
+
+- Password of `set-password` follows a new rule: any character is allowed (accents, spaces and symbols included), and the password must have at least 12 characters, one upper-case letter, one lower-case letter, one digit and one special character. The rule is checked in `auth.password_problems`; the error names the missing parts and never shows the password. Behaviour change, patch release. `device_ssh_password` has no such rules.
+- Versions aligned: `mfi-server` 0.10.2 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`; the version test is renamed to `test_version_is_0_10_2`.
+
 ## 0.10.1 - 2026-11-16
 
 - Store name changed to «mFi Server (new)» in `config.yaml` and `Dockerfile` labels (`io.hass.name`, `org.opencontainers.image.title`), with a short store description recommended for new installs.
