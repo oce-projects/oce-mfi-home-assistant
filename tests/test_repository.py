@@ -1,8 +1,9 @@
 """Offline structure tests for the oce-mfi-home-assistant repository.
 
-Version: 1.4.0
+Version: 1.5.0
 
 Changelog:
+1.5.0 - 2026-11-17 - private data scan allows 192.168.2.20: the fixed address of the setup page of every mFi Wi-Fi device in setup mode (vendor design, the same on every device, not a site address; measured on an mPower mini, docs/PROTOCOL.md). The exception is exact: other addresses of that network are still reported.
 1.4.0 - 2026-11-16 - personal names stored base64-encoded so the public test file does not contain them; publication files checked.
 1.3.0 - 2026-11-15 - private data scan allows 172.30.32.2 (Home Assistant ingress address used by mfi-server/mfi_server/api.py).
 1.2.0 - 2026-11-15 - private data scan covers every private IPv4 range (10/8, 172.16/12, 192.168/16) instead of three home addresses; documented exceptions in ALLOWED_MATCHES.
@@ -45,6 +46,7 @@ PRIVATE_PATTERNS = {
 
 ALLOWED_MATCHES = {
     "192.168.1.20": "factory default IP of mFi devices, official Quick Start Guides (docs/PROTOCOL.md)",
+    "192.168.2.20": "setup-page address of every mFi Wi-Fi device in setup mode (own access point), measured on an mPower mini 2026-11-17 (docs/PROTOCOL.md)",
     "172.30.32.2": "Home Assistant Supervisor ingress address, developers.home-assistant.io (mfi-server/mfi_server/api.py)",
 }
 
@@ -126,6 +128,9 @@ class TestScannersCatchPlantedSamples(unittest.TestCase):
 
     def test_private_scanner_allows_documented_factory_ip(self):
         self.assertEqual(private_hits("sample", "factory default IP 192.168.1.20"), [])
+        self.assertEqual(private_hits("sample", "setup page https://192.168.2.20/status.cgi"), [])
+        # the exception is exact: a neighbour address of the same network is still reported
+        self.assertTrue(any("private IPv4 address" in h for h in private_hits("sample", "client 192.168.2.21")))
 
     def test_private_ip_scanner_covers_all_ranges(self):
         positive = [

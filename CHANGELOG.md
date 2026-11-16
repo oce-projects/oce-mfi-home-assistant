@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.13.2 - 2026-11-17
+
+- Test fix (`tests/test_repository.py` 1.5.0): the private data scan now allows `192.168.2.20`, the fixed address where every mFi Wi-Fi device in setup mode serves its setup page. It is a vendor default, the same on every device in the world, not a site address. The exception is exact: other addresses of the same network are still reported (new check in the planted-sample test).
+
 ## 0.13.1 - 2026-11-16
 
 - Password of `mfi-server set-password` (standalone mode) follows a new rule: any character is allowed (accents, spaces and symbols included), and the password must have at least 12 characters, one upper-case letter, one lower-case letter, one digit and one special character. The rule is checked in `auth.password_problems`; the error message names the missing parts and never shows the password. Behaviour change, patch release.
