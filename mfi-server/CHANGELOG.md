@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0 - 2026-11-16
+
+- Standalone examples in `examples/`: `settings.example.json` (all 13 keys of `FILE_KEYS`, default values, no secrets), `mfi-server.env.example` (one line per `MFI_*` variable), `docker-compose.yml` (ports only on the isolated device network) and `mfi-server.service` (systemd unit with `DynamicUser` and a read-only system).
+- New section «Run without Home Assistant» in `README.md` with the table of environment variables, and a pointer to it from `DOCS.md`.
+- New test `tests/test_examples.py` keeps the examples aligned with `FILE_KEYS` and `ENV_NAMES`, checks the ports and data paths, and scans the examples for private data.
+- Versions aligned: `mfi-server` 0.7.0 in `config.yaml`, `CHANGELOG.md`, `Dockerfile` and `__version__`; the version test is renamed to `test_version_is_0_7_0`.
+
 ## 0.6.0 - 2026-11-16
 
 - Automations page in the web UI: list with enable/disable, run and delete; YAML editor with validation errors shown one per line with their path; run history (last 5 runs). Shared i18n and DOM helpers moved to `web/common.js`, loaded by both pages. New `web/automations.html` and `web/automations.js`, served from `STATIC_FILES`.
