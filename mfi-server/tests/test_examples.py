@@ -62,6 +62,15 @@ class TestExamples(unittest.TestCase):
         self.assertEqual(s.mqtt_host, "")
         self.assertEqual(s.bind_address, "0.0.0.0")
 
+    def test_env_example_empty_values_keep_defaults(self):
+        environ = {name: "" for name in ENV_NAMES.values()}
+        with tempfile.TemporaryDirectory() as d:
+            s = load_settings(["--data", d], environ, options_path=Path(d) / "no-options.json")
+            defaults = Settings(data_dir=Path(d))
+        for key in FILE_KEYS:
+            with self.subTest(key=key):
+                self.assertEqual(getattr(s, key), getattr(defaults, key))
+
     def test_env_example_lists_exactly_env_names(self):
         text = (EX / "mfi-server.env.example").read_text(encoding="utf-8")
         names = re.findall(r"(?m)^([A-Z_]+)=", text)
@@ -71,8 +80,16 @@ class TestExamples(unittest.TestCase):
         self.assertLessEqual(set(re.findall(r"MFI_[A-Z_]+", text)), set(ENV_NAMES.values()))
 
     def test_compose_and_service_expose_ports_and_data(self):
+        defaults = Settings(data_dir=Path("."))
         compose = (EX / "docker-compose.yml").read_text(encoding="utf-8")
-        for fragment in ('"6080:6080"', '"3478:3478/udp"', '"8099:8099"', "--data", "/data"):
+        expected = (
+            f'"{defaults.inform_port}:{defaults.inform_port}"',
+            f'"{defaults.wakeup_port}:{defaults.wakeup_port}/udp"',
+            f'"{defaults.web_port}:{defaults.web_port}"',
+            "--data",
+            "/data",
+        )
+        for fragment in expected:
             with self.subTest(file="docker-compose.yml", fragment=fragment):
                 self.assertIn(fragment, compose)
         unit = (EX / "mfi-server.service").read_text(encoding="utf-8")
@@ -88,7 +105,7 @@ class TestExamples(unittest.TestCase):
 
     def test_example_files_have_no_private_data(self):
         hits = []
-        for name in ("mfi-server.service", "mfi-server.env.example"):
+        for name in ("mfi-server.service", "mfi-server.env.example", "docker-compose.yml", "settings.example.json"):
             hits += private_hits(name, (EX / name).read_text(encoding="utf-8"))
         self.assertEqual(hits, [], "\n".join(hits))
 
