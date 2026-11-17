@@ -4,7 +4,8 @@ One request is one inform. The packet is checked, decrypted with the device key
 from the store, and the measurements are recorded. The answer is encrypted with
 the same key and IV: a connected device gets its queued command, any other
 device gets a heartbeat (noop). Rejected packets get an empty answer with the
-HTTP status of the reason. Standard library only.
+HTTP status of the reason. GET /dl/firmware/<path> serves the firmware files of the
+archive, read only. Standard library only.
 """
 from __future__ import annotations
 
@@ -15,10 +16,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings
 from mfi_server.measurements import Measurements
-from mfi_server.messages import noop, output_command
+from mfi_server.messages import noop, output_command, upgrade_command
 from mfi_server.packet import PacketError, decode, encode_response, normalize_mac, parse_header
 from mfi_server.states import DeviceStates
 from mfi_server.store import DeviceStore
+from mfi_server.upgrade import UpgradeManager
 from mfi_server.wakeup import wakeup_target
 
 logger = logging.getLogger(__name__)
@@ -26,6 +28,8 @@ logger = logging.getLogger(__name__)
 INFORM_PATH = "/inform"
 CONTENT_TYPE = "application/x-binary"
 MIN_BODY_BYTES = 8
+FIRMWARE_PREFIX = "/dl/firmware/"
+FIRMWARE_CONTENT_TYPE = "application/octet-stream"
 
 
 class InformServer(ThreadingHTTPServer):
@@ -40,12 +44,14 @@ class InformServer(ThreadingHTTPServer):
         states: DeviceStates,
         queue: CommandQueue,
         measurements: Measurements,
+        upgrades: UpgradeManager,
     ) -> None:
         self.settings = settings
         self.store = store
         self.states = states
         self.queue = queue
         self.measurements = measurements
+        self.upgrades = upgrades
         super().__init__((settings.bind_address, settings.inform_port), InformHandler)
 
 
@@ -60,7 +66,15 @@ class InformHandler(BaseHTTPRequestHandler):
         logger.debug("http: %s", format % args)
 
     def do_GET(self) -> None:
-        self._send_empty(404)
+        if not self.path.startswith(FIRMWARE_PREFIX):
+            self._send_empty(404)
+            return
+        path = self.path[len(FIRMWARE_PREFIX):].split("?")[0]
+        data = self.server.upgrades.archive.read(path)
+        if data is None:
+            self._send_empty(404)
+            return
+        self._send_bytes(200, data, FIRMWARE_CONTENT_TYPE)
 
     def do_POST(self) -> None:
         if self.path.split("?")[0] != INFORM_PATH:
@@ -91,16 +105,30 @@ class InformHandler(BaseHTTPRequestHandler):
             if target is not None and target[0] == self.client_address[0]:
                 self.server.states.set_wakeup_target(mac, target[0], target[1])
             self.server.measurements.ingest(mac, payload, now_ms)
-            cmd = self.server.queue.pop(mac) if was_connected else None
+            version = payload.get("version")
+            if isinstance(version, str) and version:
+                self.server.states.set_version(mac, version)
+            upgrade = self.server.queue.pop_upgrade(mac) if was_connected else None
+            cmd = self.server.queue.pop(mac) if (was_connected and upgrade is None) else None
             try:
-                if cmd is None:
+                if upgrade is not None:
+                    host = self.server.settings.server_address or self.request.getsockname()[0]
+                    port = self.server.settings.inform_port or self.request.getsockname()[1]
+                    url = "http://" + host + ":" + str(port) + FIRMWARE_PREFIX + upgrade["path"]
+                    message = upgrade_command(url, upgrade["version"])
+                elif cmd is None:
                     message = noop(now_ms)
                 else:
                     message = output_command(mac, cmd["port"], cmd["sensor_id"], cmd["value"], now_ms)
                 response = encode_response(header, key, message)
+                if upgrade is not None:
+                    self.server.upgrades.mark_sent(mac)
+                self.server.upgrades.on_inform(mac)
             except Exception:
                 if cmd is not None:
                     self.server.queue.put(mac, cmd["port"], cmd["sensor_id"], cmd["value"])
+                if upgrade is not None:
+                    self.server.queue.put_upgrade(mac, upgrade["path"], upgrade["version"])
                 raise
         except PacketError as exc:
             logger.debug("inform rejected with %d: %s", exc.status, exc.reason)
@@ -128,9 +156,9 @@ class InformHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
-    def _send_bytes(self, status: int, body: bytes) -> None:
+    def _send_bytes(self, status: int, body: bytes, content_type: str = CONTENT_TYPE) -> None:
         self.send_response(status)
-        self.send_header("Content-Type", CONTENT_TYPE)
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -142,6 +170,7 @@ def make_server(
     states: DeviceStates,
     queue: CommandQueue,
     measurements: Measurements,
+    upgrades: UpgradeManager,
 ) -> InformServer:
     """Build the server bound to settings.bind_address and settings.inform_port."""
-    return InformServer(settings, store, states, queue, measurements)
+    return InformServer(settings, store, states, queue, measurements, upgrades)
