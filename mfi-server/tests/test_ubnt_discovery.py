@@ -84,6 +84,9 @@ class ParseReplyTest(unittest.TestCase):
             "platform": "MPOWER",
             "uptime_s": 3600,
             "is_default": True,
+            "essid": None,
+            "wmode": None,
+            "version": "1.2.3",
             "unknown": {"99": "dead"},
         }
         self.assertEqual(parse_reply(data), expected)
@@ -98,6 +101,9 @@ class ParseReplyTest(unittest.TestCase):
             "platform": None,
             "uptime_s": None,
             "is_default": None,
+            "essid": None,
+            "wmode": None,
+            "version": None,
             "unknown": {},
         }
         self.assertEqual(parse_reply(reply(tlv(1, MAC))), expected)
@@ -113,6 +119,44 @@ class ParseReplyTest(unittest.TestCase):
     def test_utf8_text_is_kept(self):
         device = parse_reply(reply(tlv(1, MAC), tlv(21, "mPòwer".encode("utf-8"))))
         self.assertEqual(device["model"], "mPòwer")
+
+    def test_firmware_2_1_11_reply_gives_model_firmware_and_fields(self):
+        device = parse_reply(
+            reply(
+                tlv(2, MAC + IP_BYTES),
+                tlv(1, MAC),
+                tlv(10, struct.pack(">I", 3600)),
+                tlv(11, b"mfi"),
+                tlv(12, b"P1E"),
+                tlv(13, b"mfiessid01"),
+                tlv(14, b"\x02"),
+                tlv(3, b"MF.ar933x.v2.1.11.1309.150406.1423"),
+            )
+        )
+        self.assertEqual(device["model"], "P1E")
+        self.assertEqual(device["firmware"], "2.1.11.1309")
+        self.assertIsNone(device["is_default"])
+        self.assertNotIn("13", device["unknown"])
+        self.assertNotIn("14", device["unknown"])
+        self.assertEqual(device["essid"], "mfiessid01")
+        self.assertEqual(device["wmode"], 2)
+        self.assertEqual(device["version"], "MF.ar933x.v2.1.11.1309.150406.1423")
+
+    def test_version_without_v_marker_is_used_as_firmware(self):
+        device = parse_reply(reply(tlv(1, MAC), tlv(3, b"1.2.3")))
+        self.assertEqual(device["firmware"], "1.2.3")
+
+    def test_firmware_field_22_wins_over_field_3_in_any_order(self):
+        first = parse_reply(reply(tlv(1, MAC), tlv(3, b"MF.v9.9.9.1"), tlv(22, b"2.1.11")))
+        second = parse_reply(reply(tlv(1, MAC), tlv(22, b"2.1.11"), tlv(3, b"MF.v9.9.9.1")))
+        self.assertEqual(first["firmware"], "2.1.11")
+        self.assertEqual(second["firmware"], "2.1.11")
+
+    def test_model_field_21_wins_over_field_12_in_any_order(self):
+        first = parse_reply(reply(tlv(1, MAC), tlv(12, b"P1E"), tlv(21, b"mPower")))
+        second = parse_reply(reply(tlv(1, MAC), tlv(21, b"mPower"), tlv(12, b"P1E")))
+        self.assertEqual(first["model"], "mPower")
+        self.assertEqual(second["model"], "mPower")
 
 
 class ParseReplyErrorTest(unittest.TestCase):

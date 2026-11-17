@@ -6,6 +6,7 @@ A device answers the 4-byte QUERY with a header and TLV fields. Standard library
 from __future__ import annotations
 
 import logging
+import re
 import socket
 import struct
 import threading
@@ -29,6 +30,8 @@ TYPE_MAC_IP = 2
 TYPE_VERSION = 3
 TYPE_UPTIME = 10
 TYPE_DEFAULT = 23
+TYPE_ESSID = 13
+TYPE_WMODE = 14
 TEXT_FIELDS = {11: "hostname", 12: "platform", 21: "model", 22: "firmware"}
 
 
@@ -57,6 +60,9 @@ def parse_reply(data: bytes) -> dict:
         "platform": None,
         "uptime_s": None,
         "is_default": None,
+        "essid": None,
+        "wmode": None,
+        "version": None,
         "unknown": {},
     }
     pos = 0
@@ -72,6 +78,11 @@ def parse_reply(data: bytes) -> dict:
         _apply_tlv(device, tlv_type, value)
     if device["mac"] is None:
         raise DiscoveryError("reply has no MAC field")
+    if device["firmware"] is None and device["version"]:
+        match = re.search(r"\.v(\d+\.\d+\.\d+(?:\.\d+)?)", device["version"])
+        device["firmware"] = match.group(1) if match else device["version"]
+    if device["model"] is None and device["platform"]:
+        device["model"] = device["platform"]
     return device
 
 
@@ -91,7 +102,13 @@ def _apply_tlv(device: dict, tlv_type: int, value: bytes) -> None:
         device["uptime_s"] = struct.unpack(">I", value)[0]
     elif tlv_type == TYPE_DEFAULT:
         device["is_default"] = len(value) > 0 and value[0] != 0
-    elif tlv_type != TYPE_VERSION:
+    elif tlv_type == TYPE_ESSID:
+        device["essid"] = value.decode("utf-8", errors="replace")
+    elif tlv_type == TYPE_WMODE:
+        device["wmode"] = value[0] if len(value) > 0 else None
+    elif tlv_type == TYPE_VERSION:
+        device["version"] = value.decode("utf-8", errors="replace")
+    else:
         device["unknown"][str(tlv_type)] = value.hex()
 
 
