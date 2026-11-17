@@ -174,6 +174,22 @@ Other commands:
 
 Not found in the code: `set-locate`, `speedtest`, `provision`.
 
+## Firmware archive (MEASURED 2026-11-17)
+
+Source: `mFi.unix.zip` 2.1.11 (Linux package, 26,896,961 bytes, sha256 in AGENTS.md). The archive was listed and its files extracted and hashed. The firmware file was also downloaded from `https://dl.ubnt.com/mfi/2.1.11/firmware/M2M/firmware.bin` and hashed on the same day.
+
+- MEASURED: `mFi/dl/firmware/M2M/2.1.11.1309/firmware.bin` in the package is 7,418,034 bytes. It is byte for byte the same file as `https://dl.ubnt.com/mfi/2.1.11/firmware/M2M/firmware.bin`, with sha256 `7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79`.
+- MEASURED: `mFi/dl/firmware/bundles.json` is 904 bytes and uses single quotes. It is not strict JSON, so a strict parser such as `json.load` rejects it.
+- MEASURED: the 2.1.11 `bundles.json` lists 10 models: IWD1U, P1E, IWO2U, P8U, M2S, M2M, P6E, P1U, P3E, P3U. For every one of them the path is `M2M/2.1.11.1309/firmware.bin`, the version is `2.1.11.1309`, and the display name is empty.
+- MEASURED: EM3, EM24, THERM and IWS1U are accepted as mFi models (section Devices) but have no entry in this file. INFERRED: the controller offers no firmware upgrade to them.
+
+Upgrade message:
+
+- OBSERVED (`DeviceManager`, row 3 of "Controller responses"): an inform gets an `upgrade` response when the device firmware differs from `bundles.json` and auto-upgrade is on. The controller does not send an upgrade to a device whose firmware is not older than the archive version.
+- OBSERVED: the message has the form `{"_type":"upgrade","url":"http://<host>:<port>/dl/firmware/<path>","version":"<version>"}`.
+- OBSERVED (state table): the device is in state 4 (firmware upgrade) for 180 s.
+- UNVERIFIED: the exact format of the `version` field in the inform payload. The hypothesis is `2.1.11.1309`. Do not rely on it.
+
 ## Wake-up packet (UDP 3478)
 
 OBSERVED (`com.ubnt.net.E`, JSTUN library): the controller opens a UDP socket on `0.0.0.0:3478`. It answers STUN requests and sends a 20-byte "connection request" starting with bytes `0x88 0x88` to `connect_request_ip:connect_request_port` from the inform payload. The device then informs at once.
