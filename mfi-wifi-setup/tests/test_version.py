@@ -18,8 +18,8 @@ ENTRY = re.compile(r"^##\s+(\d+\.\d+\.\d+)\b", re.M)
 
 
 class TestVersion(unittest.TestCase):
-    def test_package_version(self):
-        self.assertEqual(mfi_wifi_setup.__version__, "0.4.0")
+    def test_version_format(self):
+        self.assertIsNotNone(re.fullmatch(r"\d+\.\d+\.\d+", mfi_wifi_setup.__version__))
 
     def test_newest_changelog_entry_matches_package(self):
         text = CHANGELOG.read_text(encoding="utf-8")
