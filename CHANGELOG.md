@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.17.0 - 2026-11-17
+
+- `mfi-server` 0.11.0: firmware archive and device upgrade. The `mfi-server` image downloads the mFi firmware 2.1.11.1309 at build time from `dl.ubnt.com`, checks its sha256 and serves it read-only to the devices; no firmware file enters the repository.
+- Update button for devices with older firmware: confirmation first, one device at a time, result confirmed within 180 seconds. The button stays hidden when the device firmware is current.
+- Versions aligned: repository 0.17.0 in `VERSION` and `CHANGELOG.md`; `mfi-server` 0.11.0 in `config.yaml`, `CHANGELOG.md` and `Dockerfile`.
+
 ## 0.16.0 - 2026-11-17
 
 - W4 of the Wi-Fi setup epic: `mfi-wifi-setup` 0.3.0, guided setup window
