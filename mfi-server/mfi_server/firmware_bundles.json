@@ -1,0 +1,62 @@
+{
+  "IWD1U": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  },
+  "P1E": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  },
+  "IWO2U": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  },
+  "P8U": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  },
+  "M2S": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  },
+  "M2M": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  },
+  "P6E": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  },
+  "P1U": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  },
+  "P3E": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  },
+  "P3U": {
+    "path": "M2M/2.1.11.1309/firmware.bin",
+    "version": "2.1.11.1309",
+    "sha256": "7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79",
+    "size": 7418034
+  }
+}
