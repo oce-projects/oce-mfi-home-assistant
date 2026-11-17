@@ -4,6 +4,7 @@ The server runs on 127.0.0.1 with an ephemeral port. Standard library only.
 """
 from __future__ import annotations
 
+import hashlib
 import http.client
 import json
 import tempfile
@@ -19,11 +20,13 @@ from mfi_server.automation_store import AutomationStore
 from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings
 from mfi_server.control import OutputControl
+from mfi_server.firmware import FirmwareArchive
 from mfi_server.history import History
 from mfi_server.measurements import Measurements
 from mfi_server.ssh_adopt import SshError
 from mfi_server.states import DeviceStates
 from mfi_server.ubnt_discovery import ScanInProgress
+from mfi_server.upgrade import UpgradeManager
 
 PASSWORD = "passw0rd1234"
 WRONG_PASSWORD = "not-the-password"
@@ -102,7 +105,8 @@ class TestApi(unittest.TestCase):
         self.states = DeviceStates()
         self.measurements = Measurements()
         self.measurements.ingest(MAC, {"alarm": [{"sId": "sensor-1", "tag": "active_pwr", "val": 12.5}]}, 1000)
-        self.control = OutputControl(self.store, self.states, CommandQueue(), None)
+        self.queue = CommandQueue()
+        self.control = OutputControl(self.store, self.states, self.queue, None)
         self.history = History(self.data_dir / "h.sqlite3")
         self.sessions = Sessions(clock=lambda: 0.0)
         self.clock = [0.0]
@@ -121,6 +125,19 @@ class TestApi(unittest.TestCase):
             ]
         )
         self.adoption = FakeAdoption()
+        firmware_dir = self.data_dir / "fw"
+        (firmware_dir / "M2M" / "x").mkdir(parents=True)
+        (firmware_dir / "M2M" / "x" / "firmware.bin").write_bytes(b"FW")
+        bundles = {
+            "m": {
+                "path": "M2M/x/firmware.bin",
+                "version": "2.1.11.1309",
+                "sha256": hashlib.sha256(b"FW").hexdigest(),
+                "size": 2,
+            }
+        }
+        self.archive = FirmwareArchive(firmware_dir, bundles)
+        self.upgrades = UpgradeManager(self.archive, self.states, self.queue)
         self.servers: list = []
         self.server = self._start("standalone")
 
@@ -151,6 +168,7 @@ class TestApi(unittest.TestCase):
             self.engine,
             self.scanner,
             self.adoption,
+            self.upgrades,
         )
         threading.Thread(target=server.serve_forever, daemon=True).start()
         self.servers.append(server)
@@ -482,10 +500,9 @@ class TestApi(unittest.TestCase):
         headers = {"Cookie": self._cookie()}
         status, _, body = self._request("GET", "/api/v1/status", headers=headers)
         self.assertEqual(status, 200)
-        self.assertEqual(
-            json.loads(body),
-            {"backup": {"configured": False, "file": "", "devices": 0, "error": None}},
-        )
+        data = json.loads(body)
+        self.assertEqual(data["backup"], {"configured": False, "file": "", "devices": 0, "error": None})
+        self.assertEqual(data["firmware"], {"available": True, "error": None, "version": "2.1.11.1309"})
 
     def test_status_without_cookie_is_401(self):
         self._set_password()
@@ -503,10 +520,63 @@ class TestApi(unittest.TestCase):
         headers = {"Cookie": self._cookie()}
         status, _, body = self._request("GET", "/api/v1/status", headers=headers)
         self.assertEqual(status, 200)
+        data = json.loads(body)
         self.assertEqual(
-            json.loads(body),
-            {"backup": {"configured": True, "file": "backup.unf", "devices": 0, "error": "import failed"}},
+            data["backup"],
+            {"configured": True, "file": "backup.unf", "devices": 0, "error": "import failed"},
         )
+        self.assertEqual(data["firmware"]["available"], True)
+        self.assertEqual(data["firmware"]["version"], "2.1.11.1309")
+
+    def test_devices_view_has_firmware_block(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("GET", "/api/v1/devices", headers=headers)
+        self.assertEqual(status, 200)
+        firmware = json.loads(body)[0]["firmware"]
+        self.assertEqual(
+            set(firmware),
+            {"device_version", "archive_version", "available", "comparison", "upgrade_status"},
+        )
+        self.assertEqual(firmware["archive_version"], "2.1.11.1309")
+        self.assertIs(firmware["available"], True)
+        # No version was read from the device yet, so it cannot be compared.
+        self.assertEqual(firmware["device_version"], "")
+        self.assertEqual(firmware["comparison"], "unreadable")
+        self.assertIsNone(firmware["upgrade_status"])
+
+    def test_upgrade_accepted_queues_one_command(self):
+        self.states.seen(MAC)
+        self.states.set_version(MAC, "2.1.8.1309")
+        self.assertFalse(self.queue.pending_upgrade(MAC))
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", f"/api/v1/devices/{MAC}/upgrade", headers=headers)
+        self.assertEqual(status, 202)
+        self.assertEqual(json.loads(body), {"result": "queued"})
+        self.assertTrue(self.queue.pending_upgrade(MAC))
+
+    def test_second_upgrade_while_one_is_running_is_409(self):
+        self.states.seen(MAC)
+        self.states.set_version(MAC, "2.1.8.1309")
+        headers = {"Cookie": self._cookie()}
+        status, _, _ = self._request("POST", f"/api/v1/devices/{MAC}/upgrade", headers=headers)
+        self.assertEqual(status, 202)
+        status, _, body = self._request("POST", f"/api/v1/devices/{MAC}/upgrade", headers=headers)
+        self.assertEqual(status, 409)
+        self.assertEqual(json.loads(body), {"error": "upgrade_in_progress"})
+
+    def test_upgrade_of_disconnected_device_is_409_and_queues_nothing(self):
+        self.states.set_version(MAC, "2.1.8.1309")
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", f"/api/v1/devices/{MAC}/upgrade", headers=headers)
+        self.assertEqual(status, 409)
+        self.assertEqual(json.loads(body), {"error": "not_connected"})
+        self.assertFalse(self.queue.pending_upgrade(MAC))
+
+    def test_upgrade_unknown_device_is_404(self):
+        headers = {"Cookie": self._cookie()}
+        status, _, body = self._request("POST", "/api/v1/devices/02aabbccdd09/upgrade", headers=headers)
+        self.assertEqual(status, 404)
+        self.assertEqual(json.loads(body), {"error": "not_found"})
 
 
 if __name__ == "__main__":
