@@ -220,6 +220,44 @@ An item may contain an `entries` list. Each entry inherits the parent fields. Qu
 - The value of `type` for analog readings: UNVERIFIED.
 - Third-party measurement, UNVERIFIED on our units: the mPower energy counter is kept in RAM and restarts from zero after a power loss (`feiglein74/mpower`).
 
+## mPort and sensors (from ace.jar 2.1.11)
+
+Source of every item below: the reverse engineering report REA on `ace.jar` 2.1.11 (ticket T-MWKWKNJW-S1). That report verified no fact: its calls to the decompiled-source tools were refused because the Java source had not been prepared, so no class was read. Every item below is UNVERIFIED and must not be relied on until a new report or a device test confirms it.
+
+### 1. Measurements of mPort ports in the inform
+
+- UNVERIFIED: the `tag` and `type` values in the `alarm` list of M2M and M2S for each sensor kind (temperature, humidity, motion, door, current, analog and digital input). Source: REA report, question 1, not answered.
+- UNVERIFIED: the units of those measurements. Source: REA report, question 1, not answered.
+- UNVERIFIED: how the port index is read, for example `index` `DI<n>`. The `DI<n>` form under "Measurements" is not re-checked here. Source: REA report, question 1, not answered.
+
+### 2. Sensor type recognition on an mPort port
+
+- UNVERIFIED: how the controller recognises the sensor kind on an mPort port, the sensor names or codes, and the collection and fields where the kind is stored. Source: REA report, question 2, not answered.
+
+### 3. Format of `port_cfg` for mPort
+
+- UNVERIFIED: the line-by-line format of `port_cfg` for M2M and M2S, who generates it, how it reaches the device and when. Source: REA report, question 3, not answered. See also "Controller responses" in this file.
+
+### 4. Calibration and conversion
+
+- UNVERIFIED: the constants and formulas that convert raw values into units, and the names of the user-settable offset and scale fields. Source: REA report, question 4, not answered.
+
+### 5. 12 V outputs of the mPort relay
+
+- UNVERIFIED: the on/off command for the 12 V outputs. Source: REA report, question 5, not answered.
+- UNVERIFIED: the rule `2*(port-1) + outport` (see "Commands to the device"). Source: REA report, question 5, not answered.
+
+### 6. mPort Serial (M2S): serial configuration
+
+- UNVERIFIED: the serial settings (speed, bits, parity, TCP port) and what `kick-serial` does (see "Commands to the device"). Source: REA report, question 6, not answered.
+
+### 7. New sensor with `type="detected"`
+
+- OBSERVED (already listed under "Measurements"): `type="detected"` means a new sensor on an mPort. Source: existing entry, not from the REA report.
+- UNVERIFIED: the flow from detection of a new sensor to its configuration. Source: REA report, question 7, not answered.
+
+No row was added to the tag table under "Measurements": the REA report names no mPort tag.
+
 ## Discovery (UDP 10001)
 
 OBSERVED (`DatagramQueryServer`, `LiteStationQueryServer`):

@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.21.1 - 2026-11-17
+
+- docs: mPort and sensor protocol from the 2.1.11 controller (clean room report)
+
 ## 0.21.0 - 2026-11-17
 
 - The Windows program of `mfi-wifi-setup` is built by GitHub Actions on `windows-latest` and attached to each published release, with its sha256 file (ticket T-MWKUB27O): `.github/workflows/windows-exe.yml`, offline checks in `tests/test_windows_workflow.py`. The `.exe` is never committed.
