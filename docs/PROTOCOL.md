@@ -378,7 +378,7 @@ The controller 2.1.11 backup format matches UniFi: AES-128-CBC with the public U
 
 ## Device configuration (setparam)
 
-Status: UNVERIFIED for every item below. The REA report on `ace.jar` 2.1.11 (epic T-MWKWL1ME) verified none of these items, so each one stays UNVERIFIED; the Java source of `ace.jar` was not prepared for the report, so it produced no Evidence ID. Nothing here is a finding.
+Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 verified none of these items. Nothing here is a finding.
 
 The `setparam` message itself is described under "Controller responses" (OBSERVED, `ConfigService`). This section does not repeat or change that paragraph.
 
@@ -391,7 +391,7 @@ The report found no new command to the device, so the table under "Commands to t
 
 ## Events
 
-Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 (epic T-MWKWL1ME) answered none of these, so nothing here is a finding.
+Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 answered none of these. Nothing here is a finding.
 
 - UNVERIFIED: the event type keys (`EVT_*`). Only `EVT_AP_Lost_Contact` is known (OBSERVED, see "Device states in the controller").
 - UNVERIFIED: the fields of a saved event.
@@ -400,7 +400,7 @@ Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1
 
 ## Rules and scenes
 
-Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 (epic T-MWKWL1ME) answered none of these, so nothing here is a finding. No rule is imported by this section; rule import belongs to a later epic.
+Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 answered none of these. Nothing here is a finding. No rule is imported by this section; rule import belongs to a later epic.
 
 - UNVERIFIED: the fields and types of `rule`, `ruleaction`, `ruleset` and `scene`.
 - UNVERIFIED: the trigger types (sensor value, time, state change).
@@ -410,14 +410,12 @@ Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1
 
 ## Statistics
 
-Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 (epic T-MWKWL1ME) answered none of these, so nothing here is a finding.
+Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 answered none of these. Nothing here is a finding.
 
 - UNVERIFIED: whether the controller aggregates measurements per hour or per day.
 - UNVERIFIED: the collections (`stat_*` or similar).
 - UNVERIFIED: the fields of the aggregated records.
 - UNVERIFIED: the retention period.
-
-These four sections must be replaced with verified content after a new REA report, which needs the Java source of `ace.jar` prepared for REA first.
 
 ## Open questions (need a real device)
 
