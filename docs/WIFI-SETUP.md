@@ -1,10 +1,12 @@
 # mFi Wi-Fi Setup - specification of the Windows helper
 
-Version 0.2.0 - 2026-11-17. Status: specification and verified prototype. The
+Version 0.3.0 - 2026-11-17. Status: specification and verified prototype. The
 Windows program is not built yet.
 
-Changes: 0.2.0 - the program is a graphical window (GUI) with numbered steps;
-name of the device access point measured. 0.1.0 - first version.
+Changes: 0.3.0 - the version 2 window (guided setup) is implemented: the Wi-Fi
+network is chosen in the program, progress follows `status.cgi`. 0.2.0 - the
+program is a graphical window (GUI) with numbered steps; name of the device
+access point measured. 0.1.0 - first version.
 
 ## Why
 
@@ -94,11 +96,23 @@ Version 1 window, bridge to the original page:
   secret). Passwords are never stored.
 - Closing the window stops the bridge.
 
-Version 2 window, guided setup (after the device test): the same step 1, then a
-list of networks from `survey.json.cgi`, a password field, the controller
-address, a `Configure` button and a progress line driven by `status.cgi`
-(Wi-Fi connecting, address obtained, controller connected), ending with
-"Device on your network at <address>".
+Version 2 window, guided setup (ticket W4, done; device test pending): the same
+step 1, then, in the program itself:
+
+- a list of the visible networks from `survey.json.cgi`, strongest signal first.
+  Only open networks and WPA/WPA2 personal networks are listed; WEP and EAP
+  (enterprise) networks are not shown.
+- a password field, hidden, with a "show" option; no password for open networks.
+- a `Configure` button: the program sends the chosen network and password to
+  `captive.cgi`, and nothing else (no controller address, no `cloud_name`, no
+  `cloud_pass`).
+- a progress line driven by `status.cgi` every 1 s: waiting, Wi-Fi connected,
+  address obtained, or error (`wifitimeout`, `iptimeout`, or timeout).
+- on success: "Device on your network at <ip>" and the advice to open mfi-server,
+  which adopts the device. The program does not change the controller fields of
+  the device: they are not shown in the window and not sent.
+
+The password is never written to disk or to the log.
 
 ## Design
 
@@ -142,27 +156,49 @@ Open points of version 1 (need the device test, ticket W3):
 2. Whether Windows rejoins the home Wi-Fi by itself when the device closes its
    access point: UNVERIFIED.
 
-### Version 2 - guided setup (after the device test)
+### Version 2 - guided setup (implemented, ticket W4; device test pending)
 
-The program serves its own page on `127.0.0.1` and drives the device
-endpoints; the user never sees the device UI:
+The program is a window (`tkinter`) and talks to the device endpoints itself;
+the user never sees the device UI. The six steps are DONE (DevAgentAi, ticket
+W4, core in `mfi-wifi-setup/mfi_wifi_setup/`); the device test is still open
+(ticket W3, a person):
 
-1. `GET /captivepoll.cgi`: device found. Show the model (`status.cgi`
+1. DONE. `GET /captivepoll.cgi`: device found. Show the model (`status.cgi`
    `host.hostname`) and the firmware (`host.fwversion`).
-2. `GET /survey.json.cgi`: list of visible networks (`essid`, `signal_level`,
-   `encryption`).
-3. The user picks the network and types the password. The controller address
-   is prefilled with the mfi-server address in the form `host:6080` (format
-   from the mPort Quick Start Guide; for the Wi-Fi page INFERRED, see
-   `docs/PROTOCOL.md`).
-4. `GET /captive.cgi?<fields>` with the same fields the device page sends.
-5. Progress from `GET /status.cgi` every 1 s (`host.cp_state`,
-   `host.ctrl_state`, `wlan.ip`).
-6. `POST /leaveap.cgi`, then show the device address on the home network.
+2. DONE. `GET /survey.json.cgi`: list of visible networks (`essid`,
+   `signal_level`, `encryption`). Only open and WPA/WPA2 personal networks are
+   listed; WEP and EAP are not (`is_supported` in `wifi_survey.py`).
+3. DONE. The user picks the network and types the password in the program. The
+   controller address is NOT asked for and NOT prefilled: the step planned in the
+   first draft (prefill `host:6080`) is not implemented. The controller fields
+   `inform_addr`, `cloud_name` and `cloud_pass` are not sent, and the program does
+   not change them: mfi-server adopts the device later, over SSH (`docs/PROTOCOL.md`,
+   "Adoption"). So version 2 has no controller address field.
+4. DONE. `GET /captive.cgi?<fields>` with only `type=POST`, `essid`, `security`
+   and, for WPA/WPA2, `wpa_auth=WPA-PSK` and `wpa_key` (not the other form
+   fields). Field names and values: `docs/PROTOCOL.md`, "Wi-Fi setup mode".
+5. DONE. Progress from `GET /status.cgi` every 1 s (`host.cp_state`,
+   `wireless.essid`, `wireless.apmac`, `wlan.ip`). Wi-Fi connected = essid set and
+   apmac not all zeros; address obtained = that, and `wlan.ip` not `0.0.0.0`;
+   `wifitimeout` or `iptimeout` = error. Version 2 does not use `host.ctrl_state`.
+   Field meanings: `docs/PROTOCOL.md`, "Wi-Fi setup mode".
+6. DONE. `POST /leaveap.cgi` only when the address is obtained; then the window
+   shows `Device on your network at <ip>` and the advice to open mfi-server. On
+   error or timeout the access point is not closed.
 
-Version 2 starts only after the open questions of "Wi-Fi setup mode" in
-`docs/PROTOCOL.md` are answered on a real device: no invented commands, the
-same rule as for the inform protocol.
+Version 2 is implemented from the endpoints and fields seen on the device
+(`docs/PROTOCOL.md`, "Wi-Fi setup mode"); no command is invented. Still open,
+to be checked by the device test (ticket W3, a person):
+
+- The mapping `encryption` -> `security` (text containing `wpa2` -> `wpa2`,
+  containing `wpa` -> `wpa`, else `none`) and the choice of the `security` value
+  sent for WPA/WPA2-PSK: INFERRED from the survey text and the form values;
+  UNVERIFIED, not tested on a device.
+- The split of `auth_suites` into PSK and EAP by text: UNVERIFIED.
+- The device behaviour after `leaveap.cgi` on the home network: UNVERIFIED (open
+  points 1 and 2 of version 1, questions 15 to 17 of `docs/PROTOCOL.md`).
+- The device test itself: a person runs the checklist under "Tests" and writes
+  the results in this file.
 
 ## Technology
 
@@ -228,5 +264,5 @@ in this file:
 | W1 | Program in `mfi-wifi-setup/` from the prototype: core module (bridge, device check, Italian and English messages, next free port) and the version 1 window; offline tests of the core; test command added to the CI workflow | DevAgentAi |
 | W2 | Windows build script `mfi-wifi-setup/build_windows.cmd` (temporary venv, PyInstaller one-file, sha256 of the output) and its README section | DevAgentAi writes, a human runs |
 | W3 | Device test of the `.exe` (checklist above) and answers to the open points | human |
-| W4 | Version 2 window, guided setup | DevAgentAi, only after W3 |
+| W4 | Version 2 window, guided setup (done) | DevAgentAi, only after W3 |
 | W5 | mfi-server page: download box for Wi-Fi devices | DevAgentAi |
