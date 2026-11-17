@@ -1,7 +1,10 @@
 # mFi Wi-Fi Setup - specification of the Windows helper
 
-Version 0.1.0 - 2026-11-17. Status: specification and verified prototype. The
+Version 0.2.0 - 2026-11-17. Status: specification and verified prototype. The
 Windows program is not built yet.
+
+Changes: 0.2.0 - the program is a graphical window (GUI) with numbered steps;
+name of the device access point measured. 0.1.0 - first version.
 
 ## Why
 
@@ -50,6 +53,52 @@ flowchart LR
 | R6 | Clear messages for: PC not joined to the device Wi-Fi (`192.168.2.20` not reachable), device not answering, page ready, how to stop. |
 | R7 | Source in this repository. The built `.exe` is never committed (AGENTS.md rule 1); it is published as a release asset with its sha256. |
 | R8 | Tests run offline with the standard library (AGENTS.md rule 4). |
+| R9 | A graphical window, no console: the user reads numbered steps and presses buttons; nothing is typed on a command line. |
+
+## Window (GUI)
+
+The program is a small window built with `tkinter` (Python standard library,
+included in the PyInstaller build), started without a console window.
+
+Version 1 window, bridge to the original page:
+
+```text
++------------------------------------------------------+
+| mFi Wi-Fi Setup                          [IT] [EN]   |
+|                                                      |
+| 1  Join this PC to the Wi-Fi of the device:          |
+|    open network "mFi XXXXXX", no password            |
+|    Status: device found - mPower mini, v2.1.11       |
+|                                                      |
+| 2  [ Open the device page ]                          |
+|                                                      |
+| 3  In the page: choose your home Wi-Fi, type its     |
+|    password and this controller address:             |
+|    [ <Home Assistant address>:6080 ]  [ Copy ]       |
+|                                                      |
+|                                        [ Close ]     |
++------------------------------------------------------+
+```
+
+- The access point of the device is an open network named `mFi` plus the last
+  6 hex digits of the MAC address (MEASURED, `docs/PROTOCOL.md`).
+- Step 1 checks the device every 2 s (`GET /status.cgi` over TLS 1.0) and
+  shows the model from `host.hostname` and the firmware from `host.fwversion`.
+  Until the device answers, step 2 is disabled and the window says why: PC not
+  on the device Wi-Fi, or device not answering.
+- The program may read the current Wi-Fi name with `netsh wlan show interfaces`
+  (no administrator rights) to say "you are on mFi XXXXXX". It never creates or
+  changes Wi-Fi profiles (R1).
+- Step 2 starts the bridge and opens the default browser on it.
+- Step 3: the controller address is remembered between runs (it is not a
+  secret). Passwords are never stored.
+- Closing the window stops the bridge.
+
+Version 2 window, guided setup (after the device test): the same step 1, then a
+list of networks from `survey.json.cgi`, a password field, the controller
+address, a `Configure` button and a progress line driven by `status.cgi`
+(Wi-Fi connecting, address obtained, controller connected), ending with
+"Device on your network at <address>".
 
 ## Design
 
@@ -130,6 +179,10 @@ Choice for version 1: Python standard library, packaged with PyInstaller as one
 writes the code, the tests and the build script; a human runs the build and
 the device test.
 
+Window: `tkinter`, a thin layer over a core module (bridge, device check,
+messages). The core holds all the logic and is tested offline; the tests never
+import `tkinter`, because the test container may not have it.
+
 Known risks, UNVERIFIED: Windows SmartScreen warns about an unsigned `.exe`;
 some antivirus programs flag PyInstaller one-file executables.
 
@@ -144,6 +197,9 @@ Offline (DevAgentAi, Linux, standard library):
   needed), and check status, headers, rewritten body, and that query strings
   never reach the log.
 - Messages: every message key exists in Italian and in English.
+- Device check: state from a fake `status.cgi` (found, not found, not
+  answering), model and firmware read from `host.hostname` and
+  `host.fwversion`.
 
 On Windows with a device in setup mode (human, ticket W3). Write the results
 in this file:
@@ -169,8 +225,8 @@ in this file:
 
 | Ticket | Scope | Who runs it |
 |---|---|---|
-| W1 | Program in `mfi-wifi-setup/` from the prototype: package layout, `__version__`, CLI, Italian and English messages, next free port, offline tests, test command added to the CI workflow | DevAgentAi |
+| W1 | Program in `mfi-wifi-setup/` from the prototype: core module (bridge, device check, Italian and English messages, next free port) and the version 1 window; offline tests of the core; test command added to the CI workflow | DevAgentAi |
 | W2 | Windows build script `mfi-wifi-setup/build_windows.cmd` (temporary venv, PyInstaller one-file, sha256 of the output) and its README section | DevAgentAi writes, a human runs |
 | W3 | Device test of the `.exe` (checklist above) and answers to the open points | human |
-| W4 | Version 2, guided setup | DevAgentAi, only after W3 |
+| W4 | Version 2 window, guided setup | DevAgentAi, only after W3 |
 | W5 | mfi-server page: download box for Wi-Fi devices | DevAgentAi |

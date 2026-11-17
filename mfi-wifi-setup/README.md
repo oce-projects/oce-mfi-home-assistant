@@ -1,6 +1,7 @@
 # mFi Wi-Fi Setup (Windows helper)
 
-Version 0.1.0 - prototype. The Windows program is not built yet.
+Version 0.1.1 - prototype. The Windows program, a small window with numbered
+steps (GUI), is not built yet.
 
 Wi-Fi mFi devices (mPower, mPower mini) without a Wi-Fi configuration run their
 own access point and serve their setup page at `https://192.168.2.20`, over

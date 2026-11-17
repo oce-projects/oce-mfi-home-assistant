@@ -1,5 +1,11 @@
 # Changelog - mfi-wifi-setup
 
+## 0.1.1 - 2026-11-17
+
+- The program will be a graphical window (`tkinter`) with numbered steps, no
+  console; specification 0.2.0 in `docs/WIFI-SETUP.md`. The prototype is
+  unchanged.
+
 ## 0.1.0 - 2026-11-17
 
 - Prototype `prototype/legacy_tls_proxy.py`: local bridge from the browser

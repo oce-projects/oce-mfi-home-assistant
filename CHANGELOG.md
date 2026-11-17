@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.14.1 - 2026-11-17
+
+- `docs/WIFI-SETUP.md` 0.2.0: the Wi-Fi setup program is a graphical window (`tkinter`, no console) with numbered steps, a device check every 2 s and the controller address to copy; tests stay on a core module that does not import `tkinter`. Tickets W1 and W4 updated.
+- `docs/PROTOCOL.md`: the device access point is an open network named `mFi` plus the last 6 hex digits of the MAC, channel 1 (measured).
+- `mfi-wifi-setup` 0.1.1 (README and changelog only).
+
 ## 0.14.0 - 2026-11-17
 
 - New folder `mfi-wifi-setup/` (0.1.0, not an add-on): Windows helper for the first setup of Wi-Fi devices. Wi-Fi devices without a Wi-Fi configuration serve their setup page only at `https://192.168.2.20` over TLS 1.0, which current browsers refuse. The prototype `prototype/legacy_tls_proxy.py` bridges the browser to that page; verified on an mPower mini (firmware v2.1.11).

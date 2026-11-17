@@ -260,6 +260,7 @@ From public projects, UNVERIFIED on our units:
 MEASURED on 2026-11-17 on an mPower mini (firmware v2.1.11, from `status.cgi`), from a Windows PC joined to the device access point. Raw captures stay outside the repository: they contain MAC addresses and the names of nearby networks.
 
 - The setup page is at `https://192.168.2.20`, the same address on every device. Ping: 4 of 4 replies, 2 to 7 ms.
+- The access point is an open network (no password, no encryption) named `mFi` plus the last 6 hex digits of the MAC address, on channel 1 (`netsh wlan show interfaces` on the joined PC; channel also in `status.cgi`).
 - TLS (OpenSSL 3.2.1 `s_client`): TLSv1 only; TLSv1.1 and TLSv1.2 fail. Accepted suites: `AES256-SHA`, `AES128-SHA`, `DHE-RSA-AES256-SHA`, `DHE-RSA-AES128-SHA`. Refused: `ECDHE-RSA-AES256-SHA`, `ECDHE-RSA-AES128-SHA`, `CAMELLIA256-SHA`, `DHE-RSA-CAMELLIA256-SHA`. Not tested (missing in the client build): `DES-CBC3-SHA`, `RC4-SHA`, `RC4-MD5`, `SEED-SHA`. RSA key 1024 bit, DH 1024 bit, signature digest MD5-SHA1.
 - Certificate: self-signed, `O=Ubiquiti Networks Inc.`, `CN=ubnt`, `sha1WithRSAEncryption`, valid from 2007-05-17 to 2018-04-29 (expired). Web server `lighttpd/1.4.31`.
 - Current browsers refuse TLS 1.0, so the page needs a bridge: `docs/WIFI-SETUP.md`.
