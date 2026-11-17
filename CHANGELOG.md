@@ -4,7 +4,7 @@ All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
 ## 0.22.1 - 2026-11-17
 
-- docs: configuration, events, rules and statistics from the 2.1.11 controller (clean room report).
+- docs: placeholder sections "Device configuration (setparam)", "Events", "Rules and scenes" and "Statistics" in docs/PROTOCOL.md; every item is UNVERIFIED because the ace.jar REA report produced no finding (the Java source of ace.jar was not prepared for the report), epic T-MWKWL1ME.
 
 ## 0.22.0 - 2026-11-17
 
