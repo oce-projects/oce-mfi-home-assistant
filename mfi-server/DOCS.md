@@ -84,6 +84,7 @@ An optional file `data/settings.json` may hold the same keys as the options.
 | `MFI_DEVICE_SSH_USERNAME` | empty | SSH user of the old controller, used to re-point devices |
 | `MFI_DEVICE_SSH_PASSWORD` | empty | SSH password of the old controller, never logged or shown in the API |
 | `MFI_SSH_EXTRA_OPTIONS` | see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices) | Extra SSH algorithm options (the default is UNVERIFIED) |
+| `MFI_FIRMWARE_DIR` | /opt/mfi-server/firmware | Folder of the firmware archive, see [Firmware](#firmware) |
 
 Precedence: variable, then file, then default.
 
@@ -308,6 +309,28 @@ Errors, from the `api/v1/discovery/<mac>/adopt` and `api/v1/devices/<mac>/repoin
 In add-on mode the `ssh` program is included in the add-on. In standalone mode the host must provide `ssh` from OpenSSH 8.4 or newer, because the askpass method needs the `SSH_ASKPASS_REQUIRE` variable.
 
 Not tested on a real device.
+
+## Firmware
+
+The firmware is not in this repository. The image downloads it at build time from `dl.ubnt.com` and checks it with sha256 before installing it. The file is `M2M/2.1.11.1309/firmware.bin`: 7,418,034 bytes, sha256 `7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79` (measured 2026-11-17, see docs/PROTOCOL.md, section "Firmware archive"). It is installed read-only at `/opt/mfi-server/firmware/M2M/2.1.11.1309/firmware.bin`. The folder is set by the `firmware_dir` setting (environment variable `MFI_FIRMWARE_DIR`, default `/opt/mfi-server/firmware`).
+
+The table `mfi_server/firmware_bundles.json` covers 10 models: IWD1U, P1E, IWO2U, P8U, M2S, M2M, P6E, P1U, P3E and P3U, all on version 2.1.11.1309. EM3, EM24, THERM and IWS1U are not covered, so they never get an upgrade.
+
+At startup the server checks the size and the sha256 of each file in the table. If a file is missing or does not match, the archive is not available: no Update button appears, and `api/v1/status` reports `firmware.available` as `false` with the error `missing`, `size` or `sha256`.
+
+The inform server serves `GET /dl/firmware/<path>` on the inform port (default 6080). It serves only the paths in the table; any other path gets 404. Keep 6080/tcp on the isolated network.
+
+### Updating a device
+
+The Update button appears only when all of these are true: the device is adopted (known to the server), connected, its model is in the table, and its firmware version is older than the archive. The server never downgrades and never updates automatically.
+
+When you press Update, the page asks for confirmation: the device downloads the firmware and reboots, it can take up to 3 minutes, and the power must not be switched off. The upgrade command is sent with the next inform of the device, so the device must reach the server at the address set by `server_address` (automatic if empty).
+
+Only one device is upgraded at a time: a second request while an upgrade is in progress gets 409 `upgrade_in_progress`.
+
+The device firmware version is read from the `version` field of the inform payload. Its format is UNVERIFIED on a real device (docs/PROTOCOL.md). After the upgrade the status is `updated` when the inform reports the new version. If it does not within 180 s, the status is `not_confirmed`. The upgrade state is kept in memory and is reset at restart.
+
+Test: all current devices are already on 2.1.11.1309, so the Update button must not appear on them. The Update button itself is UNVERIFIED until it is tested on a device with older firmware.
 
 ## Network
 
