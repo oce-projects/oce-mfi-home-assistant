@@ -2,6 +2,16 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.19.0 - 2026-11-17
+
+- `mfi-wifi-setup` 0.4.0 (ticket W2 bis): Windows build script
+  `mfi-wifi-setup/build_windows.cmd` that turns the program into one `.exe`
+  (PyInstaller one-file, pinned to `pyinstaller==6.22.3`, source
+  https://pypi.org/project/pyinstaller/) with its sha256 file. A person builds it
+  on Windows; the `.exe` is never committed.
+- `.gitignore`: build output of `mfi-wifi-setup` (`dist/`, `build/`, `*.spec`) is ignored.
+- Versions: repository 0.19.0 in `VERSION` and `CHANGELOG.md`; `mfi-wifi-setup` 0.4.0.
+
 ## 0.18.0 - 2026-11-17
 
 - `mfi-server` 0.12.0: the web page shows a "New Wi-Fi device?" box after the discovery panel, with a link to the latest GitHub release where the Windows program mFi Wi-Fi Setup can be downloaded. Wi-Fi devices after a reset must be joined to the home network with it before they appear in discovery.

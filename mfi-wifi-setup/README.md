@@ -1,8 +1,9 @@
 # mFi Wi-Fi Setup (Windows helper)
 
-Version 0.3.0 - the Windows program: the version 2 window (guided setup, the
+Version 0.4.0 - the Windows program: the version 2 window (guided setup, the
 Wi-Fi network is chosen in the program) and the version 1 window (bridge to the
-device page), in `mfi_wifi_setup/`. The `.exe` is not built yet (ticket W2).
+device page), in `mfi_wifi_setup/`. `build_windows.cmd` builds the `.exe` (see
+"Build"); the first device test is ticket W3.
 
 Wi-Fi mFi devices (mPower, mPower mini) without a Wi-Fi configuration run their
 own access point and serve their setup page at `https://192.168.2.20`, over
@@ -58,6 +59,19 @@ on 2026-11-17.
 The proxy listens on 127.0.0.1 only, does not verify the device certificate
 (self-signed and expired) and never writes query strings to its log: the
 setup form sends the Wi-Fi password in the query string.
+
+## Build
+
+Build the `.exe` on Windows. A person runs it; DevAgentAi cannot.
+
+- Requirements: Windows 10 or 11, 64-bit; Python 3.12 or newer, from python.org or
+  from the Microsoft Store. No administrator rights.
+- Command: double-click `build_windows.cmd` in this folder, or run it from `cmd`.
+- Output: `mfi-wifi-setup\dist\mfi-wifi-setup-<version>-windows-x64.exe` and the
+  `.sha256` file next to it.
+- Publication: attach both files as assets of a GitHub release.
+- The `.exe` never enters the repository (AGENTS.md rule 1): `dist/` and `build/`
+  are in the root `.gitignore`.
 
 ## Rules
 
