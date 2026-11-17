@@ -2,6 +2,19 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.16.0 - 2026-11-17
+
+- W4 of the Wi-Fi setup epic: `mfi-wifi-setup` 0.3.0, guided setup window
+  (version 2). The Wi-Fi network and its password are chosen in the program,
+  not on the device page. New core modules `wifi_survey.py` and
+  `wifi_configure.py` (no `tkinter`). Version 1 stays as the alternative. The
+  controller fields of the device are not sent.
+- `mfi-wifi-setup/tests/test_no_tkinter.py` checks the two new core modules too.
+- `docs/WIFI-SETUP.md` describes version 2; the encryption and auth suite
+  mapping and the device behaviour after `leaveap.cgi` stay UNVERIFIED until the
+  device test.
+- `mfi-wifi-setup` 0.3.0 (package and changelog).
+
 ## 0.15.0 - 2026-11-17
 
 - New program `mfi-wifi-setup/mfi_wifi_setup` (version 1 of the Windows helper for the first Wi-Fi setup of mFi devices): core bridge to the device setup page, device check, messages in Italian and English, controller address memory, and a `tkinter` window started with `python -m mfi_wifi_setup`. The core does not import `tkinter`.

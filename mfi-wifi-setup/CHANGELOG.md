@@ -1,5 +1,21 @@
 # Changelog - mfi-wifi-setup
 
+## 0.3.0 - 2026-11-17
+
+- Guided setup, version 2 of the window: the Wi-Fi network and its password are
+  chosen in the program, not on the device page. The program lists the visible
+  networks (open and WPA/WPA2 personal only), sends the chosen network and
+  password to the device, and follows the progress on `status.cgi` until the
+  address is obtained. Then it closes the device access point.
+- New core modules without `tkinter`: `wifi_survey.py` (network list from
+  `survey.json.cgi`, query for `captive.cgi`) and `wifi_configure.py` (setup
+  states, configure, `leaveap.cgi` only on success).
+- Version 1 (bridge to the original page) stays as the alternative.
+- The controller fields of the device (`inform_addr`, `cloud_name`, `cloud_pass`)
+  are not read, not shown and not sent.
+- `tests/test_no_tkinter.py` checks the two new core modules too. Not tested on
+  a device yet: the device test is ticket W3.
+
 ## 0.2.0 - 2026-11-17
 
 - Version 1 of the program, from the verified prototype: a Windows window

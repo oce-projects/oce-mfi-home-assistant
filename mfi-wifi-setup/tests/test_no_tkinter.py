@@ -1,6 +1,6 @@
 """Offline test: the core of mfi_wifi_setup never needs tkinter.
 
-Only window.py imports tkinter. The four core modules are checked two ways:
+Only window.py imports tkinter. The six core modules are checked two ways:
 their syntax tree has no import of tkinter, and they import normally while
 tkinter is made unavailable. Standard library only.
 
@@ -16,7 +16,14 @@ import unittest
 from pathlib import Path
 
 PACKAGE = Path(__file__).resolve().parent.parent / "mfi_wifi_setup"
-CORE_FILES = ("bridge.py", "device_check.py", "messages.py", "config_store.py")
+CORE_FILES = (
+    "bridge.py",
+    "device_check.py",
+    "messages.py",
+    "config_store.py",
+    "wifi_survey.py",
+    "wifi_configure.py",
+)
 CORE_MODULES = tuple("mfi_wifi_setup." + name[:-3] for name in CORE_FILES)
 BLOCKED = ("tkinter", "tkinter.ttk", "tkinter.messagebox", "tkinter.font")
 
