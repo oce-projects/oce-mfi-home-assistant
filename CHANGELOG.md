@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.18.0 - 2026-11-17
+
+- `mfi-server` 0.12.0: the web page shows a "New Wi-Fi device?" box after the discovery panel, with a link to the latest GitHub release where the Windows program mFi Wi-Fi Setup can be downloaded. Wi-Fi devices after a reset must be joined to the home network with it before they appear in discovery.
+
 ## 0.17.1 - 2026-11-17
 
 - `mfi-server` 0.11.1: adoption works with the real mFi 2.1.11 firmware, whose discovery reply omits fields 21/22/23. The server now reads the model from the platform field (12) and the firmware from the version string (13/14 and 3 are parsed), so the Adopt button appears for a factory-reset mFi even when the "default" flag is absent.

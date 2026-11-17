@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.0 - 2026-11-17
+
+- Web page: a new "New Wi-Fi device?" box after the discovery panel links to the latest GitHub release to download the Windows program mFi Wi-Fi Setup. The link opens in a new tab and the page loads nothing from it. New i18n keys `wifi_setup_heading`, `wifi_setup_text`, `wifi_setup_download` in English and Italian.
+
 ## 0.11.1 - 2026-11-17
 
 - Adoption with the real mFi 2.1.11 firmware: its UDP discovery reply has no fields 21/22/23, so `ubnt_discovery.parse_reply` now reads field 13 (ESSID), field 14 (wmode byte) and field 3 (version string); the model falls back to the platform (field 12) and the firmware is extracted from the version string. The Adopt button appears for a factory mFi even without the "default" flag.

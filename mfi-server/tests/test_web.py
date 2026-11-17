@@ -14,6 +14,10 @@ WEB = Path(__file__).resolve().parent.parent / "mfi_server" / "web"
 I18N_ATTR_RE = re.compile(r'data-i18n(?:-placeholder|-title)?="([a-z0-9_]+)"')
 JS_KEY_RE = re.compile(r"""t\(\s*["']([a-z0-9_]+)["']""")
 FORBIDDEN_ADDRESS_RE = re.compile(r"""(?:fetch\(|href=|src=)\s*["']?\s*(?:/|http)""")
+# download link opened by the user in a new tab; the page loads nothing from it
+ALLOWED_EXTERNAL_LINKS = (
+    'href="https://github.com/oce-projects/oce-mfi-home-assistant/releases/latest"',
+)
 SCRIPT_RE = re.compile(r"<script\b.*?</script>", re.DOTALL | re.IGNORECASE)
 STYLE_RE = re.compile(r"<style\b.*?</style>", re.DOTALL | re.IGNORECASE)
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
@@ -70,9 +74,33 @@ class TestWebPage(unittest.TestCase):
 
     def test_no_absolute_or_external_addresses(self):
         for name, text in {**self.html, **self.js}.items():
+            for link in ALLOWED_EXTERNAL_LINKS:
+                text = text.replace(link, "")
             with self.subTest(file=name):
                 found = [m.group(0) for m in FORBIDDEN_ADDRESS_RE.finditer(text)]
                 self.assertEqual(found, [], f"{name}: absolute or external address")
+
+    def test_forbidden_address_still_catches_other_links(self):
+        samples = (
+            'href="https://example.com/x"',
+            'href="/api"',
+            'fetch("/api")',
+            'href="https://github.com/oce-projects/oce-mfi-home-assistant/releases/latest/x.exe"',
+        )
+        for sample in samples:
+            text = sample
+            for link in ALLOWED_EXTERNAL_LINKS:
+                text = text.replace(link, "")
+            with self.subTest(sample=sample):
+                self.assertIsNotNone(FORBIDDEN_ADDRESS_RE.search(text), sample)
+
+    def test_wifi_setup_link_opens_in_new_tab(self):
+        html = self.html["index.html"]
+        url = "https://github.com/oce-projects/oce-mfi-home-assistant/releases/latest"
+        tag = re.search(r'<a\b[^>]*' + re.escape(url) + r'[^>]*>', html)
+        self.assertIsNotNone(tag, "no <a> with the allowed URL")
+        self.assertIn('target="_blank"', tag.group(0))
+        self.assertIn('rel="noopener noreferrer"', tag.group(0))
 
     def test_scripts_do_not_use_innerhtml(self):
         for name, text in self.js.items():
