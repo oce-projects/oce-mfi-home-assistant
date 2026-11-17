@@ -1,5 +1,9 @@
 # Changelog - mfi-wifi-setup
 
+## 0.4.1 - 2026-11-17
+
+- Tests: `tests/test_version.py` compares `__version__` with the newest `CHANGELOG.md` entry instead of a hard-coded string. Version raised to 0.4.1 with the new `tools/bump_version.py`.
+
 ## 0.4.0 - 2026-11-17
 
 - Windows build script `build_windows.cmd` (ticket W2 bis): one `.exe` with
