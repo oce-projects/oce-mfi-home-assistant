@@ -23,3 +23,8 @@ secrets.yaml
 __pycache__/
 *.pyc
 .venv/
+
+# mfi-wifi-setup build output
+mfi-wifi-setup/dist/
+mfi-wifi-setup/build/
+*.spec

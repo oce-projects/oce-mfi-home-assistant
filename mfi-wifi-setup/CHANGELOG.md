@@ -1,5 +1,20 @@
 # Changelog - mfi-wifi-setup
 
+## 0.4.0 - 2026-11-17
+
+- Windows build script `build_windows.cmd` (ticket W2 bis): one `.exe` with
+  PyInstaller in one-file mode, `--windowed`, named
+  `mfi-wifi-setup-<version>-windows-x64.exe`, with its `.sha256` file next to it.
+  The script uses a temporary venv, removes it at the end and needs no
+  administrator rights.
+- PyInstaller pinned to `6.22.3` in `requirements-build.txt`: the latest release
+  on PyPI (2026-09-12, Requires-Python >=3.8,<3.16), https://pypi.org/project/pyinstaller/.
+- `tests/test_build_script.py` checks the script, the pin and the build ignores
+  in the root `.gitignore`.
+- README section "Build". The `.exe` is not built or tested on a device yet:
+  ticket W3, a person.
+- Program code unchanged.
+
 ## 0.3.0 - 2026-11-17
 
 - Guided setup, version 2 of the window: the Wi-Fi network and its password are
