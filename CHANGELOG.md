@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.15.0 - 2026-11-17
+
+- New program `mfi-wifi-setup/mfi_wifi_setup` (version 1 of the Windows helper for the first Wi-Fi setup of mFi devices): core bridge to the device setup page, device check, messages in Italian and English, controller address memory, and a `tkinter` window started with `python -m mfi_wifi_setup`. The core does not import `tkinter`.
+- Offline tests in `mfi-wifi-setup/tests/` (standard library), run by the CI workflow in a new step.
+- `mfi-wifi-setup` 0.2.0 (package, changelog, README).
+
 ## 0.14.1 - 2026-11-17
 
 - `docs/WIFI-SETUP.md` 0.2.0: the Wi-Fi setup program is a graphical window (`tkinter`, no console) with numbered steps, a device check every 2 s and the controller address to copy; tests stay on a core module that does not import `tkinter`. Tickets W1 and W4 updated.
