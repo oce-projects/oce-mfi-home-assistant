@@ -202,6 +202,18 @@ class TestRunSsh(unittest.TestCase):
                     ssh_adopt.run_ssh(sample_command(), PASSWORD, runner=runner)
                 self.assertEqual(cm.exception.code, code)
 
+    def test_permission_denied_is_auth_failed(self):
+        runner = FakeRunner(result=completed(255, stderr=b"ubnt@192.168.1.20: Permission denied (password)."))
+        with self.assertRaises(SshError) as cm:
+            ssh_adopt.run_ssh(sample_command(), PASSWORD, runner=runner)
+        self.assertEqual(cm.exception.code, "auth_failed")
+
+    def test_other_255_stderr_is_connection_failed(self):
+        runner = FakeRunner(result=completed(255, stderr=b"ssh: connect to host port 22: Connection refused"))
+        with self.assertRaises(SshError) as cm:
+            ssh_adopt.run_ssh(sample_command(), PASSWORD, runner=runner)
+        self.assertEqual(cm.exception.code, "connection_failed")
+
     def test_success_returns_none(self):
         runner = FakeRunner(result=completed(0))
         self.assertIsNone(ssh_adopt.run_ssh(sample_command(), PASSWORD, runner=runner))
