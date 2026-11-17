@@ -1,7 +1,7 @@
 # mFi Wi-Fi Setup (Windows helper)
 
-Version 0.1.1 - prototype. The Windows program, a small window with numbered
-steps (GUI), is not built yet.
+Version 0.2.0 - the Windows program, version 1: a small window with numbered
+steps (GUI), in `mfi_wifi_setup/`. The `.exe` is not built yet (ticket W2).
 
 Wi-Fi mFi devices (mPower, mPower mini) without a Wi-Fi configuration run their
 own access point and serve their setup page at `https://192.168.2.20`, over
@@ -13,6 +13,17 @@ them on the LAN.
 - Specification, tests and tickets: `docs/WIFI-SETUP.md`
 - Device facts (TLS, endpoints, form fields, states): `docs/PROTOCOL.md`,
   section "Wi-Fi setup mode"
+
+## Run
+
+From the `mfi-wifi-setup/` folder, with Python 3 (standard library only):
+
+- `python -m mfi_wifi_setup` opens the window.
+- On Windows, run it without a console window: `pythonw -m mfi_wifi_setup`.
+
+Offline tests, from the repository root:
+
+    python3 -m unittest discover -s mfi-wifi-setup/tests -t mfi-wifi-setup -v
 
 ## Prototype
 
