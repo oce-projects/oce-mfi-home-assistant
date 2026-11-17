@@ -1,6 +1,6 @@
 "use strict";
 
-// Behaviour of the mFi Server web page: login, devices, outlet switches, history chart and device discovery.
+// Behaviour of the mFi Server web page: login, tabs, overview, devices, outlet switches, history chart and device discovery.
 // Hand-written, no libraries. Every request uses a relative address, so it works under the ingress prefix.
 
 const REFRESH_MS = 10000;
@@ -11,6 +11,7 @@ const CHART_HEIGHT = 200;
 const CHART_MARGIN = 1;
 const GRID_Y = [1, 100, 199];
 const STATE_KEYS = { connected: "state_connected", lost: "state_lost", unknown: "state_unknown" };
+const TAB_IDS = ["overview", "devices-tab", "discovery-tab"];
 const METRICS = [
   { key: "active_pwr", label: "metric_active_pwr", unit: "W", digits: 1 },
   { key: "v_rms", label: "metric_v_rms", unit: "V", digits: 1 },
@@ -51,6 +52,10 @@ let discoveryHeading;
 let discoverySearchButton;
 let discoveryEl;
 let backupMessage;
+let tilePower;
+let tileConnected;
+let tileDisconnected;
+let tileOutlets;
 let archiveMessage;
 let firmwareArchive = { available: true };
 
@@ -74,6 +79,10 @@ function loadRefs() {
   discoverySearchButton = document.getElementById("discovery-search");
   discoveryEl = document.getElementById("discovery");
   backupMessage = document.getElementById("backup-message");
+  tilePower = document.getElementById("tile-power");
+  tileConnected = document.getElementById("tile-connected");
+  tileDisconnected = document.getElementById("tile-disconnected");
+  tileOutlets = document.getElementById("tile-outlets");
 }
 
 function reportError(err) {
@@ -87,6 +96,36 @@ function svgNode(name, attributes) {
     node.setAttribute(key, String(value));
   }
   return node;
+}
+
+// Model icon of a device card: hub for M2M/M2S, switch for IWS, outlet for every other model (P, IWO, IWD ...).
+// Outline only: the stroke colour comes from the CSS class.
+function deviceIcon(model) {
+  const name = String(model || "").toUpperCase();
+  const icon = svgNode("svg", { class: "device-card__icon", "aria-hidden": "true", viewBox: "0 0 24 24" });
+  if (name === "M2M" || name === "M2S") {
+    icon.append(
+      svgNode("rect", { x: 3, y: 7, width: 18, height: 10, rx: 2 }),
+      svgNode("circle", { cx: 7, cy: 12, r: 1.5 }),
+      svgNode("circle", { cx: 12, cy: 12, r: 1.5 }),
+      svgNode("circle", { cx: 17, cy: 12, r: 1.5 }),
+      svgNode("line", { x1: 12, y1: 3, x2: 12, y2: 7 })
+    );
+  } else if (name.startsWith("IWS")) {
+    icon.append(
+      svgNode("rect", { x: 6, y: 3, width: 12, height: 18, rx: 3 }),
+      svgNode("rect", { x: 9, y: 7, width: 6, height: 10, rx: 1.5 }),
+      svgNode("line", { x1: 9, y1: 12, x2: 15, y2: 12 })
+    );
+  } else {
+    icon.append(
+      svgNode("rect", { x: 3, y: 3, width: 18, height: 18, rx: 4 }),
+      svgNode("line", { x1: 9, y1: 8, x2: 9, y2: 12 }),
+      svgNode("line", { x1: 15, y1: 8, x2: 15, y2: 12 }),
+      svgNode("path", { d: "M10 16.5a2 2 0 0 1 4 0" })
+    );
+  }
+  return icon;
 }
 
 
@@ -125,6 +164,7 @@ function showLogin(key) {
   discoveryEl.hidden = true;
   logoutButton.hidden = true;
   if (key !== undefined) setLoginMessage(key);
+  showTab();
 }
 
 function showDevices() {
@@ -134,6 +174,31 @@ function showDevices() {
   discoveryHeading.hidden = false;
   discoverySearchButton.hidden = false;
   discoveryEl.hidden = false;
+  showTab();
+}
+
+// ---------------------------------------------------------------- tabs
+
+// The tab comes from the hash: "#overview" when it is empty or unknown. One section is shown at a time, none while the login is shown.
+function currentTab() {
+  const known = TAB_IDS.map((id) => "#" + id);
+  const hash = known.includes(location.hash) ? location.hash : "#overview";
+  return hash.slice(1);
+}
+
+function showTab() {
+  const active = currentTab();
+  const loginShown = !loginSection.hidden;
+  for (const id of TAB_IDS) {
+    document.getElementById(id).hidden = loginShown || id !== active;
+  }
+  for (const link of document.querySelectorAll(".tab")) {
+    if (link.getAttribute("href") === "#" + active) {
+      link.setAttribute("aria-current", "page");
+    } else {
+      link.removeAttribute("aria-current");
+    }
+  }
 }
 
 async function login() {
@@ -182,6 +247,7 @@ async function refreshDevices() {
     // Without a login (Home Assistant ingress) there is nothing to log out from.
     logoutButton.hidden = !loggedIn;
     renderDevices();
+    renderOverview();
     loadDiscovery().catch(reportError);
     loadStatus().catch(reportError);
     return;
@@ -217,6 +283,29 @@ function withUnit(value, metric) {
   return formatNumber(value, metric) + (metric.unit ? " " + metric.unit : "");
 }
 
+// Overview tiles, computed from the device list only: total power, connected and disconnected devices, outlets on out of all outlets.
+function renderOverview() {
+  if (!devicesLoaded) return;
+  let power = 0;
+  let connected = 0;
+  let outletsOn = 0;
+  let outletsTotal = 0;
+  for (const device of devices) {
+    if (device.state === "connected") connected += 1;
+    for (const port of device.ports) {
+      const values = port.values || {};
+      power += Number(values.active_pwr) || 0;
+      outletsTotal += 1;
+      if (values.output === 1) outletsOn += 1;
+    }
+  }
+  const powerFormat = new Intl.NumberFormat(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  tilePower.textContent = powerFormat.format(power) + " W";
+  tileConnected.textContent = String(connected);
+  tileDisconnected.textContent = String(devices.length - connected);
+  tileOutlets.textContent = t("tile_outlets_value", { on: outletsOn, total: outletsTotal });
+}
+
 function renderDevices() {
   devicesEl.replaceChildren();
   if (!devicesLoaded) {
@@ -234,14 +323,13 @@ function renderDevices() {
 
 function renderDevice(device) {
   const state = stateName(device.state);
-  const card = el("article", "device device--" + state);
-  const head = el("div", "device__head");
-  head.appendChild(el("h3", "device__name", device.name));
-  head.appendChild(renderState(state));
-  const meta = el("p", "device__meta");
+  const card = el("article", "device-card device-card--" + state);
+  const head = el("div", "device-card__head");
+  head.append(deviceIcon(device.model), el("h3", "device-card__name", device.name), renderState(state));
+  const meta = el("p", "device-card__meta");
   meta.append(
     document.createTextNode(t("model_label") + ": " + device.model + " · "),
-    el("span", "device__mac", device.mac),
+    el("span", "device-card__mac", device.mac),
     document.createTextNode(" · " + t("last_seen", { time: formatTime(device.last_seen_ms) }))
   );
   const ports = el("div", "ports");
@@ -262,10 +350,10 @@ function renderFirmware(device) {
   const deviceVersion = firmware.device_version || t("firmware_unknown");
   const nodes = [];
   if (firmware.comparison === "no_archive") {
-    nodes.push(el("p", "device__meta", t("firmware_label") + ": " + deviceVersion));
+    nodes.push(el("p", "device-card__meta", t("firmware_label") + ": " + deviceVersion));
   } else {
     nodes.push(
-      el("p", "device__meta", t("firmware_line", { device: deviceVersion, archive: firmware.archive_version || "" }))
+      el("p", "device-card__meta", t("firmware_line", { device: deviceVersion, archive: firmware.archive_version || "" }))
     );
   }
   if (firmware.comparison === "unreadable") {
@@ -387,7 +475,7 @@ function renderPort(mac, port) {
 
 function renderToggle(mac, portNumber, output, key) {
   const on = Number(output) === 1;
-  const toggle = el("button", "toggle", t(on ? "output_on" : "output_off"));
+  const toggle = el("button", "switch", t(on ? "output_on" : "output_off"));
   toggle.type = "button";
   toggle.setAttribute("aria-pressed", on ? "true" : "false");
   toggle.disabled = busyOutputs.has(key);
@@ -733,6 +821,7 @@ function bindEvents() {
       renderVersion();
       setLoginMessage(loginMessageKey);
       renderDevices();
+      renderOverview();
       renderChart();
       renderDiscovery();
       renderArchiveMessage(firmwareArchive);
@@ -748,6 +837,7 @@ function bindEvents() {
     logout().catch(reportError);
   });
   chartClose.addEventListener("click", closeChart);
+  window.addEventListener("hashchange", showTab);
   discoverySearchButton.addEventListener("click", () => {
     searchDiscovery().catch(reportError);
   });
@@ -766,6 +856,7 @@ async function start() {
   renderVersion();
   renderDevices();
   renderDiscovery();
+  showTab();
   loadHealth().catch(reportError);
   refreshDevices().catch(reportError);
   window.setInterval(() => {

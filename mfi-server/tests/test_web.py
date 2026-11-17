@@ -22,7 +22,9 @@ SCRIPT_RE = re.compile(r"<script\b.*?</script>", re.DOTALL | re.IGNORECASE)
 STYLE_RE = re.compile(r"<style\b.*?</style>", re.DOTALL | re.IGNORECASE)
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 TEXT_RE = re.compile(r">([^<]*)<")
-NAV_LINK_RE = re.compile(r'<a\b[^>]*\bclass="([^"]*\btopbar__nav-link\b[^"]*)"[^>]*\bhref="([^"]*)"[^>]*>')
+TAB_LINK_RE = re.compile(r'<a\b[^>]*\bclass="([^"]*\btab\b[^"]*)"[^>]*\bhref="([^"]*)"[^>]*>')
+TAB_RE = re.compile(r'<a\b[^>]*\bclass="([^"]*\btab\b[^"]*)"[^>]*>')
+TILE_RE = re.compile(r'<div\b[^>]*\bclass="([^"]*\btile\b[^"]*)"[^>]*>')
 AUTOMATION_ROUTES = (
     "api/v1/automations/validate",
     "api/v1/automations/import",
@@ -114,22 +116,32 @@ class TestWebPage(unittest.TestCase):
         self.assertIn("localStorage", combined)
         self.assertIn("navigator.language", combined)
 
-    def test_header_nav_links_are_relative_and_share_classes(self):
+    def test_header_tabs_are_relative_and_share_classes(self):
         links = []
         for name, text in self.html.items():
-            for classes, href in NAV_LINK_RE.findall(text):
+            found = TAB_LINK_RE.findall(text)
+            with self.subTest(file=name):
+                self.assertEqual(len(found), 4, "each page has four tabs")
+            for classes, href in found:
                 links.append((name, classes.split(), href))
-        self.assertTrue(links, "no header nav link found")
         for name, _c, href in links:
             with self.subTest(file=name, href=href):
                 self.assertFalse(href.startswith("/") or href.startswith("http"), href)
         class_sets = {tuple(sorted(c)) for _n, c, _h in links}
-        self.assertEqual(len(class_sets), 1, "header nav links differ in classes")
+        self.assertEqual(len(class_sets), 1, "tabs differ in classes")
+
+    def test_current_tab_is_marked_on_each_page(self):
+        expected = {"index.html": 'href="#overview"', "automations.html": 'href="automations.html"'}
+        for name, href in expected.items():
+            with self.subTest(file=name):
+                marked = [m.group(0) for m in TAB_RE.finditer(self.html[name]) if 'aria-current="page"' in m.group(0)]
+                self.assertEqual(len(marked), 1)
+                self.assertIn(href, marked[0])
 
     def test_index_links_to_automations_and_back(self):
         self.assertIn("automations.html", self.html)
         self.assertIn('href="automations.html"', self.html["index.html"])
-        self.assertIn('href="index.html"', self.html["automations.html"])
+        self.assertIn('href="index.html#', self.html["automations.html"])
 
     def test_automations_js_uses_relative_automation_routes(self):
         self.assertIn("automations.js", self.js)
@@ -164,9 +176,14 @@ class TestWebPage(unittest.TestCase):
             r'<button id="discovery-search"[^>]*class="button button--primary"',
         )
 
-    def test_devices_and_discovery_in_panels(self):
+    def test_tabs_are_tab_sections(self):
         html = self.html["index.html"]
-        self.assertEqual(html.count('<section class="panel">'), 2)
+        for section_id in ("overview", "devices-tab", "discovery-tab"):
+            with self.subTest(section=section_id):
+                self.assertRegex(
+                    html,
+                    r'<section id="' + section_id + r'"[^>]*class="[^"]*\btab-section\b[^"]*"',
+                )
         self.assertIn('<div class="section__head">', html)
 
     def test_style_has_table_and_tag_rules(self):
@@ -245,6 +262,68 @@ class TestWebPage(unittest.TestCase):
         self.assertIn("device.is_default == null", app)
         self.assertIn("MFI_MODELS.has", app)
         self.assertIn("const MFI_MODELS", app)
+
+    def test_tabs_share_one_class_set(self):
+        class_sets = []
+        for name in ("index.html", "automations.html"):
+            found = [tuple(sorted(c.split())) for c in TAB_RE.findall(self.html[name])]
+            with self.subTest(file=name):
+                self.assertGreaterEqual(len(found), 4)
+                class_sets.extend(found)
+        self.assertEqual(len(set(class_sets)), 1, "tabs differ in classes")
+
+    def test_tiles_are_four_with_one_class_set(self):
+        found = [tuple(sorted(c.split())) for c in TILE_RE.findall(self.html["index.html"])]
+        self.assertEqual(len(found), 4)
+        self.assertEqual(len(set(found)), 1, "tiles differ in classes")
+
+    def test_app_js_switches_tabs_by_hash(self):
+        app = self.js["app.js"]
+        for text in ("location.hash", "hashchange", '"#overview"', "hidden"):
+            with self.subTest(text=text):
+                self.assertIn(text, app)
+
+    def test_overview_tiles_are_filled_by_app_js(self):
+        html = self.html["index.html"]
+        app = self.js["app.js"]
+        for tile_id in ("tile-power", "tile-connected", "tile-disconnected", "tile-outlets"):
+            with self.subTest(tile=tile_id):
+                self.assertIn('id="' + tile_id + '"', html)
+        for text in ("active_pwr", "tile-power", "tile-outlets"):
+            with self.subTest(text=text):
+                self.assertIn(text, app)
+
+    def test_device_cards_and_switches_have_styles(self):
+        app = self.js["app.js"]
+        css = read_text("style.css")
+        for text in ("device-card device-card--", 'el("button", "switch"', "aria-pressed", "device-card__icon"):
+            with self.subTest(text=text):
+                self.assertIn(text, app)
+        for sel in (".device-card", ".switch", ".device-card__icon", ".tile", ".tabs", ".tab"):
+            with self.subTest(selector=sel):
+                self.assertRegex(css, re.escape(sel) + r"[\s{,:]")
+
+    def test_dark_theme_redefines_only_existing_variables(self):
+        css = read_text("style.css")
+        marker = "@media (prefers-color-scheme: dark)"
+        light_block = re.search(r":root\s*\{([^}]*)\}", css)
+        dark_block = re.search(re.escape(marker) + r"\s*\{\s*:root\s*\{([^}]*)\}", css)
+        self.assertIsNotNone(light_block, "light :root block not found")
+        self.assertIsNotNone(dark_block, "dark :root block not found")
+        light = set(re.findall(r"(--[a-z0-9-]+)\s*:", light_block.group(1)))
+        dark = set(re.findall(r"(--[a-z0-9-]+)\s*:", dark_block.group(1)))
+        self.assertTrue(dark, "dark theme redefines no variable")
+        self.assertTrue(dark <= light, f"dark theme adds {sorted(dark - light)}")
+
+    def test_new_overview_keys_present_in_both_languages(self):
+        keys = (
+            "nav_overview", "nav_search", "tile_power", "tile_connected",
+            "tile_disconnected", "tile_outlets", "tile_outlets_value",
+        )
+        for key in keys:
+            with self.subTest(key=key):
+                self.assertIn(key, self.en)
+                self.assertIn(key, self.it)
 
 
 if __name__ == "__main__":
