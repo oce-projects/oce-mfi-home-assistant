@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.0 - 2026-11-17
+
+- mfi-server 0.13.0: web page restyled in the Home Assistant style (tabs, Overview with summary tiles, device cards with SVG icons and pill switches, automatic dark theme) (ticket G1).
+
 ## 0.21.1 - 2026-11-17
 
 - docs: placeholder section "mPort and sensors (from ace.jar 2.1.11)" in docs/PROTOCOL.md; every item is UNVERIFIED because the ace.jar REA report verified no fact (ticket T-MWKWKNJW).
