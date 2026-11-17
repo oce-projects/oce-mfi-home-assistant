@@ -255,7 +255,7 @@ in this file:
 - GitHub release asset `mfi-wifi-setup-<version>-windows-x64.exe` plus its
   sha256.
 - The mfi-server page shows a box "New Wi-Fi device? Download mFi Wi-Fi Setup"
-  with the link (ticket W5).
+  with a link to the latest GitHub release (ticket W5, done).
 
 ## Tickets proposed for DevAgentAi
 
@@ -265,4 +265,4 @@ in this file:
 | W2 | Windows build script `mfi-wifi-setup/build_windows.cmd` (temporary venv, PyInstaller one-file, sha256 of the output) and its README section | DevAgentAi writes, a human runs |
 | W3 | Device test of the `.exe` (checklist above) and answers to the open points | human |
 | W4 | Version 2 window, guided setup (done) | DevAgentAi, only after W3 |
-| W5 | mfi-server page: download box for Wi-Fi devices | DevAgentAi |
+| W5 | mfi-server page: download box for Wi-Fi devices (done) | DevAgentAi |
