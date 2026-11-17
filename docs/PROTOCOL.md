@@ -230,6 +230,12 @@ OBSERVED (`DatagramQueryServer`, `LiteStationQueryServer`):
 - Main types: 1 MAC, 2 MAC+IPv4, 3 version, 10 uptime, 11 hostname, 12 platform, 21 model, 22 firmware version, 23 "default" flag.
 - No keys or configuration in discovery.
 
+MEASURED 2026-11-17 (mPower mini, platform P1E, firmware 2.1.11.1309, just reset and never adopted):
+
+- The reply has 8 TLV fields, in this order: 2 (MAC+IPv4), 1 (MAC), 10 (uptime), 11 (hostname), 12 (platform "P1E"), 13 (ESSID, 10 bytes), 14 (1 byte, value 0x02), 3 (version string, 34 bytes, e.g. "MF.ar933x.v2.1.11.1309.150406.1423").
+- 13 = ESSID (the device access point name). 14 = a single byte (0x02); its meaning is UNVERIFIED.
+- Fields 21 (model), 22 (firmware) and 23 ("default" flag) do NOT arrive from this firmware. The server therefore derives the model from field 12 (platform) and the firmware from field 3 (version string), and leaves the "default" flag unknown.
+
 ## Device states in the controller
 
 | State | Meaning | Timeout |
