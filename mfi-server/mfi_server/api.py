@@ -20,6 +20,7 @@ from mfi_server.auth import load_password_hash, verify_password
 from mfi_server.automation_model import normalize, validate
 from mfi_server.ssh_adopt import SshError
 from mfi_server.ubnt_discovery import ScanInProgress
+from mfi_server.upgrade import UpgradeError
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class ApiServer(ThreadingHTTPServer):
         engine,
         scanner,
         adoption,
+        upgrades,
     ) -> None:
         self.settings = settings
         self.store = store
@@ -86,6 +88,7 @@ class ApiServer(ThreadingHTTPServer):
         self.engine = engine
         self.scanner = scanner
         self.adoption = adoption
+        self.upgrades = upgrades
         self.backup_status = {"configured": False, "file": "", "devices": 0, "error": None}
         super().__init__((settings.bind_address, getattr(settings, "web_port", DEFAULT_WEB_PORT)), ApiHandler)
 
@@ -103,6 +106,7 @@ def make_api_server(
     engine,
     scanner,
     adoption,
+    upgrades,
 ) -> ThreadingHTTPServer:
     """Build the API server bound to settings.bind_address and the web port."""
     return ApiServer(
@@ -118,6 +122,7 @@ def make_api_server(
         engine,
         scanner,
         adoption,
+        upgrades,
     )
 
 
@@ -203,7 +208,18 @@ class ApiHandler(BaseHTTPRequestHandler):
         elif route == DISCOVERY_ROUTE:
             self._discovery()
         elif route == STATUS_ROUTE:
-            self._send_json(200, {"backup": self.server.backup_status})
+            archive = self.server.upgrades.archive
+            self._send_json(
+                200,
+                {
+                    "backup": self.server.backup_status,
+                    "firmware": {
+                        "available": archive.available,
+                        "error": archive.error,
+                        "version": archive.archive_version(),
+                    },
+                },
+            )
         elif len(parts) == 4 and parts[2] == "devices":
             record = self.server.store.get(parts[3])
             if record is None:
@@ -252,6 +268,8 @@ class ApiHandler(BaseHTTPRequestHandler):
             self._adopt(parts[3])
         elif len(parts) == 5 and parts[2] == "devices" and parts[4] == "repoint":
             self._repoint(parts[3], body)
+        elif len(parts) == 5 and parts[2] == "devices" and parts[4] == "upgrade":
+            self._upgrade(parts[3])
         else:
             self._error(404, "not_found")
 
@@ -467,6 +485,19 @@ class ApiHandler(BaseHTTPRequestHandler):
                     return
         self._adoption_call(self.server.adoption.repoint, mac, ip)
 
+    def _upgrade(self, mac: str) -> None:
+        """Queue the firmware upgrade of one device; only the user's explicit request reaches this route."""
+        record = self.server.store.get(mac)
+        if record is None:
+            self._error(404, "not_found")
+            return
+        try:
+            self.server.upgrades.request(record)
+        except UpgradeError as exc:
+            self._send_json(409, {"error": exc.code})
+        else:
+            self._send_json(202, {"result": "queued"})
+
     def _adoption_call(self, action, *args) -> None:
         """Run one adoption action and answer 202, or the error code of the API contract."""
         try:
@@ -502,6 +533,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                 }
                 for port in record["ports"]
             ],
+            "firmware": self.server.upgrades.firmware_view(record),
         }
 
     def _session_token(self) -> str:
