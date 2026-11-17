@@ -16,6 +16,7 @@ FACTORY_PASSWORD = "ubnt"
 AUTHKEY_BYTES = 16
 ADOPTING_STATE = "adopting"
 ADOPT_FAILED_STATE = "adopt_failed"
+MFI_MODELS = frozenset({"M2M", "M2S", "P1U", "P3U", "P8U", "P1E", "P3E", "P6E", "IWO2U", "IWS1U", "IWD1U", "EM3", "EM24", "THERM"})
 
 
 class Adoption:
@@ -46,8 +47,14 @@ class Adoption:
         dev = devices.get(mac)
         if dev is None or not dev.get("ip"):
             raise LookupError(mac)
-        if not dev.get("is_default"):
+        is_default = dev.get("is_default")
+        if is_default is not None and not is_default:
             raise PermissionError("not_factory_default")
+        if is_default is None:
+            model = str(dev.get("model") or "").upper()
+            platform = str(dev.get("platform") or "").upper()
+            if (model not in MFI_MODELS and platform not in MFI_MODELS) or self.store.get(mac) is not None:
+                raise PermissionError("not_factory_default")
         authkey = secrets.token_hex(AUTHKEY_BYTES)
         name = f"{dev.get('model', '')} {mac[-4:]}"
         self.store.upsert(
