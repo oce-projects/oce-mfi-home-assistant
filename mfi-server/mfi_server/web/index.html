@@ -15,7 +15,6 @@
         <span id="version" class="topbar__version"></span>
       </div>
       <div class="topbar__controls">
-        <a class="topbar__nav-link" href="automations.html" data-i18n="nav_automations"></a>
         <label class="topbar__label" for="lang" data-i18n="lang_label"></label>
         <select id="lang">
           <option value="en" data-i18n="lang_en"></option>
@@ -23,39 +22,67 @@
         </select>
         <button id="logout-button" type="button" data-i18n="logout"></button>
       </div>
+      <nav class="tabs">
+        <a class="tab" href="#overview" aria-current="page" data-i18n="nav_overview"></a>
+        <a class="tab" href="#devices-tab" data-i18n="nav_devices"></a>
+        <a class="tab" href="#discovery-tab" data-i18n="nav_search"></a>
+        <a class="tab" href="automations.html" data-i18n="nav_automations"></a>
+      </nav>
     </header>
     <main class="page">
-      <p id="backup-message" class="message" hidden></p>
-      <section id="login" class="panel" hidden>
+      <section id="login" class="panel panel--login" hidden>
         <h2 data-i18n="login_heading"></h2>
         <input id="password" type="password" autocomplete="current-password" data-i18n-placeholder="password_label">
         <button id="login-button" type="button" data-i18n="login_button"></button>
         <p id="login-message" class="message"></p>
       </section>
-      <section id="chart" class="panel" hidden>
-        <h3 id="chart-title"></h3>
-        <button id="chart-close" type="button" data-i18n="chart_close"></button>
-        <svg id="chart-svg" viewBox="0 0 600 200"></svg>
-        <div class="chart__stats">
-          <span id="chart-min"></span>
-          <span id="chart-max"></span>
+      <section id="overview" class="tab-section" hidden>
+        <p id="backup-message" class="message" hidden></p>
+        <div class="tiles">
+          <div class="tile">
+            <span class="tile__label" data-i18n="tile_power"></span>
+            <span class="tile__value" id="tile-power"></span>
+          </div>
+          <div class="tile">
+            <span class="tile__label" data-i18n="tile_connected"></span>
+            <span class="tile__value" id="tile-connected"></span>
+          </div>
+          <div class="tile">
+            <span class="tile__label" data-i18n="tile_disconnected"></span>
+            <span class="tile__value" id="tile-disconnected"></span>
+          </div>
+          <div class="tile">
+            <span class="tile__label" data-i18n="tile_outlets"></span>
+            <span class="tile__value" id="tile-outlets"></span>
+          </div>
         </div>
       </section>
-      <section class="panel">
+      <section id="devices-tab" class="tab-section" hidden>
         <h2 data-i18n="devices_heading"></h2>
+        <section id="chart" class="panel" hidden>
+          <h3 id="chart-title"></h3>
+          <button id="chart-close" type="button" data-i18n="chart_close"></button>
+          <svg id="chart-svg" viewBox="0 0 600 200"></svg>
+          <div class="chart__stats">
+            <span id="chart-min"></span>
+            <span id="chart-max"></span>
+          </div>
+        </section>
         <div id="devices"></div>
       </section>
-      <section class="panel">
-        <div class="section__head">
-          <h2 data-i18n="discovery_heading"></h2>
-          <button id="discovery-search" type="button" class="button button--primary" data-i18n="discovery_search"></button>
-        </div>
-        <div id="discovery"></div>
-      </section>
-      <section class="panel" id="wifi-setup">
-        <h2 data-i18n="wifi_setup_heading"></h2>
-        <p data-i18n="wifi_setup_text"></p>
-        <a class="button" data-i18n="wifi_setup_download" href="https://github.com/oce-projects/oce-mfi-home-assistant/releases/latest" target="_blank" rel="noopener noreferrer"></a>
+      <section id="discovery-tab" class="tab-section" hidden>
+        <section class="panel">
+          <div class="section__head">
+            <h2 data-i18n="discovery_heading"></h2>
+            <button id="discovery-search" type="button" class="button button--primary" data-i18n="discovery_search"></button>
+          </div>
+          <div id="discovery"></div>
+        </section>
+        <section class="panel" id="wifi-setup">
+          <h2 data-i18n="wifi_setup_heading"></h2>
+          <p data-i18n="wifi_setup_text"></p>
+          <a class="button" data-i18n="wifi_setup_download" href="https://github.com/oce-projects/oce-mfi-home-assistant/releases/latest" target="_blank" rel="noopener noreferrer"></a>
+        </section>
       </section>
     </main>
   </body>

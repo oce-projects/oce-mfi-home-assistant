@@ -6,7 +6,7 @@
 2. Copy the backup of the old controller (`.unf` file) into `/share`.
 3. Write its file name in the `backup_file` option (for example `backup.unf`).
 4. Start the app.
-5. Open "mFi" in the sidebar, press Search, then press Re-point on your devices.
+5. Open "mFi" in the sidebar, open the Search tab and press Search, then press Re-point on your devices.
 
 Wi-Fi devices after a reset need the Windows program mFi Wi-Fi Setup first. The mFi page has a download box for it, which links to the latest release on GitHub.
 

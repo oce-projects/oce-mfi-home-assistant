@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.0 - 2026-11-17
+
+- Web page restyled in the Home Assistant style (ticket G1): a tab bar (Overview, Devices, Search, Automations) that shows one section at a time via location.hash without reloading; an Overview tab with four tiles (total power, connected, disconnected, outlets on) computed from GET api/v1/devices with no new route; device cards with a model SVG icon, a coloured state label and a pill switch per outlet; an automatic dark theme via @media (prefers-color-scheme: dark). New i18n keys nav_overview, nav_search, tile_power, tile_connected, tile_disconnected, tile_outlets, tile_outlets_value in English and Italian.
+
 ## 0.12.1 - 2026-11-17
 
 - Tests: `tests/test_version.py` now derives the expected version from `mfi_server/__init__.py` and compares it with `config.yaml`, `CHANGELOG.md` and the Dockerfile `ARG BUILD_VERSION`, instead of asserting a hard-coded string. Version raised to 0.12.1 with the new `tools/bump_version.py`.

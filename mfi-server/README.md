@@ -12,7 +12,7 @@ Install **mFi Server (new)**: it is the recommended one. **Ubiquiti mFi Controll
 2. Copy the backup of the old controller (`.unf` file) into `/share`.
 3. Write its file name in the `backup_file` option (for example `backup.unf`).
 4. Start the app.
-5. Open "mFi" in the sidebar, press Search, then press Re-point on your devices.
+5. Open "mFi" in the sidebar, open the Search tab and press Search, then press Re-point on your devices.
 
 See [DOCS.md](DOCS.md) for the full documentation.
 
@@ -32,7 +32,7 @@ Home Assistant OS.
 - Never sends a factory reset to a device.
 - MQTT discovery for Home Assistant (optional in standalone mode).
 - JSON web API on port 8099, and measurement history in `history.sqlite3` (30 days by default).
-- Web page on port 8099, served by the same server: hand-written HTML, CSS and JavaScript, English and Italian, no build tools.
+- Web page on port 8099, served by the same server: hand-written HTML, CSS and JavaScript, English and Italian, no build tools. The colours follow the light or dark theme of the operating system.
 - Automations in the Home Assistant format, run by our own engine (optional, see DOCS.md).
 
 ### Home Assistant entities
