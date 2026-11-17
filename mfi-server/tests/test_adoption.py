@@ -134,6 +134,37 @@ class TestAdopt(unittest.TestCase):
         self.assertEqual(self.store.saved, [])
         self.assertEqual(self.runner.calls, 0)
 
+    def test_adopt_unknown_default_state_with_mfi_model_adopts(self):
+        self.scanner.results = [{"mac": FACTORY_MAC, "ip": DEVICE_IP, "model": "P1E", "is_default": None}]
+        self.adoption.adopt(FACTORY_MAC)
+        self.assertEqual(self.runner.calls, 1)
+        self.assertEqual(self.store.saved[0]["state"], "adopting")
+        command = self.runner.command
+        index = command.index("-l")
+        self.assertEqual(command[index : index + 2], ["-l", FACTORY_USERNAME])
+
+    def test_adopt_unknown_default_state_with_non_mfi_model_is_permission_error(self):
+        self.scanner.results = [{"mac": FACTORY_MAC, "ip": DEVICE_IP, "model": "UAP", "is_default": None}]
+        with self.assertRaises(PermissionError):
+            self.adoption.adopt(FACTORY_MAC)
+        self.assertEqual(self.runner.calls, 0)
+        self.assertEqual(self.store.saved, [])
+
+    def test_adopt_unknown_default_state_with_known_mac_is_permission_error(self):
+        self.store.records[FACTORY_MAC] = {
+            "mac": FACTORY_MAC,
+            "model": "P1E",
+            "name": "x",
+            "authkey": DEVICE_AUTHKEY,
+            "ports": [],
+            "state": "connected",
+        }
+        self.scanner.results = [{"mac": FACTORY_MAC, "ip": DEVICE_IP, "model": "P1E", "is_default": None}]
+        with self.assertRaises(PermissionError):
+            self.adoption.adopt(FACTORY_MAC)
+        self.assertEqual(self.runner.calls, 0)
+        self.assertEqual(self.store.saved, [])
+
     def test_ssh_failure_marks_adopt_failed_and_raises(self):
         self.runner.returncode = 255
         with self.assertRaises(SshError) as ctx:
