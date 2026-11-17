@@ -216,6 +216,7 @@ class TestWebPage(unittest.TestCase):
         self.assertIn("function adoptable", app)
         self.assertIn("device.is_default == null", app)
         self.assertIn("MFI_MODELS.has", app)
+        self.assertIn("const MFI_MODELS", app)
 
 
 if __name__ == "__main__":

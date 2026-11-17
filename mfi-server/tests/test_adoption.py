@@ -165,6 +165,20 @@ class TestAdopt(unittest.TestCase):
         self.assertEqual(self.runner.calls, 0)
         self.assertEqual(self.store.saved, [])
 
+    def test_adopt_retry_after_adopt_failed_with_unknown_default_adopts(self):
+        self.store.records[FACTORY_MAC] = {
+            "mac": FACTORY_MAC,
+            "model": "P1E",
+            "name": "x",
+            "authkey": DEVICE_AUTHKEY,
+            "ports": [],
+            "state": "adopt_failed",
+        }
+        self.scanner.results = [{"mac": FACTORY_MAC, "ip": DEVICE_IP, "model": "P1E", "is_default": None}]
+        self.adoption.adopt(FACTORY_MAC)
+        self.assertEqual(self.runner.calls, 1)
+        self.assertEqual(self.store.saved[0]["state"], "adopting")
+
     def test_ssh_failure_marks_adopt_failed_and_raises(self):
         self.runner.returncode = 255
         with self.assertRaises(SshError) as ctx:
