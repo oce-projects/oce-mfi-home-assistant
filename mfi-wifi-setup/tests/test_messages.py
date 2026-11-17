@@ -19,6 +19,18 @@ ALL_KEYS = {
     "close_button",
     "page_ready",
     "how_to_stop",
+    "networks_title",
+    "scanning_networks",
+    "no_networks",
+    "password_label",
+    "show_password",
+    "configure_button",
+    "password_required",
+    "progress_pending",
+    "progress_wifi",
+    "progress_address",
+    "config_error",
+    "done_on_network",
 }
 REQUIRED_KEYS = {"not_on_network", "not_answering", "page_ready", "how_to_stop"}
 
@@ -47,6 +59,11 @@ class TestMessageKeys(unittest.TestCase):
                 self.assertIn("{mac6}", MESSAGES[lang]["network_name"])
                 self.assertIn("{model}", MESSAGES[lang]["status_found"])
                 self.assertIn("{firmware}", MESSAGES[lang]["status_found"])
+
+    def test_done_on_network_has_ip_placeholder(self):
+        for lang in ("it", "en"):
+            with self.subTest(lang=lang):
+                self.assertIn("{ip}", MESSAGES[lang]["done_on_network"])
 
 
 class TestLanguageChoice(unittest.TestCase):
