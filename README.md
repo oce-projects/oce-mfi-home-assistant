@@ -62,6 +62,7 @@ isolated network and never expose ports 6080, 6443 or 3478 to the internet.
 
 Read [AGENTS.md](AGENTS.md). Tests: `python3 -m unittest discover -s tests -v`.
 mfi-server tests: `python3 -m unittest discover -s mfi-server/tests -t mfi-server -v`.
+mfi-wifi-setup tests: `python3 -m unittest discover -s mfi-wifi-setup/tests -t mfi-wifi-setup -v`.
 
 ## Credits
 

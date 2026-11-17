@@ -4,11 +4,12 @@ Read [AGENTS.md](AGENTS.md) first: it holds the full rules for this repository. 
 
 ## Running the tests
 
-The tests run offline and use the Python standard library only. Run these commands from the repository root. Both must exit with status 0.
+The tests run offline and use the Python standard library only. Run these commands from the repository root. All must exit with status 0.
 
 ```
 python3 -m unittest discover -s tests -v
 python3 -m unittest discover -s mfi-server/tests -t mfi-server -v
+python3 -m unittest discover -s mfi-wifi-setup/tests -t mfi-wifi-setup -v
 ```
 
 ## Rules in short
