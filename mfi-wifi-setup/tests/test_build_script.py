@@ -48,6 +48,17 @@ class TestBuildScript(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertNotIn(path, self.script)
 
+    def test_cleans_build_dir_before_creating_venv(self):
+        # A stale temporary folder from an interrupted build must be removed first.
+        cleanup = self.script.index('rmdir /s /q "%BUILD_DIR%"')
+        venv = self.script.index("python -m venv")
+        self.assertLess(cleanup, venv)
+
+    def test_hash_written_without_language_filter(self):
+        # The .sha256 must not depend on English certutil header text.
+        self.assertNotIn("findstr", self.script)
+        self.assertIn("skip=1", self.script)
+
 
 class TestBuildRequirements(unittest.TestCase):
     def test_pyinstaller_is_pinned(self):

@@ -22,6 +22,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
+rem Remove leftovers from an interrupted previous build.
+rmdir /s /q "%BUILD_DIR%" 2>nul
+
 python -m venv "%VENV_DIR%"
 if errorlevel 1 (
     echo Could not create the build environment in "%VENV_DIR%".
@@ -60,11 +63,14 @@ if errorlevel 1 (
     echo Could not compute the sha256 of "%EXE%".
     goto :fail
 )
-findstr /v /c:"SHA256 hash" /c:"CertUtil" "%HASH_FILE%" > "%EXE%.sha256"
-if errorlevel 1 (
-    echo Could not write "%EXE%.sha256".
+rem certutil's second output line is the hash itself, in any Windows UI language.
+set "APP_HASH="
+for /f "skip=1 tokens=*" %%h in ('type "%HASH_FILE%"') do if not defined APP_HASH set "APP_HASH=%%h"
+if not defined APP_HASH (
+    echo Could not read the sha256 of "%EXE%".
     goto :fail
 )
+> "%EXE%.sha256" echo %APP_HASH% *%EXE_NAME%.exe
 
 rmdir /s /q "%BUILD_DIR%"
 if exist "%BUILD_DIR%" (
