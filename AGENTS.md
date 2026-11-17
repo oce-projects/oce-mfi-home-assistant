@@ -18,11 +18,14 @@ before touching anything that talks to devices.
    real MAC addresses, home IP addresses, host names or local drive paths.
    Controller backups (`.unf`) contain device keys: they never enter the repo.
    The publishability test checks for known private patterns.
-3. **Version and changelog on every change.** The repository version is in
-   `VERSION` and must equal the newest entry of `CHANGELOG.md`. Each add-on has
-   its own `version` in `<addon>/config.yaml`, equal to the newest entry of
-   `<addon>/CHANGELOG.md`. Bump them in the same commit as the change
-   (semantic versioning: fix = patch, feature = minor).
+3. **Version and changelog on every change.** One command bumps every version file of a component: `python3 tools/bump_version.py <component> <patch|minor|major> "<changelog line>"` (`repo`, `mfi-server`, `mfi-controller`, `mfi-wifi-setup`). It raises the version in every file below and prepends the dated entry to that component's CHANGELOG. Run it once for `repo` and once for every component you touched, in the same commit (fix = patch, feature = minor). `python3 tools/bump_version.py --check` verifies all components are consistent.
+
+| Component | Version files |
+|---|---|
+| repo | `VERSION`, newest `## X.Y.Z` of `CHANGELOG.md` |
+| mfi-server | `config.yaml`, `CHANGELOG.md`, `Dockerfile` (`ARG BUILD_VERSION`), `mfi_server/__init__.py` |
+| mfi-controller | `config.yaml`, `CHANGELOG.md`, `Dockerfile` (`ARG BUILD_VERSION`) |
+| mfi-wifi-setup | `mfi_wifi_setup/__init__.py`, `CHANGELOG.md` |
 4. **Tests run offline.** The test command runs in a container without network.
    Tests use the Python standard library only. Do not add tests that need the
    internet, Docker, a device or Home Assistant.
