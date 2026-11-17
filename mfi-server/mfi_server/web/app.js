@@ -321,6 +321,12 @@ const UPGRADE_ERROR_KEYS = {
   upgrade_in_progress: "upgrade_error_upgrade_in_progress",
 };
 
+const ADOPT_ERROR_KEYS = {
+  not_factory_default: "adopt_error_not_factory_default",
+  auth_failed: "adopt_error_auth_failed",
+  connection_failed: "adopt_error_connection_failed",
+};
+
 async function upgradeDevice(device, button) {
   if (!window.confirm(t("upgrade_confirm"))) return;
   button.disabled = true;
@@ -596,9 +602,19 @@ function discoveryStateTag(device) {
   return el("span", cls, t(key));
 }
 
+function adoptable(device) {
+  if (device.is_default === true) return true;
+  if (device.is_default == null && !device.known) {
+    const model = String(device.model || "").toUpperCase();
+    const platform = String(device.platform || "").toUpperCase();
+    return MFI_MODELS.has(model) || MFI_MODELS.has(platform);
+  }
+  return false;
+}
+
 function renderDiscoveryActions(device) {
   const cell = el("td", "", "");
-  if (device.is_default === true) {
+  if (adoptable(device)) {
     const b = el("button", "button", t("adopt"));
     b.type = "button";
     b.addEventListener("click", () => {
@@ -694,7 +710,15 @@ async function adoptDevice(device, button) {
   button.disabled = true;
   try {
     const response = await fetch("api/v1/discovery/" + encodeURIComponent(device.mac) + "/adopt", { method: "POST" });
-    window.alert(t(response.status === 202 ? "adopt_done" : "action_error"));
+    if (response.status === 202) {
+      window.alert(t("adopt_done"));
+    } else {
+      const body = await response.json().catch(() => ({}));
+      const key = Object.prototype.hasOwnProperty.call(ADOPT_ERROR_KEYS, body.error)
+        ? ADOPT_ERROR_KEYS[body.error]
+        : "action_error";
+      window.alert(t(key));
+    }
   } finally {
     button.disabled = false;
   }

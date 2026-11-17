@@ -109,5 +109,8 @@
   "upgrade_error_not_connected": "Il dispositivo non è connesso",
   "upgrade_error_unreadable_version": "Versione non riconosciuta",
   "upgrade_error_not_older": "Il dispositivo è già aggiornato",
-  "upgrade_error_upgrade_in_progress": "Un altro dispositivo si sta aggiornando. Attendi che finisca."
+  "upgrade_error_upgrade_in_progress": "Un altro dispositivo si sta aggiornando. Attendi che finisca.",
+  "adopt_error_auth_failed": "Il dispositivo ha rifiutato la password di fabbrica: non è alle impostazioni di fabbrica. Ripristinalo (tieni premuto il tasto reset) e cerca di nuovo.",
+  "adopt_error_not_factory_default": "Questo dispositivo non si può adottare: non è un mFi alle impostazioni di fabbrica, oppure è già nel server.",
+  "adopt_error_connection_failed": "Impossibile raggiungere il dispositivo via SSH."
 }
