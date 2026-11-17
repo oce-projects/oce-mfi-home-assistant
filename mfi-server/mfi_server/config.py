@@ -41,6 +41,7 @@ FILE_KEYS = (
     "device_ssh_username",
     "device_ssh_password",
     "ssh_extra_options",
+    "firmware_dir",
 )
 ENV_NAMES = {
     "inform_port": "MFI_INFORM_PORT",
@@ -61,6 +62,7 @@ ENV_NAMES = {
     "device_ssh_username": "MFI_DEVICE_SSH_USERNAME",
     "device_ssh_password": "MFI_DEVICE_SSH_PASSWORD",
     "ssh_extra_options": "MFI_SSH_EXTRA_OPTIONS",
+    "firmware_dir": "MFI_FIRMWARE_DIR",
 }
 
 
@@ -90,6 +92,7 @@ class Settings:
     device_ssh_username: str = ""
     device_ssh_password: str = field(default="", repr=False)
     ssh_extra_options: str = "KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa,ssh-dss;Ciphers=+aes128-cbc,3des-cbc"
+    firmware_dir: str = "/opt/mfi-server/firmware"
 
 
 def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Path = ADDON_OPTIONS_PATH) -> Settings:
@@ -137,6 +140,7 @@ def load_settings(argv: list[str], environ: Mapping[str, str], options_path: Pat
         device_ssh_username=_text("device_ssh_username", values.get("device_ssh_username", base.device_ssh_username)),
         device_ssh_password=_text("device_ssh_password", values.get("device_ssh_password", base.device_ssh_password)),
         ssh_extra_options=_ssh_extra_options(values.get("ssh_extra_options", base.ssh_extra_options)),
+        firmware_dir=_text("firmware_dir", values.get("firmware_dir", base.firmware_dir)),
     )
     logger.debug("settings loaded: mode=%s data_dir=%s", mode, data_dir)
     return settings

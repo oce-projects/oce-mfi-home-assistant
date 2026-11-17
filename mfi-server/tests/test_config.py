@@ -375,5 +375,21 @@ class TestResolveBackupPath(unittest.TestCase):
             )
 
 
+class TestFirmwareDirSetting(unittest.TestCase):
+    def test_default(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(_load({}, d).firmware_dir, "/opt/mfi-server/firmware")
+
+    def test_from_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"firmware_dir": "/tmp/fw"}', encoding="utf-8")
+            self.assertEqual(_load({}, d).firmware_dir, "/tmp/fw")
+
+    def test_environment_wins_over_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "settings.json").write_text('{"firmware_dir": "/tmp/fw"}', encoding="utf-8")
+            self.assertEqual(_load({"MFI_FIRMWARE_DIR": "/opt/other"}, d).firmware_dir, "/opt/other")
+
+
 if __name__ == "__main__":
     unittest.main()
