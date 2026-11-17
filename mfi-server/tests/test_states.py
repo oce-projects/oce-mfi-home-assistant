@@ -57,6 +57,14 @@ class TestDeviceStates(unittest.TestCase):
         self.assertEqual(self.states.state(OTHER), "connected")
         self.assertEqual(self.states.lost_devices(), [MAC])
 
+    def test_version_reported_by_device(self):
+        self.assertIsNone(self.states.version(MAC))
+        self.states.set_version(MAC, "MF.ar933x.v2.1.11.1309.150406.1423")
+        self.assertEqual(self.states.version(MAC), "MF.ar933x.v2.1.11.1309.150406.1423")
+        self.states.set_version(MAC, "2.1.11.1309")
+        self.assertEqual(self.states.version(MAC), "2.1.11.1309")
+        self.assertIsNone(self.states.version(OTHER))
+
     def test_default_clock_is_monotonic(self):
         self.assertEqual(DeviceStates().state(MAC), "unknown")
 

@@ -6,6 +6,7 @@ tearDown. No network beyond 127.0.0.1.
 """
 from __future__ import annotations
 
+import hashlib
 import http.client
 import os
 import tempfile
@@ -17,10 +18,12 @@ import mfi_server
 from mfi_server import packet
 from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings
+from mfi_server.firmware import FirmwareArchive
 from mfi_server.measurements import Measurements
 from mfi_server.server import make_server
 from mfi_server.states import DeviceStates
 from mfi_server.store import DeviceStore
+from mfi_server.upgrade import UpgradeManager
 
 MAC = "02aabbccdd01"
 MAC_UNKNOWN = "02aabbccdd02"
@@ -47,7 +50,22 @@ class InformServerTest(unittest.TestCase):
         self.states = DeviceStates()
         self.queue = CommandQueue()
         self.measurements = Measurements()
-        self.server = make_server(self.settings, self.store, self.states, self.queue, self.measurements)
+        self._fwdir = Path(self._tmp.name) / "firmware"
+        (self._fwdir / "M2M" / "x").mkdir(parents=True)
+        (self._fwdir / "M2M" / "x" / "firmware.bin").write_bytes(b"FW")
+        bundles = {
+            "P3E": {
+                "path": "M2M/x/firmware.bin",
+                "version": "2.1.11.1309",
+                "sha256": hashlib.sha256(b"FW").hexdigest(),
+                "size": 2,
+            }
+        }
+        self.archive = FirmwareArchive(self._fwdir, bundles)
+        self.upgrades = UpgradeManager(self.archive, self.states, self.queue)
+        self.server = make_server(
+            self.settings, self.store, self.states, self.queue, self.measurements, self.upgrades
+        )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
 
@@ -202,3 +220,42 @@ class InformServerTest(unittest.TestCase):
         self._add_device(MAC, key.hex())
         self._inform(key, {"mac": MAC, "connect_request_ip": "192.168.1.20", "connect_request_port": 40000})
         self.assertIsNone(self.states.wakeup_target(MAC))
+
+    def test_firmware_file_is_served_read_only(self):
+        status, headers, body = self._request("GET", "/dl/firmware/M2M/x/firmware.bin")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["content-type"], "application/octet-stream")
+        self.assertEqual(body, b"FW")
+
+    def test_unknown_or_encoded_firmware_paths_get_404(self):
+        for path in (
+            "/dl/firmware/M2M/x/unknown.bin",
+            "/dl/firmware/../firmware.bin",
+            "/dl/firmware/%2e%2e%2ffirmware.bin",
+        ):
+            status, _, body = self._request("GET", path)
+            self.assertEqual((status, body), (404, b""), path)
+
+    def test_firmware_is_404_when_the_archive_is_unavailable(self):
+        self.archive.available = False
+        status, _, body = self._request("GET", "/dl/firmware/M2M/x/firmware.bin")
+        self.assertEqual((status, body), (404, b""))
+
+    def test_upgrade_is_delivered_once_after_the_first_inform(self):
+        key = os.urandom(16)
+        self._add_device(MAC, key.hex())
+        first = self._inform(key, {"mac": MAC, "version": "2.1.10.1200"})
+        self.assertEqual(first["_type"], "noop")
+        self.assertEqual(self.states.version(MAC), "2.1.10.1200")
+        self.queue.put_upgrade(MAC, "M2M/x/firmware.bin", "2.1.11.1309")
+        second = self._inform(key, {"mac": MAC})
+        self.assertEqual(second["_type"], "upgrade")
+        self.assertEqual(
+            second["url"],
+            "http://127.0.0.1:" + str(self.server.server_address[1]) + "/dl/firmware/M2M/x/firmware.bin",
+        )
+        self.assertEqual(second["version"], "2.1.11.1309")
+        self.assertEqual(set(second.keys()), {"_type", "url", "version"})
+        third = self._inform(key, {"mac": MAC})
+        self.assertEqual(third["_type"], "noop")
+        self.assertFalse(self.queue.pending_upgrade(MAC))

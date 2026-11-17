@@ -31,6 +31,7 @@ from mfi_server.bridge import MqttBridge
 from mfi_server.commands import CommandQueue
 from mfi_server.config import Settings, load_settings, resolve_backup_path, supervisor_mqtt
 from mfi_server.control import OutputControl
+from mfi_server.firmware import FirmwareArchive
 from mfi_server.history import History
 from mfi_server.measurements import Measurements
 from mfi_server.mqtt import MqttClient
@@ -40,6 +41,7 @@ from mfi_server.states import DeviceStates
 from mfi_server.store import DeviceStore
 from mfi_server.ubnt_discovery import Scanner
 from mfi_server.unf import import_backup
+from mfi_server.upgrade import UpgradeManager
 
 logger = logging.getLogger(__name__)
 
@@ -337,6 +339,12 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     states = DeviceStates()
     queue = CommandQueue()
     measurements = Measurements()
+    archive = FirmwareArchive(Path(settings.firmware_dir))
+    if not archive.available:
+        logger.warning("firmware archive unavailable: %s", archive.error)
+    else:
+        logger.info("firmware archive ready: %s", archive.archive_version())
+    upgrades = UpgradeManager(archive, states, queue)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.bind((settings.bind_address, settings.wakeup_port))
@@ -366,11 +374,23 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     scanner = Scanner()
     adoption = Adoption(settings, store, scanner)
     api_server = make_api_server(
-        settings, store, states, measurements, history, control, sessions, limiter, automations, engine, scanner, adoption
+        settings,
+        store,
+        states,
+        measurements,
+        history,
+        control,
+        sessions,
+        limiter,
+        automations,
+        engine,
+        scanner,
+        adoption,
+        upgrades,
     )
     api_server.backup_status = backup_status
     threading.Thread(target=api_server.serve_forever, daemon=True).start()
-    server = make_server(settings, store, states, queue, measurements)
+    server = make_server(settings, store, states, queue, measurements, upgrades)
     logger.info(
         "listening on %s:%d (mode %s)",
         settings.bind_address,

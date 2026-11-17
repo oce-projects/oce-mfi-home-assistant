@@ -51,6 +51,8 @@ let discoveryHeading;
 let discoverySearchButton;
 let discoveryEl;
 let backupMessage;
+let archiveMessage;
+let firmwareArchive = { available: true };
 
 function loadRefs() {
   versionEl = document.getElementById("version");
@@ -246,12 +248,57 @@ function renderDevice(device) {
   for (const port of device.ports) {
     ports.appendChild(renderPort(device.mac, port));
   }
-  card.append(head, meta);
+  card.append(head, meta, ...renderFirmware(device));
   if (state !== "connected") {
     card.appendChild(renderRepointActions(device));
   }
   card.appendChild(ports);
   return card;
+}
+
+function renderFirmware(device) {
+  const firmware = device.firmware;
+  if (!firmware) return [];
+  const deviceVersion = firmware.device_version || t("firmware_unknown");
+  const nodes = [];
+  if (firmware.comparison === "no_archive") {
+    nodes.push(el("p", "device__meta", t("firmware_label") + ": " + deviceVersion));
+  } else {
+    nodes.push(
+      el("p", "device__meta", t("firmware_line", { device: deviceVersion, archive: firmware.archive_version || "" }))
+    );
+  }
+  if (firmware.comparison === "unreadable") {
+    nodes.push(el("p", "message", t("firmware_unreadable")));
+  }
+  const status = renderUpgradeStatus(firmware.upgrade_status);
+  if (status) nodes.push(status);
+  const actions = renderUpgradeButton(device);
+  if (actions) nodes.push(actions);
+  return nodes;
+}
+
+function renderUpgradeStatus(status) {
+  if (status === "requested" || status === "sent") return el("p", "message", t("upgrade_in_progress_note"));
+  if (status === "updated") return el("p", "message message--ok", t("firmware_updated"));
+  if (status === "not_confirmed") return el("p", "message message--error", t("firmware_not_confirmed"));
+  return null;
+}
+
+function renderUpgradeButton(device) {
+  const firmware = device.firmware;
+  const pending = firmware.upgrade_status === "requested" || firmware.upgrade_status === "sent";
+  if (device.state !== "connected" || !firmware.available || firmware.comparison !== "older" || pending) {
+    return null;
+  }
+  const actions = el("div", "auto__actions");
+  const b = el("button", "button button--primary", t("upgrade"));
+  b.type = "button";
+  b.addEventListener("click", () => {
+    upgradeDevice(device, b).catch(reportError);
+  });
+  actions.appendChild(b);
+  return actions;
 }
 
 function renderRepointActions(device) {
@@ -263,6 +310,37 @@ function renderRepointActions(device) {
   });
   actions.appendChild(b);
   return actions;
+}
+
+const UPGRADE_ERROR_KEYS = {
+  archive_unavailable: "upgrade_error_archive_unavailable",
+  no_bundle: "upgrade_error_no_bundle",
+  not_connected: "upgrade_error_not_connected",
+  unreadable_version: "upgrade_error_unreadable_version",
+  not_older: "upgrade_error_not_older",
+  upgrade_in_progress: "upgrade_error_upgrade_in_progress",
+};
+
+async function upgradeDevice(device, button) {
+  if (!window.confirm(t("upgrade_confirm"))) return;
+  button.disabled = true;
+  try {
+    const response = await fetch("api/v1/devices/" + encodeURIComponent(device.mac) + "/upgrade", { method: "POST" });
+    if (response.status === 202) {
+      window.alert(t("upgrade_queued"));
+    } else if (response.status === 409) {
+      const body = await response.json();
+      const key = Object.prototype.hasOwnProperty.call(UPGRADE_ERROR_KEYS, body.error)
+        ? UPGRADE_ERROR_KEYS[body.error]
+        : "action_error";
+      window.alert(t(key));
+    } else {
+      window.alert(t("action_error"));
+    }
+  } finally {
+    button.disabled = false;
+  }
+  refreshDevices().catch(reportError);
 }
 
 async function repointDevice(device, button) {
@@ -577,8 +655,16 @@ function loadStatus() {
     if (response.status !== 200) return;
     return response.json().then((body) => {
       renderBackupMessage(body.backup || {});
+      renderArchiveMessage(body.firmware || {});
     });
   });
+}
+
+function renderArchiveMessage(firmware) {
+  firmwareArchive = firmware;
+  const unavailable = firmware.available === false;
+  archiveMessage.textContent = unavailable ? t("firmware_archive_unavailable") : "";
+  archiveMessage.hidden = !unavailable;
 }
 
 function renderBackupMessage(status) {
@@ -625,6 +711,7 @@ function bindEvents() {
       renderDevices();
       renderChart();
       renderDiscovery();
+      renderArchiveMessage(firmwareArchive);
     });
   });
   loginButton.addEventListener("click", () => {
@@ -644,6 +731,9 @@ function bindEvents() {
 
 async function start() {
   loadRefs();
+  archiveMessage = el("p", "message message--error");
+  archiveMessage.hidden = true;
+  backupMessage.after(archiveMessage);
   lang = detectLanguage();
   document.documentElement.lang = lang;
   bindEvents();

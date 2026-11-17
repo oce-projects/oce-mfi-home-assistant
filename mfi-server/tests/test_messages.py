@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import unittest
 
-from mfi_server.messages import noop, output_command
+from mfi_server.messages import noop, output_command, upgrade_command
 
 
 class TestMessages(unittest.TestCase):
@@ -37,6 +37,15 @@ class TestMessages(unittest.TestCase):
         self.assertEqual(message["val"], 0)
         self.assertEqual(message["port"], 2)
         self.assertEqual(message["server_time_in_utc"], "7")
+
+    def test_upgrade_command_exact_dict(self):
+        url = "http://server:6080/dl/firmware/M2M/2.1.11.1309/firmware.bin"
+        result = upgrade_command(url, "2.1.11.1309")
+        self.assertEqual(
+            result,
+            {"_type": "upgrade", "url": url, "version": "2.1.11.1309"},
+        )
+        self.assertEqual(set(result.keys()), {"_type", "url", "version"})
 
 
 if __name__ == "__main__":

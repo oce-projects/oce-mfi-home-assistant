@@ -16,5 +16,6 @@
   "server_address": "",
   "device_ssh_username": "",
   "device_ssh_password": "",
-  "ssh_extra_options": "KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa,ssh-dss;Ciphers=+aes128-cbc,3des-cbc"
+  "ssh_extra_options": "KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa,ssh-dss;Ciphers=+aes128-cbc,3des-cbc",
+  "firmware_dir": "/opt/mfi-server/firmware"
 }

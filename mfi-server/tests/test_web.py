@@ -177,6 +177,33 @@ class TestWebPage(unittest.TestCase):
                 self.assertNotIn(key, self.en)
                 self.assertNotIn(key, self.it)
 
+    def test_firmware_keys_present_in_both_languages(self):
+        for key in (
+            "firmware_label", "firmware_line", "firmware_unknown", "firmware_unreadable",
+            "firmware_updated", "firmware_not_confirmed", "firmware_archive_unavailable",
+            "upgrade", "upgrade_confirm", "upgrade_queued", "upgrade_in_progress_note",
+            "upgrade_error_archive_unavailable", "upgrade_error_no_bundle",
+            "upgrade_error_not_connected", "upgrade_error_unreadable_version",
+            "upgrade_error_not_older", "upgrade_error_upgrade_in_progress",
+        ):
+            with self.subTest(key=key):
+                self.assertIn(key, self.en)
+                self.assertIn(key, self.it)
+
+    def test_app_js_has_upgrade_flow(self):
+        app = self.js["app.js"]
+        for text in ('"/upgrade"', "upgradeDevice", "firmware_unreadable", "window.confirm"):
+            with self.subTest(text=text):
+                self.assertIn(text, app)
+
+    def test_app_js_asks_confirmation_before_upgrade_request(self):
+        app = self.js["app.js"]
+        gate = re.compile(
+            r'if\s*\(\s*!\s*window\.confirm\(\s*t\(\s*["\']upgrade_confirm["\']\s*\)\s*\)\s*\)\s*return'
+        )
+        self.assertRegex(app, gate, "the upgrade confirm result must gate an early return")
+        self.assertLess(gate.search(app).start(), app.index('"/upgrade"'))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -135,6 +135,7 @@ Each setting can come from an environment variable, from `settings.json` in the 
 | `MFI_DEVICE_SSH_USERNAME` | empty (adoption off) | SSH user name for the devices |
 | `MFI_DEVICE_SSH_PASSWORD` | empty (adoption off) | SSH password for the devices |
 | `MFI_SSH_EXTRA_OPTIONS` | legacy algorithms | Extra SSH options for the devices |
+| `MFI_FIRMWARE_DIR` | /opt/mfi-server/firmware | Folder of the firmware archive served to the devices |
 
 ### Data folder
 
