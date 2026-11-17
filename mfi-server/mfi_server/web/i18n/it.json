@@ -92,5 +92,22 @@
   "repoint_confirm": "Ripuntare questo dispositivo sul server?",
   "adopt_done": "Adozione inviata",
   "repoint_done": "Ripuntamento inviato",
-  "action_error": "Richiesta non riuscita"
+  "action_error": "Richiesta non riuscita",
+  "firmware_label": "Firmware",
+  "firmware_line": "Firmware: {device} · archivio {archive}",
+  "firmware_unknown": "sconosciuta",
+  "firmware_unreadable": "versione non riconosciuta",
+  "firmware_updated": "Aggiornato",
+  "firmware_not_confirmed": "Aggiornamento non confermato",
+  "firmware_archive_unavailable": "Archivio firmware non disponibile: il file manca o è danneggiato. Aggiornamenti disattivati.",
+  "upgrade": "Aggiorna",
+  "upgrade_confirm": "Il dispositivo scarica il firmware e si riavvia. Ci vogliono fino a 3 minuti. Non togliere la corrente.",
+  "upgrade_queued": "Aggiornamento in coda: parte al prossimo contatto",
+  "upgrade_in_progress_note": "Aggiornamento in corso, fino a 3 minuti",
+  "upgrade_error_archive_unavailable": "Archivio firmware non disponibile",
+  "upgrade_error_no_bundle": "Questo modello non è nell'archivio firmware",
+  "upgrade_error_not_connected": "Il dispositivo non è connesso",
+  "upgrade_error_unreadable_version": "Versione non riconosciuta",
+  "upgrade_error_not_older": "Il dispositivo è già aggiornato",
+  "upgrade_error_upgrade_in_progress": "Un altro dispositivo si sta aggiornando. Attendi che finisca."
 }
