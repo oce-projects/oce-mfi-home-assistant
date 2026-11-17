@@ -1,6 +1,6 @@
 # mFi Wi-Fi Setup (Windows helper)
 
-Version 0.4.0 - the Windows program: the version 2 window (guided setup, the
+Version 0.4.2 - the Windows program: the version 2 window (guided setup, the
 Wi-Fi network is chosen in the program) and the version 1 window (bridge to the
 device page), in `mfi_wifi_setup/`. `build_windows.cmd` builds the `.exe` (see
 "Build"); the first device test is ticket W3.
@@ -60,6 +60,23 @@ The proxy listens on 127.0.0.1 only, does not verify the device certificate
 (self-signed and expired) and never writes query strings to its log: the
 setup form sends the Wi-Fi password in the query string.
 
+## Download
+
+The Windows program is built by GitHub Actions on a Windows runner and attached
+to every published release of this repository (workflow
+`.github/workflows/windows-exe.yml`). The `.exe` is not stored in the repository.
+
+1. Open the latest release on the GitHub page of the repository.
+2. Download `mfi-wifi-setup-<version>-windows-x64.exe` and its `.sha256` file.
+3. Check the hash before you run the program. In `cmd`, from the download folder:
+
+    certutil -hashfile mfi-wifi-setup-<version>-windows-x64.exe SHA256
+
+   The hash printed by `certutil` must equal the hash in the `.sha256` file.
+
+The `.exe` is not code-signed, so Windows SmartScreen or an antivirus program may
+warn about it. Run it only when the hash matches.
+
 ## Build
 
 Build the `.exe` on Windows. A person runs it; DevAgentAi cannot.
@@ -69,7 +86,8 @@ Build the `.exe` on Windows. A person runs it; DevAgentAi cannot.
 - Command: double-click `build_windows.cmd` in this folder, or run it from `cmd`.
 - Output: `mfi-wifi-setup\dist\mfi-wifi-setup-<version>-windows-x64.exe` and the
   `.sha256` file next to it.
-- Publication: attach both files as assets of a GitHub release.
+- Publication: GitHub Actions builds the `.exe` on `windows-latest` and attaches
+  both files to each published release (see "Download").
 - The `.exe` never enters the repository (AGENTS.md rule 1): `dist/` and `build/`
   are in the root `.gitignore`.
 

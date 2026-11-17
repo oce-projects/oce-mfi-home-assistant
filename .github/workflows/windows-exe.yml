@@ -1,0 +1,66 @@
+name: windows-exe
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build the exe and its sha256
+        shell: cmd
+        run: mfi-wifi-setup\build_windows.cmd
+
+      - name: Check that both files exist
+        shell: pwsh
+        run: |
+          $exe = @(Get-ChildItem -Path mfi-wifi-setup/dist -Filter *.exe)
+          $sha = @(Get-ChildItem -Path mfi-wifi-setup/dist -Filter *.sha256)
+          if ($exe.Count -ne 1 -or $sha.Count -ne 1) {
+            throw "expected one .exe and one .sha256 in mfi-wifi-setup/dist"
+          }
+
+      - name: Upload the exe and its sha256
+        uses: actions/upload-artifact@v4
+        with:
+          name: mfi-wifi-setup-windows-x64
+          path: |
+            mfi-wifi-setup/dist/*.exe
+            mfi-wifi-setup/dist/*.sha256
+          retention-days: 30
+          if-no-files-found: error
+
+  attach:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download the build
+        uses: actions/download-artifact@v4
+        with:
+          name: mfi-wifi-setup-windows-x64
+          path: dist
+
+      - name: Attach the exe and its sha256 to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -Eeuo pipefail
+          gh release upload "$TAG" dist/*.exe dist/*.sha256 --clobber
