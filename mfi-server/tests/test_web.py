@@ -198,7 +198,11 @@ class TestWebPage(unittest.TestCase):
 
     def test_app_js_asks_confirmation_before_upgrade_request(self):
         app = self.js["app.js"]
-        self.assertLess(app.index('window.confirm(t("upgrade_confirm"))'), app.index('"/upgrade"'))
+        gate = re.compile(
+            r'if\s*\(\s*!\s*window\.confirm\(\s*t\(\s*["\']upgrade_confirm["\']\s*\)\s*\)\s*\)\s*return'
+        )
+        self.assertRegex(app, gate, "the upgrade confirm result must gate an early return")
+        self.assertLess(gate.search(app).start(), app.index('"/upgrade"'))
 
 
 if __name__ == "__main__":

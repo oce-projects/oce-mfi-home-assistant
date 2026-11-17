@@ -135,9 +135,16 @@ class UpgradeManager:
         }
 
     def _evaluate(self) -> None:
-        """Finish the active upgrade when it is confirmed or its window is over. The caller holds the lock."""
+        """Finish the active upgrade when it is confirmed, never delivered, or its window is over. The caller holds the lock."""
         active = self._active
-        if active is None or active["status"] != "sent":
+        if active is None:
+            return
+        if active["status"] == "requested":
+            if self._clock() - active["requested_at"] > self._timeout_s:
+                self._queue.pop_upgrade(active["mac"])
+                self._finalize("not_confirmed")
+            return
+        if active["status"] != "sent":
             return
         if _reached(self._states.version(active["mac"]), active["version"]):
             self._finalize("updated")

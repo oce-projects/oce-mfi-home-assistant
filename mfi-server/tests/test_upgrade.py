@@ -99,6 +99,18 @@ class UpgradeTest(unittest.TestCase):
         self._connect(MAC, OLDER_VERSION)
         self._rejected("archive_unavailable", self.record)
 
+    def test_requested_times_out_when_never_sent(self) -> None:
+        self._connect(MAC, OLDER_VERSION)
+        self.mgr.request(self.record)
+        self.assertEqual(self.mgr.status(MAC), "requested")
+        self.t[0] = UPGRADE_TIMEOUT_S + 1.0
+        self.assertEqual(self.mgr.status(MAC), "not_confirmed")
+        self.assertIsNone(self.mgr._active)
+        self.assertFalse(self.queue.pending_upgrade(MAC))
+        self._connect(OTHER_MAC, OLDER_VERSION)
+        self.assertIsNone(self.mgr.request(self._record(OTHER_MAC)))
+        self.assertTrue(self.queue.pending_upgrade(OTHER_MAC))
+
     def test_confirmed_by_new_version_within_timeout(self) -> None:
         self._connect(MAC, OLDER_VERSION)
         self.mgr.request(self.record)
