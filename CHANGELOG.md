@@ -2,6 +2,12 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.21.0 - 2026-11-17
+
+- The Windows program of `mfi-wifi-setup` is built by GitHub Actions on `windows-latest` and attached to each published release, with its sha256 file (ticket T-MWKUB27O): `.github/workflows/windows-exe.yml`, offline checks in `tests/test_windows_workflow.py`. The `.exe` is never committed.
+- `mfi-wifi-setup/README.md` has a "Download" section with the hash check.
+- Versions: repository 0.21.0 in `VERSION` and `CHANGELOG.md`; `mfi-wifi-setup` 0.4.2.
+
 ## 0.20.0 - 2026-11-17
 
 - New `tools/bump_version.py`: one command raises the version in every file of a component (`repo`, `mfi-server`, `mfi-controller`, `mfi-wifi-setup`) and adds the dated CHANGELOG entry; `--check` verifies all components are consistent, `--dry-run` previews. Standard library only (ticket T-MWKUB25T).

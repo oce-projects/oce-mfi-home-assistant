@@ -1,5 +1,17 @@
 # Changelog - mfi-wifi-setup
 
+## 0.4.2 - 2026-11-17
+
+- GitHub Actions workflow `.github/workflows/windows-exe.yml` (ticket T-MWKUB27O)
+  builds the `.exe` on `windows-latest` with `build_windows.cmd`, checks that the
+  `.exe` and its `.sha256` exist, and attaches both to each published release.
+  Runs only on `workflow_dispatch` and on published releases; the `.exe` is never
+  committed.
+- `tests/test_windows_workflow.py` checks the workflow text (events, permissions,
+  files, Python version) offline.
+- `README.md` has a "Download" section with the hash check and the SmartScreen
+  warning. The program code is unchanged. Not tested on a device yet: ticket W3.
+
 ## 0.4.1 - 2026-11-17
 
 - Tests: `tests/test_version.py` compares `__version__` with the newest `CHANGELOG.md` entry instead of a hard-coded string. Version raised to 0.4.1 with the new `tools/bump_version.py`.
