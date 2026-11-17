@@ -23,6 +23,7 @@ class DeviceStates:
         self._lock = threading.Lock()
         self._last_seen: dict[str, float] = {}
         self._wakeup: dict[str, tuple[str, int]] = {}
+        self._versions: dict[str, str] = {}
 
     def seen(self, mac: str) -> None:
         with self._lock:
@@ -55,3 +56,11 @@ class DeviceStates:
     def wakeup_target(self, mac: str) -> tuple[str, int] | None:
         with self._lock:
             return self._wakeup.get(mac)
+
+    def set_version(self, mac: str, version: str) -> None:
+        with self._lock:
+            self._versions[mac] = version
+
+    def version(self, mac: str) -> str | None:
+        with self._lock:
+            return self._versions.get(mac)
