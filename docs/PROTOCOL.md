@@ -222,7 +222,7 @@ An item may contain an `entries` list. Each entry inherits the parent fields. Qu
 
 ## mPort and sensors (from ace.jar 2.1.11)
 
-Source of every item below: the reverse engineering report REA on `ace.jar` 2.1.11 (ticket T-MWKWKNJW-S1). That report verified no fact: its calls to the decompiled-source tools were refused because the Java source had not been prepared, so no class was read. Every item below is UNVERIFIED and must not be relied on until a new report or a device test confirms it.
+Source of every item below: the reverse engineering report REA on `ace.jar` 2.1.11 (ticket T-MWKWKNJW). That report verified none of these items, so each one stays UNVERIFIED: the subsections below are open questions, not findings, and must not be relied on until a new report or a device test confirms them.
 
 ### 1. Measurements of mPort ports in the inform
 
@@ -255,8 +255,6 @@ Source of every item below: the reverse engineering report REA on `ace.jar` 2.1.
 
 - OBSERVED (already listed under "Measurements"): `type="detected"` means a new sensor on an mPort. Source: existing entry, not from the REA report.
 - UNVERIFIED: the flow from detection of a new sensor to its configuration. Source: REA report, question 7, not answered.
-
-No row was added to the tag table under "Measurements": the REA report names no mPort tag.
 
 ## Discovery (UDP 10001)
 

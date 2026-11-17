@@ -4,7 +4,7 @@ All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
 ## 0.21.1 - 2026-11-17
 
-- docs: mPort and sensor protocol from the 2.1.11 controller (clean room report)
+- docs: placeholder section "mPort and sensors (from ace.jar 2.1.11)" in docs/PROTOCOL.md; every item is UNVERIFIED because the ace.jar REA report verified no fact (ticket T-MWKWKNJW).
 
 ## 0.21.0 - 2026-11-17
 
