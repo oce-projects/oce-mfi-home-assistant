@@ -92,5 +92,22 @@
   "repoint_confirm": "Re-point this device to this server?",
   "adopt_done": "Adoption sent",
   "repoint_done": "Re-point sent",
-  "action_error": "The request failed"
+  "action_error": "The request failed",
+  "firmware_label": "Firmware",
+  "firmware_line": "Firmware: {device} · archive {archive}",
+  "firmware_unknown": "unknown",
+  "firmware_unreadable": "version not recognised",
+  "firmware_updated": "Updated",
+  "firmware_not_confirmed": "Update not confirmed",
+  "firmware_archive_unavailable": "Firmware archive not available: the file is missing or damaged. Updates are disabled.",
+  "upgrade": "Update",
+  "upgrade_confirm": "The device downloads the firmware and restarts. This takes up to 3 minutes. Do not unplug the power.",
+  "upgrade_queued": "Update queued: it starts at the next contact",
+  "upgrade_in_progress_note": "Update in progress, up to 3 minutes",
+  "upgrade_error_archive_unavailable": "Firmware archive not available",
+  "upgrade_error_no_bundle": "This model is not in the firmware archive",
+  "upgrade_error_not_connected": "The device is not connected",
+  "upgrade_error_unreadable_version": "Version not recognised",
+  "upgrade_error_not_older": "The device is already up to date",
+  "upgrade_error_upgrade_in_progress": "Another device is updating. Wait until it finishes."
 }
