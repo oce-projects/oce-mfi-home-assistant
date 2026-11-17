@@ -1,5 +1,20 @@
 # Changelog - mfi-wifi-setup
 
+## 0.2.0 - 2026-11-17
+
+- Version 1 of the program, from the verified prototype: a Windows window
+  (`tkinter`, no console) with numbered steps, started with
+  `python -m mfi_wifi_setup` from this folder. The `.exe` is not built yet
+  (ticket W2).
+- Core modules without `tkinter`: `bridge.py` (local bridge to the device page
+  on 127.0.0.1, next free port when 8020 is busy), `device_check.py` (device
+  state every 2 s), `messages.py` (Italian and English), `config_store.py` (the
+  controller address only).
+- Offline tests in `tests/` with the standard library: the core does not import
+  `tkinter`, and the version matches this changelog.
+- Specification in `docs/WIFI-SETUP.md`, version 0.2.0. The prototype
+  `prototype/legacy_tls_proxy.py` is unchanged.
+
 ## 0.1.1 - 2026-11-17
 
 - The program will be a graphical window (`tkinter`) with numbered steps, no
