@@ -376,6 +376,57 @@ The controller 2.1.11 backup format matches UniFi: AES-128-CBC with the public U
 - `db.gz` is a stream of MongoDB BSON documents. A document `{"__cmd": "select", "collection": "<name>"}` marks the start of each collection.
 - `db.gz` contains device keys: **never commit backups or their content.**
 
+## Device configuration (setparam)
+
+Status: UNVERIFIED for every item below. The REA report on `ace.jar` 2.1.11 (epic T-MWKWL1ME) did not analyse the controller: the Java source was not prepared, so it produced no Evidence ID. Nothing in this section is a finding.
+
+The `setparam` message itself is described under "Controller responses" (OBSERVED, `ConfigService`). This section does not repeat or change that paragraph.
+
+| Item | Label | Source |
+|---|---|---|
+| When a `setparam` is sent after adoption, after a rename, or after a settings change | UNVERIFIED | REA report, question 1, not answered |
+| How the device confirms a configuration (`cfgversion` or another field) | UNVERIFIED | REA report, question 1, not answered |
+| Where the outlet names and the port labels are stored, and whether they reach the device or stay in the controller | UNVERIFIED | REA report, question 2, not answered |
+| Outlet settings (state at power-on, lock, timer, thresholds) and where each one is stored | UNVERIFIED | REA report, question 2, not answered |
+
+The report found no new command to the device, so the table under "Commands to the device" is unchanged.
+
+## Events
+
+Status: UNVERIFIED for every item below. Source of every item: REA report on `ace.jar` 2.1.11 (epic T-MWKWL1ME), question 3, not answered.
+
+| Item | Label | Source |
+|---|---|---|
+| Event type keys (`EVT_*`) | UNVERIFIED. Only `EVT_AP_Lost_Contact` is known (OBSERVED, see "Device states in the controller") | REA report, question 3, not answered |
+| Fields of a saved event | UNVERIFIED | REA report, question 3, not answered |
+| What generates an event: connection, disconnection, outlet on or off, adoption, update, sensor thresholds | UNVERIFIED | REA report, question 3, not answered |
+| Collection where events are saved | UNVERIFIED | REA report, question 3, not answered |
+
+## Rules and scenes
+
+Status: UNVERIFIED for every item below. Source of every item: REA report on `ace.jar` 2.1.11 (epic T-MWKWL1ME), question 4, not answered. No rule is imported by this section; rule import belongs to a later epic.
+
+| Item | Label | Source |
+|---|---|---|
+| Fields and types of `rule`, `ruleaction`, `ruleset` and `scene` | UNVERIFIED | REA report, question 4, not answered |
+| Trigger types: sensor value, time, state change | UNVERIFIED | REA report, question 4, not answered |
+| Conditions | UNVERIFIED | REA report, question 4, not answered |
+| Actions: outlet, output, scene, notification | UNVERIFIED | REA report, question 4, not answered |
+| Time format | UNVERIFIED | REA report, question 4, not answered |
+
+## Statistics
+
+Status: UNVERIFIED for every item below. Source of every item: REA report on `ace.jar` 2.1.11 (epic T-MWKWL1ME), question 5, not answered.
+
+| Item | Label | Source |
+|---|---|---|
+| Aggregation per hour or per day | UNVERIFIED | REA report, question 5, not answered |
+| Collections (`stat_*` or similar) | UNVERIFIED | REA report, question 5, not answered |
+| Fields of the aggregated records | UNVERIFIED | REA report, question 5, not answered |
+| Retention period | UNVERIFIED | REA report, question 5, not answered |
+
+These four sections must be replaced with verified content after a new REA report, which needs the Java source of `ace.jar` prepared for REA first.
+
 ## Open questions (need a real device)
 
 1. The exact inform JSON of an mPower and of an mPort.
