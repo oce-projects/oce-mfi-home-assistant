@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.0 - 2026-11-17
+
+- Firmware archive: the image downloads the mFi firmware 2.1.11.1309 (`M2M/2.1.11.1309/firmware.bin`) at build time from `dl.ubnt.com`, checks its sha256 and serves it read-only from `/opt/mfi-server/firmware`. The firmware file is not in the repository (`Dockerfile`).
+- New route `GET /dl/firmware/<path>` on the inform server: it serves only the files of the archive, and answers 404 for anything else.
+- Update button in the device page: it always asks for confirmation, is never automatic, and runs one device at a time (409 while another update is running). The result is confirmed when the device reports the new version; otherwise it is marked not confirmed after 180 seconds. The button is not shown when the device firmware is already current.
+- New setting `firmware_dir` (`MFI_FIRMWARE_DIR`, default `/opt/mfi-server/firmware`).
+
 ## 0.10.2 - 2026-11-16
 
 - Password of `set-password` follows a new rule: any character is allowed (accents, spaces and symbols included), and the password must have at least 12 characters, one upper-case letter, one lower-case letter, one digit and one special character. The rule is checked in `auth.password_problems`; the error names the missing parts and never shows the password. Behaviour change, patch release. `device_ssh_password` has no such rules.
