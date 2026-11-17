@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.1 - 2026-11-17
+
+- docs: placeholder sections "Device configuration (setparam)", "Events", "Rules and scenes" and "Statistics" in docs/PROTOCOL.md; every item is UNVERIFIED (the ace.jar REA report produced no finding).
+
 ## 0.22.0 - 2026-11-17
 
 - mfi-server 0.13.0: web page restyled in the Home Assistant style (tabs, Overview with summary tiles, device cards with SVG icons and pill switches, automatic dark theme) (ticket G1).

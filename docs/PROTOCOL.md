@@ -376,6 +376,47 @@ The controller 2.1.11 backup format matches UniFi: AES-128-CBC with the public U
 - `db.gz` is a stream of MongoDB BSON documents. A document `{"__cmd": "select", "collection": "<name>"}` marks the start of each collection.
 - `db.gz` contains device keys: **never commit backups or their content.**
 
+## Device configuration (setparam)
+
+Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 verified none of these items. Nothing here is a finding.
+
+The `setparam` message itself is described under "Controller responses" (OBSERVED, `ConfigService`). This section does not repeat or change that paragraph.
+
+- UNVERIFIED: when a `setparam` is sent after adoption, after a rename, or after a settings change.
+- UNVERIFIED: how the device confirms a configuration (`cfgversion` or another field).
+- UNVERIFIED: where the outlet names and the port labels are stored, and whether they reach the device or stay in the controller.
+- UNVERIFIED: outlet settings (state at power-on, lock, timer, thresholds) and where each one is stored.
+
+The report found no new command to the device, so the table under "Commands to the device" is unchanged.
+
+## Events
+
+Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 answered none of these. Nothing here is a finding.
+
+- UNVERIFIED: the event type keys (`EVT_*`). Only `EVT_AP_Lost_Contact` is known (OBSERVED, see "Device states in the controller").
+- UNVERIFIED: the fields of a saved event.
+- UNVERIFIED: what generates an event (connection, disconnection, outlet on or off, adoption, update, sensor thresholds).
+- UNVERIFIED: the collection where events are saved.
+
+## Rules and scenes
+
+Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 answered none of these. Nothing here is a finding. No rule is imported by this section; rule import belongs to a later epic.
+
+- UNVERIFIED: the fields and types of `rule`, `ruleaction`, `ruleset` and `scene`.
+- UNVERIFIED: the trigger types (sensor value, time, state change).
+- UNVERIFIED: the conditions.
+- UNVERIFIED: the actions (outlet, output, scene, notification).
+- UNVERIFIED: the time format.
+
+## Statistics
+
+Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 answered none of these. Nothing here is a finding.
+
+- UNVERIFIED: whether the controller aggregates measurements per hour or per day.
+- UNVERIFIED: the collections (`stat_*` or similar).
+- UNVERIFIED: the fields of the aggregated records.
+- UNVERIFIED: the retention period.
+
 ## Open questions (need a real device)
 
 1. The exact inform JSON of an mPower and of an mPort.
