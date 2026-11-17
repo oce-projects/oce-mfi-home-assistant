@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.1 - 2026-11-17
+
+- Tests: `tests/test_version.py` now derives the expected version from `mfi_server/__init__.py` and compares it with `config.yaml`, `CHANGELOG.md` and the Dockerfile `ARG BUILD_VERSION`, instead of asserting a hard-coded string. Version raised to 0.12.1 with the new `tools/bump_version.py`.
+
 ## 0.12.0 - 2026-11-17
 
 - Web page: a new "New Wi-Fi device?" box after the discovery panel links to the latest GitHub release to download the Windows program mFi Wi-Fi Setup. The link opens in a new tab and the page loads nothing from it. New i18n keys `wifi_setup_heading`, `wifi_setup_text`, `wifi_setup_download` in English and Italian.
