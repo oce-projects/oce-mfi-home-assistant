@@ -119,6 +119,13 @@ def run_ssh(command: list[str], password: str, timeout_s: float = 20.0, runner=s
             raise SshError("timeout") from exc
         _log_stderr(result.stderr, password)
         if result.returncode == 255:
+            stderr = result.stderr
+            if isinstance(stderr, bytes):
+                stderr_text = stderr.decode("utf-8", errors="replace")
+            else:
+                stderr_text = stderr or ""
+            if "Permission denied" in stderr_text:
+                raise SshError("auth_failed")
             raise SshError("connection_failed")
         if result.returncode != 0:
             raise SshError("command_failed")

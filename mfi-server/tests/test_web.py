@@ -204,6 +204,20 @@ class TestWebPage(unittest.TestCase):
         self.assertRegex(app, gate, "the upgrade confirm result must gate an early return")
         self.assertLess(gate.search(app).start(), app.index('"/upgrade"'))
 
+    def test_app_js_maps_adopt_errors_to_keys(self):
+        app = self.js["app.js"]
+        self.assertIn("ADOPT_ERROR_KEYS", app)
+        for key in ("adopt_error_not_factory_default", "adopt_error_auth_failed", "adopt_error_connection_failed"):
+            with self.subTest(key=key):
+                self.assertIn(key, app)
+
+    def test_app_js_shows_adopt_for_unknown_is_default_mfi(self):
+        app = self.js["app.js"]
+        self.assertIn("function adoptable", app)
+        self.assertIn("device.is_default == null", app)
+        self.assertIn("MFI_MODELS.has", app)
+        self.assertIn("const MFI_MODELS", app)
+
 
 if __name__ == "__main__":
     unittest.main()

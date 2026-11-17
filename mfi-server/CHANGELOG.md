@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.1 - 2026-11-17
+
+- Adoption with the real mFi 2.1.11 firmware: its UDP discovery reply has no fields 21/22/23, so `ubnt_discovery.parse_reply` now reads field 13 (ESSID), field 14 (wmode byte) and field 3 (version string); the model falls back to the platform (field 12) and the firmware is extracted from the version string. The Adopt button appears for a factory mFi even without the "default" flag.
+- `adoption.adopt` accepts a device with an unknown "default" flag when its model/platform is a known mFi model and its MAC is not already stored; otherwise it refuses with `not_factory_default`.
+- `ssh_adopt.run_ssh` returns `auth_failed` when the SSH stderr contains "Permission denied" (return code 255), keeping `connection_failed` for other 255 failures.
+
 ## 0.11.0 - 2026-11-17
 
 - Firmware archive: the image downloads the mFi firmware 2.1.11.1309 (`M2M/2.1.11.1309/firmware.bin`) at build time from `dl.ubnt.com`, checks its sha256 and serves it read-only from `/opt/mfi-server/firmware`. The firmware file is not in the repository (`Dockerfile`).

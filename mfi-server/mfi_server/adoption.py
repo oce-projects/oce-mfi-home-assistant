@@ -16,6 +16,14 @@ FACTORY_PASSWORD = "ubnt"
 AUTHKEY_BYTES = 16
 ADOPTING_STATE = "adopting"
 ADOPT_FAILED_STATE = "adopt_failed"
+# Models accepted as mFi when discovery gives no factory-default flag (firmware 2.1.11).
+# Same 14 values as web/app.js. Source: docs/PROTOCOL.md (section Devices,
+# "Models accepted as mFi"). INFERRED from device names in real backups; UNVERIFIED
+# on a live device.
+MFI_MODELS = frozenset({
+    "M2M", "M2S", "P1U", "P3U", "P8U", "P1E", "P3E", "P6E",
+    "IWO2U", "IWS1U", "IWD1U", "EM3", "EM24", "THERM",
+})
 
 
 class Adoption:
@@ -46,8 +54,17 @@ class Adoption:
         dev = devices.get(mac)
         if dev is None or not dev.get("ip"):
             raise LookupError(mac)
-        if not dev.get("is_default"):
+        is_default = dev.get("is_default")
+        if is_default is not None and not is_default:
             raise PermissionError("not_factory_default")
+        if is_default is None:
+            model = str(dev.get("model") or "").upper()
+            platform = str(dev.get("platform") or "").upper()
+            if model not in MFI_MODELS and platform not in MFI_MODELS:
+                raise PermissionError("not_factory_default")
+            existing = self.store.get(mac)
+            if existing is not None and existing.get("state") not in (ADOPTING_STATE, ADOPT_FAILED_STATE):
+                raise PermissionError("not_factory_default")
         authkey = secrets.token_hex(AUTHKEY_BYTES)
         name = f"{dev.get('model', '')} {mac[-4:]}"
         self.store.upsert(

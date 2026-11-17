@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.17.1 - 2026-11-17
+
+- `mfi-server` 0.11.1: adoption works with the real mFi 2.1.11 firmware, whose discovery reply omits fields 21/22/23. The server now reads the model from the platform field (12) and the firmware from the version string (13/14 and 3 are parsed), so the Adopt button appears for a factory-reset mFi even when the "default" flag is absent.
+- SSH adoption tells a refused factory password (`auth_failed`) apart from an unreachable device (`connection_failed`); the device page shows a specific message for each.
+
 ## 0.17.0 - 2026-11-17
 
 - `mfi-server` 0.11.0: firmware archive and device upgrade. The `mfi-server` image downloads the mFi firmware 2.1.11.1309 at build time from `dl.ubnt.com`, checks its sha256 and serves it read-only to the devices; no firmware file enters the repository.
