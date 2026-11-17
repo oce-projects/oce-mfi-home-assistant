@@ -190,6 +190,7 @@ The page shows:
 - a chart of the last 24 hours, drawn as SVG, with the minimum and maximum values;
 - a message at the top of the page when the backup in `backup_file` fails to import (with the error), has no devices, or, when no backup is set and there are no devices, asks to set `backup_file`;
 - a section of the devices found on the network by UDP discovery (port 10001, see [Network](#network)), with a search button that starts a new scan. The main table shows only the mFi devices, with name, MAC (with colons), IP, model, firmware and a state: factory default, on this server, or not on this server. Adopt is shown only for factory-default devices, and Repoint only for devices already on this server. The other Ubiquiti devices found are listed below the table in a closed section, without buttons. The server also scans once at startup. The results are kept in memory only.
+- a box "New Wi-Fi device?" with a link to the latest GitHub release, where the Windows program mFi Wi-Fi Setup can be downloaded: Wi-Fi devices after a reset must be joined to the home network with it before they appear in discovery. The link opens in a new tab and the page loads nothing from it.
 
 Security warning: never expose 8099/tcp to the internet. The page has no built-in HTTPS (see Web API).
 
