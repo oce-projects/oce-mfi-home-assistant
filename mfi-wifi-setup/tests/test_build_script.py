@@ -59,6 +59,13 @@ class TestBuildScript(unittest.TestCase):
         self.assertNotIn("findstr", self.script)
         self.assertIn("skip=1", self.script)
 
+    def test_entry_point_uses_absolute_import(self):
+        # PyInstaller runs the entry script as the top-level __main__ with no
+        # parent package; a relative-import entry would crash in the frozen
+        # .exe, so the build uses a small absolute-import launcher.
+        self.assertIn("from mfi_wifi_setup.window import run", self.script)
+        self.assertIn("--paths", self.script)
+
 
 class TestBuildRequirements(unittest.TestCase):
     def test_pyinstaller_is_pinned(self):

@@ -52,7 +52,18 @@ if not defined APP_VERSION (
 set "EXE_NAME=mfi-wifi-setup-%APP_VERSION%-windows-x64"
 set "EXE=%~dp0dist\%EXE_NAME%.exe"
 
-"%VENV_DIR%\Scripts\pyinstaller.exe" --onefile --windowed --name "%EXE_NAME%" --distpath "%~dp0dist" --workpath "%BUILD_DIR%\work" --specpath "%BUILD_DIR%" "%~dp0mfi_wifi_setup\__main__.py"
+rem Remove any .exe (and its hash) left by a previous, possibly failed, build.
+del /q "%EXE%" "%EXE%.sha256" 2>nul
+
+rem PyInstaller runs the entry script as the top-level __main__ with no parent
+rem package, so the package module with relative imports cannot be the entry.
+rem Write a tiny launcher with absolute imports; --paths lets PyInstaller find
+rem the mfi_wifi_setup package next to this script.
+set "ENTRY=%BUILD_DIR%\entry.py"
+> "%ENTRY%" echo from mfi_wifi_setup.window import run
+>> "%ENTRY%" echo run()
+
+"%VENV_DIR%\Scripts\pyinstaller.exe" --onefile --windowed --name "%EXE_NAME%" --distpath "%~dp0dist" --workpath "%BUILD_DIR%\work" --specpath "%BUILD_DIR%" --paths "%~dp0." "%ENTRY%"
 if errorlevel 1 (
     echo PyInstaller failed: see the messages above.
     goto :fail
