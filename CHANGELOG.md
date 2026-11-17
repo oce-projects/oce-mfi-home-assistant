@@ -2,6 +2,14 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.20.0 - 2026-11-17
+
+- New `tools/bump_version.py`: one command raises the version in every file of a component (`repo`, `mfi-server`, `mfi-controller`, `mfi-wifi-setup`) and adds the dated CHANGELOG entry; `--check` verifies all components are consistent, `--dry-run` previews. Standard library only (ticket T-MWKUB25T).
+- `tests/test_bump_version.py`: offline tests on temporary copies.
+- `AGENTS.md` rule 3 lists every version file of each component and points to `tools/bump_version.py`.
+- `mfi-server/tests/test_version.py` and `mfi-wifi-setup/tests/test_version.py` no longer hard-code the version.
+- Versions: repository 0.20.0; `mfi-server` 0.12.1; `mfi-wifi-setup` 0.4.1.
+
 ## 0.19.0 - 2026-11-17
 
 - `mfi-wifi-setup` 0.4.0 (ticket W2 bis): Windows build script
