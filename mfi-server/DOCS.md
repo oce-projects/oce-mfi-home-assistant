@@ -297,7 +297,7 @@ The address written into the device is the address of the machine where mfi-serv
 | `server_address` | IPv4 address of the host where mfi-server runs. Empty = automatic. |
 | `device_ssh_username` | Administrator name of the old controller. Used only to re-point devices. |
 | `device_ssh_password` | Administrator password of the old controller. Used only to re-point devices. It is never shown in the API or in the logs. |
-| `ssh_extra_options` | Extra SSH algorithm options, as `KEY=value` pairs separated by `;`. Allowed keys: `KexAlgorithms`, `HostKeyAlgorithms`, `Ciphers`, `MACs`, `PubkeyAcceptedAlgorithms`, `PubkeyAcceptedKeyTypes`. Other text is rejected. Default: `KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa,ssh-dss;Ciphers=+aes128-cbc,3des-cbc`. The default is UNVERIFIED: which old algorithms are really needed is known only from a test on a device (question 12 in docs/PROTOCOL.md). |
+| `ssh_extra_options` | Extra SSH algorithm options, as `KEY=value` pairs separated by `;`. Allowed keys: `KexAlgorithms`, `HostKeyAlgorithms`, `Ciphers`, `MACs`, `PubkeyAcceptedAlgorithms`, `PubkeyAcceptedKeyTypes`. Other text is rejected. Default: `KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa;Ciphers=+aes128-cbc,3des-cbc`. OpenSSH 10 has no DSA, so `ssh-dss` is not in the default. Before each ssh call, names in a `+` list that the local ssh does not know are removed, so options saved by older versions keep working; the saved options are not changed. The default is UNVERIFIED on a device: which old algorithms are really needed is known only from a test on a device (question 12 in docs/PROTOCOL.md). |
 
 ### Factory adoption
 
@@ -305,7 +305,7 @@ Factory-new devices use the public factory credentials `ubnt` / `ubnt` (docs/PRO
 
 The server runs the system `ssh` program without a shell. Passwords never go on the command line: they are given through a temporary askpass script, removed after each call. The adoption command sends the inform address and the new key to the device (`/usr/bin/syswrapper.sh set-adopt`). The configuration of the device is not sent yet: that step follows once it has been tested on a real device.
 
-Errors, from the `api/v1/discovery/<mac>/adopt` and `api/v1/devices/<mac>/repoint` routes: 404 `not_found` for an unknown device, 400 `invalid_input` for a bad value, 409 for a device or a setting that does not allow the action, 502 with the reason (`ssh_not_installed`, `timeout`, `connection_failed` or `command_failed`). The device state becomes `adopt_failed` when adoption fails.
+Errors, from the `api/v1/discovery/<mac>/adopt` and `api/v1/devices/<mac>/repoint` routes: 404 `not_found` for an unknown device, 400 `invalid_input` for a bad value, 409 for a device or a setting that does not allow the action, 502 with the reason (`ssh_not_installed`, `timeout`, `connection_failed`, `ssh_options_rejected` or `command_failed`). `ssh_options_rejected` means the local ssh refused the SSH options (for example "Bad key types"); the add-on log shows the first line of the ssh error at WARNING. The device state becomes `adopt_failed` when adoption fails.
 
 ### SSH program
 

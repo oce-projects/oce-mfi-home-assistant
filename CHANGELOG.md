@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.2 - 2026-11-17
+
+- mfi-server 0.13.1: adoption and re-pointing work with OpenSSH 10. The default SSH options drop `ssh-dss`, and the add-on removes names the local ssh does not know from `+` lists before it runs ssh (ticket T-MWL4AK4W).
+
 ## 0.22.1 - 2026-11-17
 
 - docs: placeholder sections "Device configuration (setparam)", "Events", "Rules and scenes" and "Statistics" in docs/PROTOCOL.md; every item is UNVERIFIED (the ace.jar REA report produced no finding).

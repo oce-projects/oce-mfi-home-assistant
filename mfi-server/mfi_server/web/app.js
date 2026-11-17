@@ -413,6 +413,7 @@ const ADOPT_ERROR_KEYS = {
   not_factory_default: "adopt_error_not_factory_default",
   auth_failed: "adopt_error_auth_failed",
   connection_failed: "adopt_error_connection_failed",
+  ssh_options_rejected: "adopt_error_ssh_options_rejected",
 };
 
 async function upgradeDevice(device, button) {
