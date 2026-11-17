@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.1 - 2026-11-17
+
+- SSH adoption and re-pointing work with OpenSSH 10 (the base image is Debian 13): the default `ssh_extra_options` no longer lists `ssh-dss`, because OpenSSH 10 has no DSA. `HostKeyAlgorithms` keeps `ssh-rsa`, and `KexAlgorithms` and `Ciphers` keep the old algorithms the devices need.
+- Installations that already have `ssh-dss` in their saved options are corrected by a filter: before each ssh call, names in a `+` list that the local ssh does not know are removed. The saved options are not changed.
+- When ssh refuses the options (`Bad key types`, `Bad SSH2`, `Unable to negotiate`) the error is `ssh_options_rejected`, and the add-on log shows the first line of the ssh error at WARNING. At start the add-on runs `ssh -G` with the options and logs a WARNING if it refuses them.
+
 ## 0.13.0 - 2026-11-17
 
 - Web page restyled in the Home Assistant style (ticket G1): a tab bar (Overview, Devices, Search, Automations) that shows one section at a time via location.hash without reloading; an Overview tab with four tiles (total power, connected, disconnected, outlets on) computed from GET api/v1/devices with no new route; device cards with a model SVG icon, a coloured state label and a pill switch per outlet; an automatic dark theme via @media (prefers-color-scheme: dark). New i18n keys nav_overview, nav_search, tile_power, tile_connected, tile_disconnected, tile_outlets, tile_outlets_value in English and Italian.

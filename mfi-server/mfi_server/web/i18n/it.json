@@ -120,6 +120,7 @@
   "adopt_error_auth_failed": "Il dispositivo ha rifiutato la password di fabbrica: non è alle impostazioni di fabbrica. Ripristinalo (tieni premuto il tasto reset) e cerca di nuovo.",
   "adopt_error_not_factory_default": "Questo dispositivo non si può adottare: non è un mFi alle impostazioni di fabbrica, oppure è già nel server.",
   "adopt_error_connection_failed": "Impossibile raggiungere il dispositivo via SSH.",
+  "adopt_error_ssh_options_rejected": "Il client SSH del server ha rifiutato le opzioni SSH della configurazione dell'add-on. Togli ssh-dss da ssh_extra_options e riprova. Il registro dell'add-on mostra il motivo esatto.",
   "wifi_setup_heading": "Nuovo dispositivo WiFi?",
   "wifi_setup_text": "Dopo un reset i dispositivi WiFi non compaiono nella ricerca finche' non sono collegati alla rete di casa. Per collegarli usa il programma Windows mFi Wi-Fi Setup.",
   "wifi_setup_download": "Scarica mFi Wi-Fi Setup"

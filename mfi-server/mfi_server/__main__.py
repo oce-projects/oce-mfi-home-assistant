@@ -37,6 +37,7 @@ from mfi_server.measurements import Measurements
 from mfi_server.mqtt import MqttClient
 from mfi_server.packet import PacketError, decode
 from mfi_server.server import make_server
+from mfi_server.ssh_adopt import check_ssh_options
 from mfi_server.states import DeviceStates
 from mfi_server.store import DeviceStore
 from mfi_server.ubnt_discovery import Scanner
@@ -320,6 +321,7 @@ def _serve(argv: list[str], environ: Mapping[str, str]) -> int:
     except ValueError as exc:
         return _fail(str(exc))
     logging.basicConfig(level=settings.log_level.upper(), format=LOG_FORMAT)
+    check_ssh_options(settings.ssh_extra_options)
     try:
         store = DeviceStore(settings.data_dir)
     except ValueError as exc:

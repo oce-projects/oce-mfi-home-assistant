@@ -91,7 +91,7 @@ class Settings:
     server_address: str = ""
     device_ssh_username: str = ""
     device_ssh_password: str = field(default="", repr=False)
-    ssh_extra_options: str = "KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa,ssh-dss;Ciphers=+aes128-cbc,3des-cbc"
+    ssh_extra_options: str = "KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa;Ciphers=+aes128-cbc,3des-cbc"
     firmware_dir: str = "/opt/mfi-server/firmware"
 
 
