@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.7 - 2026-11-18
+
+- docs: mPort and sensor UNVERIFIED items resolved from the full ace.jar 2.1.11 REA report (clean room) (ticket T-MWMQLEW5).
+
 ## 0.22.6 - 2026-11-18
 
 - docs: statistics and message flow from the full REA reports (2.1.11) (ticket T-MWMH42RG).
