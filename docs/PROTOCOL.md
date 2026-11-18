@@ -215,17 +215,17 @@ An item may contain an `entries` list. Each entry inherits the parent fields. Qu
 | `pf` | | power factor |
 | `energy_sum` | Wh | cumulative energy |
 | `motion` | no motion / motion | OBSERVED (`SystemService` table): wall (MSW) or ceiling (MSC) motion sensor, input 0 |
-| `tamper` | state (unit not in the report) | OBSERVED (`SystemService` table): tamper switch of the motion sensor, input 1 |
+| `tamper` | state (unit not in the report) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: tamper switch of the motion sensor, input 1 |
 | `magnetic` | closed / open | OBSERVED (`SystemService` table): door or window sensor (DS), inversion applied |
-| `amps` | UNVERIFIED (conversion `xyz*100`, max 120) | OBSERVED (`SystemService` table): current of a current sensor (CS) |
-| `ampHours` | UNVERIFIED (not in the report) | OBSERVED (`SystemService` table): second tag of CS; meaning INFERRED from the name |
+| `amps` | UNVERIFIED (conversion `xyz*100`, max 120) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: current of a current sensor (CS) |
+| `ampHours` | UNVERIFIED (not in the report) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: second tag of CS; meaning INFERRED from the name |
 | `temperature` | CELSIUS | OBSERVED (`SystemService` table): THS (conversion `xyz*30 - 10`) and RTD PT-100 |
-| `degreeHours` | UNVERIFIED (not in the report) | OBSERVED (`SystemService` table): second tag of THS; meaning INFERRED from the name |
+| `degreeHours` | UNVERIFIED (not in the report) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: second tag of THS; meaning INFERRED from the name |
 | `humidity` | % | OBSERVED (`SystemService` table): THS humidity (conversion `xyz*50`) |
 | `counter` | counts | OBSERVED (`SystemService` table): pulse counter input |
 | `input` | on / off | OBSERVED (`SystemService` table): digital input |
 | `volts` | V (range -2 to +2 V) | OBSERVED (`SystemService` table): analog input voltage |
-| `voltSum` | UNVERIFIED (not in the report) | OBSERVED (`SystemService` table): second tag of the analog input; meaning INFERRED from the name |
+| `voltSum` | UNVERIFIED (not in the report) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: second tag of the analog input; meaning INFERRED from the name |
 
 - `energy_sum`, OBSERVED: when a new value is below 0.9 times the last one, the controller treats the counter as reset and adds the old value to a base. It discards increases above 0.001 Wh per millisecond.
 - OBSERVED: `type="detected"` with `index="DI<n>"` means a new sensor on an mPort, not yet configured.
@@ -484,7 +484,7 @@ Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1
 1. The exact inform JSON of an mPower and of an mPort.
 2. Whether firmware 2.1.11.1309 ever compresses.
 3. Whether the device accepts the extra command fields `_id`, `device_id`, `datetime`.
-4. The mPort `port_cfg` format, line by line. (answered: see section "mPort and sensors (from ace.jar 2.1.11)")
+4. The mPort `port_cfg` format, line by line. (answered for the controller side; how the device applies each line is UNVERIFIED - see section "mPort and sensors (from ace.jar 2.1.11)", subsection 3)
 5. When `x_prev_authkey` appears.
 6. What a factory-reset device sends on first adoption.
 7. Whether a factory device looks up `http://mfi:6080/inform` by itself.
