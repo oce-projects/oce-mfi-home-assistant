@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.8 - 2026-11-18
+
+- docs: remaining UNVERIFIED items in setparam, events, rules/scenes and statistics resolved from the full ace.jar 2.1.11 REA report (clean room) (ticket T-MWMQLEZ1).
+
 ## 0.22.7 - 2026-11-18
 
 - docs: mPort and sensor UNVERIFIED items resolved from the full ace.jar 2.1.11 REA report (clean room) (ticket T-MWMQLEW5).
