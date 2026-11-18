@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.5 - 2026-11-18
+
+- docs: configuration, events, rules and statistics from the 2.1.11 controller (clean room report) (ticket T-MWMG5EW9).
+
 ## 0.22.4 - 2026-11-18
 
 - docs: mPort and sensor protocol from the 2.1.11 controller (clean room report), from the ace.jar 2.1.11 REA report (ticket T-MWMG5ETI).
