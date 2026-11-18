@@ -51,6 +51,7 @@ before touching anything that talks to devices.
 | `mfi-wifi-setup/` | Windows helper for the TLS 1.0 setup page of Wi-Fi devices; not an add-on (no `config.yaml`); spec in `docs/WIFI-SETUP.md` |
 | `docs/ARCHITECTURE.md` | phases, components, decisions |
 | `docs/PROTOCOL.md` | what is known about the devices and the inform protocol |
+| `docs/controller/` | per-area reverse engineering notes of the 2.1.11 controller (clean room), index in INVENTORY.md |
 | `docs/DEVAGENTAI.md` | project settings proposed for DevAgentAi |
 | `tests/` | offline structure tests (`python3 -m unittest discover -s tests -v`) |
 | `.tickets/` | written by DevAgentAi, ignored by git |
