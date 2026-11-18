@@ -4,7 +4,7 @@ All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
 ## 0.22.3 - 2026-11-17
 
-- docs: mPort and sensor protocol from the 2.1.11 controller (clean room report) (ticket T-MWLC9LVA).
+- docs: the mPort and sensor sections of docs/PROTOCOL.md stay UNVERIFIED; the `ace.jar` 2.1.11 REA report produced no finding for them (ticket T-MWLC9LVA).
 
 ## 0.22.2 - 2026-11-17
 
