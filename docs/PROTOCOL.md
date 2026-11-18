@@ -463,7 +463,8 @@ The `setparam` message itself is described under "Controller responses" (OBSERVE
 - OBSERVED (`ConfigService`, n.2; `DeviceManager`, n.8): each port label is the `label` field of its `sensor` record (`mac`, `port`, `model`, `label`) and is sent as `port.N.label` in `port_cfg`. The default label is "Outlet" plus the last 6 characters of the MAC without colons plus the port number; the IWD1U type is "Dimmer Switch". If the local version block of the inform reports changed labels, the controller updates `sensor.label`.
 - OBSERVED (`ConfigService`, n.2, outlet part): for each outlet, `relay` and `output` come from the configured state (`configed_val`) or the reported state (`output_val`); for IWD1U only `output` is sent. `lock` comes from `output_lock`, and the `rep_*` flags and `*_tag` names are sent too. `device_cfg` carries `dimmer_mode` (default `switch`). Tags, maps and `sensor.tags` stay in the controller.
 - OBSERVED (`DeviceManager`, n.8; `DbService`, n.10): the `mfi-output` command has a `timer` field in seconds, default 0. A global setting `outputTimer` also has default 0.
-- UNVERIFIED: the state at power-on and the thresholds of an outlet; searched `ConfigService`, `DeviceManager` and the sensor service, where no field has that name. Thresholds are rules, see "Rules and scenes".
+- INFERRED: the state at power-on. The `relay` and `output` values sent to the device come from `configed_val` when it exists, otherwise from `output_val` (`ConfigService`, REA 2 quater, n.13). The reasoning: the configured value is the state the controller last asked for, and it is sent again in the configuration after a reboot (the reboot rule of "Controller responses"). The report shows no field named for power-on. Not tested on a device.
+- OBSERVED as rules, not sent to the device: the thresholds of an outlet are stored in the rulesets of the controller (`ruleset`, REA 2 quater, n.8) and do not reach the device. The report found no threshold field in `ConfigService`, `DeviceManager` or the sensor service. See "Rules and scenes".
 
 The report found no new command to the device, so the table under "Commands to the device" is unchanged.
 
@@ -497,20 +498,34 @@ Status: OBSERVED or UNVERIFIED per item below. Source: the REA report on `ace.ja
 
 - OBSERVED (`DeviceManager`, n.8): a device with no inform for more than 40 seconds gets state 6. After more than 120 seconds the controller raises `EVT_AP_Lost_Contact`. The check timer runs every 60 seconds.
 - Already known: `EVT_AP_Lost_Contact` (OBSERVED, see "Device states in the controller") and `EVT_mFi_SerialKick` (OBSERVED, section 6 of "mPort and sensors (from ace.jar 2.1.11)").
-- UNVERIFIED: the texts of `msg`; searched `EventManager` and the localization method (inner class 51). The texts are in a resource file, not in the code.
-- UNVERIFIED: `EVT_*` keys not in the table above; the report lists only the keys it saw in `DeviceManager` (n.8). Also an event for a sensor threshold other than `SensorRuleset`.
+- OBSERVED (the localization method, inner class 51, REA 2 quater, n.11): the text comes from a resource file named `messages`, read in the language of the system under the event key. A name in curly brackets is replaced with the field of the same name from the event. A missing key gives the key itself between two tildes.
+- UNVERIFIED: the texts themselves. The `messages` file is not in the code and REA could not read it. Searched `EventManager` and the localization method (n.11).
+- OBSERVED (`DbService`, REA 2 quater, n.14): at startup the controller creates the alarm definitions `EVT_AP_DiscoveredPending`, `EVT_AP_RediscoveredPending`, `EVT_AP_Lost_Contact` (with repeat set), `EVT_WU_AssocPending`, `EVT_WG_AssocPending` and `EVT_AD_UpdateAvailable`. `EVT_AD_UpdateAvailable` is not in the table above. When it is raised is UNVERIFIED: its trigger is not in the classes read.
+- OBSERVED (`EventManager` and the rule action handler, REA 2 quater, n.9 and n.10): a sensor rule event uses the key `EVT_<product>_SensorRuleset`. For this product the product name is `mFi`, so the key is `EVT_mFi_SensorRuleset`. The action key `EVT_mFi_Action` is raised by rule and scene actions (n.9, n.6).
+- UNVERIFIED: the complete list of `EVT_*` keys. Searched `DeviceManager`, `DbService`, the rule action handler and `EventManager`; the report found the keys listed above and no others.
+- UNVERIFIED: an event for a sensor threshold other than `SensorRuleset`. Searched the rule action handler (n.9) and `EventManager` (n.10): none found.
 
 ## Rules and scenes
 
-Status: OBSERVED or UNVERIFIED per item below. Source: the REA report on `ace.jar` 2.1.11, question 4 (classes n.3, n.11, n.12, n.13, n.14). The transcribed part of the report ends after the fields of `ruleaction`, so the items after them are UNVERIFIED. The citations give the class only. No rule is imported by this section; rule import belongs to a later epic.
+Status: OBSERVED or UNVERIFIED per item below. Source: the REA reports on `ace.jar` 2.1.11. The first run classes are cited as n.3, n.11, n.12, n.13 and n.14; items from the full re-run (REA 2 quater) cite its output numbers. The citations give the class or the inner class. No rule is imported by this section; rule import belongs to a later epic.
 
 - OBSERVED (n.3, n.13, n.14): collections `rule` (fields `label` and `val`, default -1, and `type` "embed"), `ruleset` (conditions), `ruleaction`, `rulestate`, `rulestatecalendar`, `ruleschedule`, `rulecondition`, `scene`, `sceneaction` and `script`.
 - OBSERVED (`service.D`, inner class 31, rules engine, n.11): a condition in `ruleset` has `rulesetId` (ObjectId of the rule), `rulesetName`, `trigger`, `sId`, `type`, `compare`, `limit`, `duration`, `enable`, `allorany`, `edgeorlevel` and `conditionset`. Its state is kept in `violation`, `condition_since` and `last_checked`.
 - OBSERVED (n.11): `trigger` is `sensor`, `state` or `time`.
 - OBSERVED (n.11): `compare` 0 means greater than, 2 equal and 4 less than. `duration` is in minutes. `allorany` is `all` (default) or `any`; `edgeorlevel` is `edge` (default) or `level`.
 - OBSERVED (`service.D`, inner class 33, rule actions, n.12): a `ruleaction` has `rulesetId`, `type`, `sId`, `val`, `timer`, `minute` (minimum minutes between two actions), `addr` (list of addresses, for e-mail and URL actions), `scriptId` and `stateId`.
-- UNVERIFIED: the values of `type` in `ruleaction` (the kinds of action: outlet, output, scene, notification). The transcribed part of the report stops before them; searched the `ruleaction` fields only.
-- UNVERIFIED: the fields of `scene` and `sceneaction` (inner class 34, n.18) and the time format (scheduler, inner class 35, n.19); not in the transcribed part of the report.
+- OBSERVED (rule action handler, inner class 33, REA 2 quater, n.9): `type` of `ruleaction` has eight values: `email`, `event`, `relaySwitch`, `script`, `state`, `url`, `scene` and `rule`. The words outlet, output and notification are not values of this field. Behaviour of each value:
+  - `email`: sent only when `enable` is true, to each valid address of `addr`, at most once per `minute` minutes (the last send is kept in `last_time`).
+  - `event`: saves an event. When `alert` is true the level is 2. The same `minute` interval applies.
+  - `relaySwitch`: when the sensor has `output_lock` equal to 1, the port is locked, and the rule records an error and does nothing. Otherwise it sends a command to the port and creates an action event.
+  - `script`: runs script `scriptId` on the device of sensor `sId`.
+  - `state`: sets state variable `stateId` to `val`.
+  - `url`: with `enable` true, sends a POST whose body has URL-encoded `rule`, `sensor` and `value` fields (inner classes 33 and 30, n.9).
+  - `scene`: starts scene `sceneId` in a separate thread.
+  - `rule`: enables or disables the ruleset `raId`, as `val` says.
+- OBSERVED (scene, inner class 34, REA 2 quater, n.6): a `scene` has `label` and `_id`, the latter set by the database. A `sceneaction` has `sceneId`, `sId` and `scriptId` (ObjectIds), `type`, `val`, `timer`, `dimmer_level` and `dimmer_ramp`. The `type` of a scene action is `relaySwitch`, `script` or `url`; `email`, `event`, `scene` and `rule` do not occur. The save operation receives `sceneId` (the value "NEW" creates a scene), `sceneName` and the list of actions. It deletes the old actions of the scene and inserts the new ones. The default `dimmer_ramp` is 2 in a scene and 1 in a rule. A scene also raises `EVT_mFi_Action`.
+- OBSERVED (time rules, scheduler, inner class 35, REA 2 quater, n.7): a time rule is a `RuleStateCalendar` record with `trigger` set to `time`, a `stateId`, `start` and `end`. Both are minutes from the start of the week: Sunday at 00:00 is 0, each day adds 1440 minutes, and the week has 10080 minutes. An interval whose `end` is smaller than `start` crosses Sunday midnight, and 10080 is added to `end`. The time zone is the server time zone, read from the setting `timezone` (field `zone`, default `PST`). The state `RuleState` has `val` 1 inside the interval and 0 outside, and `lastRunTime` keeps the last check. A ruleset of type state or time fires when the state's `val` equals its `limit`.
+- OBSERVED (scheduler constants, inner class 35, n.7): the time-rule job starts 20 seconds after startup and then runs every 5 seconds. A second job starts after 600 seconds and then every 60 seconds; it checks the sensor rulesets with `compare` equal to 2 and `duration` above 0. A state rule is not run again within 1,800,000 milliseconds (30 minutes).
 
 ## Statistics
 
@@ -522,8 +537,8 @@ Status: OBSERVED or UNVERIFIED per item below. Source: the REA report on `ace.ja
 - OBSERVED (report section 5, "Energia e contatori"): counters are cumulative. A new value below 90% of the previous one is treated as a reset, and the previous value is added to a base.
 - OBSERVED (report section 5, "Stato"): `stat.*` covers Wi-Fi, users and devices, not measurements.
 - OBSERVED (n.10): the indexes on `ttl_time` are created without an explicit expiry. The `storage` setting has `enable` and `ttl_time`; its default is 13 (unit UNVERIFIED, see below).
-- UNVERIFIED: the unit of the `storage` default 13. Searched `DbService`, `SystemService` (part read) and `class_46`.
-- UNVERIFIED: the job that deletes old data. Searched the same classes. Not verified that the controller removes data with the indexes alone.
+- UNVERIFIED: the unit of the `storage` default 13. The default itself is OBSERVED (`DbService`, REA 2 quater, n.14, with `enable` true). Searched `DbService`, `SystemService`, the inner class 46 and `DeviceManager`: the report found no code that reads this setting, so the unit is not known.
+- UNVERIFIED: the job that deletes old data. Indexes on `ttl_time` exist for `day`, `hour`, `quarterhour`, `minute`, `m2mgeneric`, `event`, `actionevent` and `alarm` (eight indexes, `DbService`, REA 2 quater, n.14), created without an expiry time. The report found no deletion job in the classes read (`DbService`, the scheduler of inner class 35, `DeviceManager`). Not verified that old data is removed.
 
 ## Open questions (need a real device)
 
