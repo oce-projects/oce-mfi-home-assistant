@@ -137,7 +137,7 @@ OBSERVED (`DeviceManager`). One response per inform; the first matching row wins
 - `mgmt_cfg`: `mgmt.is_default=false`, `mgmt.authkey=<key>` (only when the key used by the device differs from `x_authkey`), `mgmt.cfgversion`, `mgmt.portversion`, `mgmt.localversion`, `mgmt.servers.1.url=http://<host>:<port>/inform`, `mgmt.selfrun_guest`.
 - `system_cfg`: `users.1.name=<controller admin name>`, `users.1.password=<DES crypt of the admin password, random 2-letter salt>`. After adoption, the device SSH and web user is the controller administrator. INFERRED, approximate: services `telnetd`, `snmp`, `dhcpd`, `dnsmasq` disabled; `httpd.port=80`; bridge `br0`; syslog on; server time zone; host name from the device name (max 31 characters). Interface `eth1` for P1U, P1E, P3U, P3E, P8U, P6E, IWO2U, IWS1U, IWD1U; `eth0` for the others.
 - `port_cfg` for mPower and in-wall outlets. For each outlet K: `vpower.K.relay=0|1`, `vpower.K.output=0|1`, `vpower.K.lock`, `vpower.K.rep_output=1`, `rep_pf`, `rep_energy_sum`, `rep_v_rms`, `rep_i_rms`, `rep_active_pwr`, and tags `vpower.K.output_tag=output`, `pf_tag=pf`, `energy_sum_tag=energy_sum`, `v_rms_tag=v_rms`, `i_rms_tag=i_rms`, `active_pwr_tag=active_pwr`. Plus `port.N.model`, `port.N.label`, `port.N.sensorId` (or `port.N.mode=off` for an empty port). The device reports only quantities with `rep_<name>=1`.
-- `port_cfg` for mPort (M2M, M2S): lines `port.N`, `PWR.N`, `AI.N`, `DI.N`, `DO.N`. UNVERIFIED, not analysed line by line.
+- `port_cfg` for mPort (M2M, M2S): lines `port.N`, `PWR.N`, `AI.N`, `DI.N`, `DO.N`. The line format is in section 3 of "mPort and sensors (from ace.jar 2.1.11)"; how the device applies each line is UNVERIFIED.
 - `ser2net_cfg` (M2S with a Serial sensor): `enable=on`, `baudRate`, `parity`, `uartMode`, `termination`, `antenna`.
 
 ## Commands to the device
@@ -214,47 +214,109 @@ An item may contain an `entries` list. Each entry inherits the parent fields. Qu
 | `i_rms` | A | current |
 | `pf` | | power factor |
 | `energy_sum` | Wh | cumulative energy |
+| `motion` | no motion / motion | OBSERVED (`SystemService` table): wall (MSW) or ceiling (MSC) motion sensor, input 0 |
+| `tamper` | state (unit not in the report) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: tamper switch of the motion sensor, input 1 |
+| `magnetic` | closed / open | OBSERVED (`SystemService` table): door or window sensor (DS), inversion applied |
+| `amps` | UNVERIFIED (conversion `xyz*100`, max 120) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: current of a current sensor (CS) |
+| `ampHours` | UNVERIFIED (not in the report) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: second tag of CS; meaning INFERRED from the name |
+| `temperature` | CELSIUS | OBSERVED (`SystemService` table): THS (conversion `xyz*30 - 10`) and RTD PT-100 |
+| `degreeHours` | UNVERIFIED (not in the report) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: second tag of THS; meaning INFERRED from the name |
+| `humidity` | % | OBSERVED (`SystemService` table): THS humidity (conversion `xyz*50`) |
+| `counter` | counts | OBSERVED (`SystemService` table): pulse counter input |
+| `input` | on / off | OBSERVED (`SystemService` table): digital input |
+| `volts` | V (range -2 to +2 V) | OBSERVED (`SystemService` table): analog input voltage |
+| `voltSum` | UNVERIFIED (not in the report) | tag OBSERVED (`SystemService` table), unit UNVERIFIED: second tag of the analog input; meaning INFERRED from the name |
 
 - `energy_sum`, OBSERVED: when a new value is below 0.9 times the last one, the controller treats the counter as reset and adds the old value to a base. It discards increases above 0.001 Wh per millisecond.
 - OBSERVED: `type="detected"` with `index="DI<n>"` means a new sensor on an mPort, not yet configured.
-- The value of `type` for analog readings: UNVERIFIED.
+- The value of `type` for analog readings: UNVERIFIED. The REA report found none and says the path does not change for analog and RMS readings (section 1 of "mPort and sensors (from ace.jar 2.1.11)").
 - Third-party measurement, UNVERIFIED on our units: the mPower energy counter is kept in RAM and restarts from zero after a power loss (`feiglein74/mpower`).
 
 ## mPort and sensors (from ace.jar 2.1.11)
 
-Source of every item below: the `ace.jar` 2.1.11 REA report (ticket T-MWLC9LVA). The report produced no finding for these items, so each one stays UNVERIFIED (AGENTS.md rule 6: no fact without a source). A later epic replaces an item with OBSERVED or INFERRED and its class/method or Evidence ID when the report proves it.
+The items below come from the `ace.jar` 2.1.11 REA report (ticket T-MWMG5ETI). The report gives no Evidence ID, so each item cites the report's class and method, or its output number and approximate line. Report outputs: n.2 `ConfigService`, n.5 `SystemService`, n.6 `DeviceManager`, n.7 the sensor service (`com.ubnt.service.ooOO`, class `class_13`), n.9 the API (`com.ubnt.ace.api`, class `class_46`). Items the report does not prove stay UNVERIFIED, with a note of what was searched (AGENTS.md rule 6). The report's constants (noop interval 10 to 15 s, lost-device rule of 3 intervals plus 10 s) are not transcribed here: they disagree with "Controller responses" and "Device states in the controller", and stay unreconciled.
 
 ### 1. Measurements of mPort ports in the inform
 
-- UNVERIFIED: the `tag` and `type` values in the `alarm` list of M2M and M2S for each sensor kind (temperature, humidity, motion, door, current, analog and digital input). Source: REA report, question 1, not answered.
-- UNVERIFIED: the units of those measurements. Source: REA report, question 1, not answered.
-- UNVERIFIED: how the port index is read, for example `index` `DI<n>`. The `DI<n>` form under "Measurements" is not re-checked here. Source: REA report, question 1, not answered.
+- OBSERVED (n.9, `class_46`, method `method_146`): the inform `alarm` list may contain an `entries` list. Each entry takes the fields of its parent item. Fields read: `type`, `tag`, `val`, `time`, `index`, `sId`, `label`, `model`.
+- OBSERVED (n.9): `sId` is the sensor id. The controller sends the same id to the device as `sensorId` in `port_cfg` (section 3).
+- OBSERVED (n.9): each measurement is saved in the collection `M2mgeneric` with `time` and `ttl_time`. `index`, `label` and `model` are removed before saving.
+- OBSERVED (n.9): tag `energy_sum` is saved twice, the second time as `raw_energy_sum`. Tag `output` is passed to the UI as `output_val`.
+- OBSERVED (n.7, sensor service, approx. lines 620-800): the code tests the `type` values `output`, `input`, `counter` and `detected`. Analog and RMS readings take the same path whatever their `type`.
+- OBSERVED (n.9, approx. lines 1137-1139): for `index` `DI<n>` the mPort port is n divided by 2 (integer division), plus 1.
+- UNVERIFIED: how this port number matches the `DI.<k>` numbering of section 3 (`k` = 2*port + 0 or 1). The report gives both formulas and does not reconcile them.
+- OBSERVED (n.5, `SystemService`): the tag names of each sensor kind are in the model table of section 2. The units are in the tag table under "Measurements", where the report gives them.
 
 ### 2. Sensor type recognition on an mPort port
 
-- UNVERIFIED: how the controller recognises the sensor kind on an mPort port, the sensor names or codes, and the collection and fields where the kind is stored. Source: REA report, question 2, not answered.
+- OBSERVED (n.5, `SystemService`, constructor, approx. lines 140-735): a table keyed by model. Fields: `desc`, `pwr_volt`, `analog`/`digital`/`rtd`, `rep_*`, `*_tag`, `unit`, `precision`, `conversion`, `do_volt<n>`, `inversion<n>`, `outport`, `default_tag`.
+- UNVERIFIED: the product name after the `Ubiquiti ` prefix (a static field the report did not read). The rows below give the model suffix.
+
+| Model (suffix) | Kind | Tags (input) | Unit or conversion |
+|---|---|---|---|
+| MSW | wall motion | `motion` (input 0), `tamper` (input 1) | state: no motion / motion |
+| MSC | ceiling motion | `motion`, `tamper` | state: no motion / motion |
+| CS | current | `amps`, `ampHours` | conversion `xyz*100`, maximum 120 |
+| DS | door/window magnetic | `magnetic` | closed / open, inversion applied |
+| THS | temperature | `temperature`, `degreeHours` | CELSIUS, conversion `xyz*30 - 10` |
+| `THS: Humidity` | humidity | `humidity` | %, conversion `xyz*50` |
+| Counter | counter | `counter` | counts |
+| Input Digital | digital input | `input` | on / off |
+| Input Analog | analog input | `volts`, `voltSum` | volts, -2 V to +2 V |
+| RTD | PT-100 | `temperature` | CELSIUS, gain 8, res 18 |
+| Outlet, Dimmer, Dimmer Switch | mPower outlets (not mPort) | `output`, `pf`, `energy_sum`, `v_rms`, `i_rms`, `active_pwr` | |
+| Output 5v, 12v, 24v, UVC PRO (to camera) | outputs | `output` | on / off |
+| Serial | serial | none | |
+
+- OBSERVED (n.7, sensor service, approx. lines 160-260): the sensor record is saved in the collection `sensor` with `mac`, `port`, `model`, `label`, `_id`, `calibration`, `output_val`, `configed_val`, `output_lock` and `tags`.
+- INFERRED (n.9 field `model`, n.5 table keyed by model): the alarm entry carries `model`, which selects the row above. The report does not show the code that matches them.
+- OBSERVED (n.2): the port's sensor is also named in `port_cfg` by `sensorId` (section 3).
 
 ### 3. Format of `port_cfg` for mPort
 
-- UNVERIFIED: the line-by-line format of `port_cfg` for M2M and M2S, who generates it, how it reaches the device and when. Source: REA report, question 3, not answered. See also "Controller responses" in this file.
+- OBSERVED (n.2, `ConfigService`, `port_cfg` generator, approx. lines 215-500): plain text with one `key=value` per line.
+- OBSERVED: an empty port has `port.<i>.mode=off`. A port with a sensor has `port.<i>.model`, `port.<i>.label` and `port.<i>.sensorId`. Each port has a `PWR.<i>.volt` line.
+- OBSERVED: an analog input has `AI.<i>` with `sensorId`, `model`, `label`, `gain`, `res`, `conversion`, `calibration`, `rep_analog`, `rep_sum`, `rep_rms`, `rep_rms_sum` and the `*_tag` keys. For the RTD, `i` is the port + 1.
+- OBSERVED: a digital input or output has `DI.<k>` or `DO.<k>`, with `k` = 2*port + 0 or 1. Fields: `sensorId`, `rep_input`, `rep_output`, `rep_counter`, `rep_counter_rate`, `conversion`, `calibration`, `input_tag`, `counter_tag` and `output_tag`. An output also has `DO.<k>.volt`.
+- OBSERVED: the voltage line of an output is 0 or on, depending on the state in `output_val` and on the inversion flag.
+- OBSERVED (n.2): `analog_cfg` and `serial_cfg` have their own generators: `analog.<n>` with `mode`, `gain`, `res`, `label`, `type`, `upv` and `unit`; `serial.<n>` with `speed` and `destination`.
+- OBSERVED (n.6, `DeviceManager`, approx. lines 540-700): the controller sends `port_cfg` as a field of a `setparam` message, with `device_cfg` and, for M2S, `ser2net_cfg`.
+- OBSERVED (n.6, `DeviceManager`): the configuration is sent when (a) `cfgversion` differs; (b) the `portversion` in the inform differs from the expected one; (c) `new_config` is set and the inform has no `portversion`; (d) after a reboot (uptime lower than expected); (e) after a counter reset (`resetcounter`); (f) after a `local_version` with ports changed locally.
+- OBSERVED (n.6, approx. lines 1560-1600): at adoption an M2S gets 1 port and an M2M gets 3 ports, as in "Devices".
+- UNVERIFIED: how the device applies each line. The report covers the controller side only.
 
 ### 4. Calibration and conversion
 
-- UNVERIFIED: the constants and formulas that convert raw values into units, and the names of the user-settable offset and scale fields. Source: REA report, question 4, not answered.
+- OBSERVED (n.5, `SystemService`, model table): each model row has a `conversion` string, for example `xyz*100` for CS, `xyz*30 - 10` for THS temperature and `xyz*50` for THS humidity (section 2). The string is sent to the device as `conversion` in `port_cfg` (section 3).
+- UNVERIFIED: what `xyz` stands for. The report does not define it.
+- UNVERIFIED: which code applies a conversion string. The report found no code that applies it in ace.jar.
+- OBSERVED (n.7, sensor service, approx. lines 290-330): the user field `calibration` of a sensor sets `new_config`, so the port configuration is sent again (section 3, case c).
+- UNVERIFIED: the value written from `calibration` into `port_cfg`. In n.2 a call to the sensor service has an overload ambiguity that the decompiler does not resolve; the report reads it as returning a label, not a number.
+- UNVERIFIED: separate offset and scale fields. The report found only `calibration`.
 
 ### 5. 12 V outputs of the mPort relay
 
-- UNVERIFIED: the on/off command for the 12 V outputs. Source: REA report, question 5, not answered.
-- UNVERIFIED: the rule `2*(port-1) + outport` (see "Commands to the device"). Source: REA report, question 5, not answered.
+- OBSERVED (n.6, `DeviceManager`, `mfi-output`, approx. lines 1410-1440): the on/off command is the API command `mfi-output`. It queues a `cmd` task for the device with `cmd` = `mfi-output`, `port`, `val`, `timer` and `sId`; `val` is 0 (off) or 1 (on). The task is sent as the response to the next inform (n.6, approx. lines 590-690).
+- OBSERVED (n.6, `DeviceManager`): for M2M the port becomes `2*(port-1) + outport`. `outport` is read from the model table (section 2), 0 when absent. Every "Output" model has `outport` 0, so for these outputs the port is `2*(port-1)`. This confirms the rule in "Commands to the device" for the report's models.
+- UNVERIFIED: whether an mPort 12 V output is the model "Output 12v" of section 2. The report lists model rows, not the port types of the mPort.
+- UNVERIFIED: whether the extra fields of "Commands to the device" (`volt`, `off_volt`, `_id`, `datetime`) are sent with this command. The report lists only `cmd`, `port`, `val`, `timer` and `sId`.
 
 ### 6. mPort Serial (M2S): serial configuration
 
-- UNVERIFIED: the serial settings (speed, bits, parity, TCP port) and what `kick-serial` does (see "Commands to the device"). Source: REA report, question 6, not answered.
+- OBSERVED (n.2, `ConfigService`, `ser2net_cfg`, approx. lines 570-600): text with `enable` (`on` or `off`), `baudRate`, `parity`, `uartMode`, `termination` and `antenna`. Only M2S receives `ser2net_cfg`.
+- OBSERVED (n.2): `serial_cfg` lines `serial.<n>` carry `speed` and `destination` (section 3).
+- Speed: OBSERVED (`baudRate` in `ser2net_cfg`, `speed` in `serial_cfg`). Parity: OBSERVED (`parity` in `ser2net_cfg`).
+- Data bits and stop bits: UNVERIFIED for writing. The report says `databits` and `stopbits` are read but not written.
+- TCP port: UNVERIFIED. The report did not find it (searched the `ser2net_cfg` generator, n.2).
+- `kick-serial` (question 6): OBSERVED (n.6, `DeviceManager`, approx. lines 1385-1395). The controller raises the event `EVT_mFi_SerialKick` and queues a `cmd` task with `cmd` = `kick-serial` for the device. UNVERIFIED: what the device does with it; the effect is not in the controller code.
 
 ### 7. New sensor with `type="detected"`
 
-- OBSERVED (already listed under "Measurements"): `type="detected"` means a new sensor on an mPort. Source: existing entry, not from the REA report.
-- UNVERIFIED: the flow from detection of a new sensor to its configuration. Source: REA report, question 7, not answered.
+- OBSERVED (n.9): when an alarm item has `type` = `detected`, the controller takes the port from `index` (section 1). This is the new-sensor entry listed under "Measurements".
+- OBSERVED (n.7, approx. lines 890-905): the controller creates an in-memory sensor with model `detected`, label "unconfigured sensor" and `time` set to the current time.
+- OBSERVED (n.7, approx. lines 905-920): a `detected` sensor not seen for more than 20 seconds is removed.
+- OBSERVED (n.7, approx. lines 170-260): the user links the sensor to a port with an API action. The `port_cfg` is then updated and sent by the flow of section 3. UNVERIFIED: the name of that API action.
+- OBSERVED (report section 7, no output number or line given): on creation of an M2M the controller sends an empty `alarm` list. UNVERIFIED: the message that carries it, which the report does not give.
 
 ## Discovery (UDP 10001)
 
@@ -391,9 +453,9 @@ The report found no new command to the device, so the table under "Commands to t
 
 ## Events
 
-Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 answered none of these. Nothing here is a finding.
+Status: UNVERIFIED for every item below except the event keys listed as known. Source: the REA report on `ace.jar` 2.1.11 answered none of these, except the serial kick event (section 6 of "mPort and sensors (from ace.jar 2.1.11)"). Nothing else here is a finding.
 
-- UNVERIFIED: the event type keys (`EVT_*`). Only `EVT_AP_Lost_Contact` is known (OBSERVED, see "Device states in the controller").
+- UNVERIFIED: the other event type keys (`EVT_*`). Known: `EVT_AP_Lost_Contact` (OBSERVED, see "Device states in the controller") and `EVT_mFi_SerialKick` (OBSERVED, section 6 of "mPort and sensors (from ace.jar 2.1.11)").
 - UNVERIFIED: the fields of a saved event.
 - UNVERIFIED: what generates an event (connection, disconnection, outlet on or off, adoption, update, sensor thresholds).
 - UNVERIFIED: the collection where events are saved.
@@ -422,7 +484,7 @@ Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1
 1. The exact inform JSON of an mPower and of an mPort.
 2. Whether firmware 2.1.11.1309 ever compresses.
 3. Whether the device accepts the extra command fields `_id`, `device_id`, `datetime`.
-4. The mPort `port_cfg` format, line by line.
+4. The mPort `port_cfg` format, line by line. (answered for the controller side; how the device applies each line is UNVERIFIED - see section "mPort and sensors (from ace.jar 2.1.11)", subsection 3)
 5. When `x_prev_authkey` appears.
 6. What a factory-reset device sends on first adoption.
 7. Whether a factory device looks up `http://mfi:6080/inform` by itself.
