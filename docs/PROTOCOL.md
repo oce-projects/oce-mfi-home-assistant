@@ -222,7 +222,7 @@ An item may contain an `entries` list. Each entry inherits the parent fields. Qu
 
 ## mPort and sensors (from ace.jar 2.1.11)
 
-Source of every item below: the reverse engineering report REA on `ace.jar` 2.1.11 (ticket T-MWKWKNJW). That report verified none of these items, so each one stays UNVERIFIED: the subsections below are open questions, not findings, and must not be relied on until a new report or a device test confirms them.
+Source of every item below: the `ace.jar` 2.1.11 REA report (ticket T-MWLC9LVA). The report produced no finding for these items, so each one stays UNVERIFIED (AGENTS.md rule 6: no fact without a source). A later epic replaces an item with OBSERVED or INFERRED and its class/method or Evidence ID when the report proves it.
 
 ### 1. Measurements of mPort ports in the inform
 
