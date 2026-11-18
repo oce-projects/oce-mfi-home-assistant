@@ -274,6 +274,7 @@ The items below come from the `ace.jar` 2.1.11 REA report (ticket T-MWMG5ETI). T
 
 ### 3. Format of `port_cfg` for mPort
 
+- OBSERVED (REA report on `ace.jar` 2.1.11, ticket T-MWMG5ETI, model rows): the form of `port_cfg` depends on the model. P* (all P models), IWO2U, IWS1U and IWD1U use `vpower` lines (see "Controller responses"). M2M, M2S and the other models use the `port.N`, `AI.N`, `DI.N` and `DO.N` lines below. Only M2S receives `ser2net_cfg`. Only IWD1U gets `dimmer_mode` in `device_cfg` (see "Device configuration (setparam)").
 - OBSERVED (n.2, `ConfigService`, `port_cfg` generator, approx. lines 215-500): plain text with one `key=value` per line.
 - OBSERVED: an empty port has `port.<i>.mode=off`. A port with a sensor has `port.<i>.model`, `port.<i>.label` and `port.<i>.sensorId`. Each port has a `PWR.<i>.volt` line.
 - OBSERVED: an analog input has `AI.<i>` with `sensorId`, `model`, `label`, `gain`, `res`, `conversion`, `calibration`, `rep_analog`, `rep_sum`, `rep_rms`, `rep_rms_sum` and the `*_tag` keys. For the RTD, `i` is the port + 1.
@@ -317,6 +318,17 @@ The items below come from the `ace.jar` 2.1.11 REA report (ticket T-MWMG5ETI). T
 - OBSERVED (n.7, approx. lines 905-920): a `detected` sensor not seen for more than 20 seconds is removed.
 - OBSERVED (n.7, approx. lines 170-260): the user links the sensor to a port with an API action. The `port_cfg` is then updated and sent by the flow of section 3. UNVERIFIED: the name of that API action.
 - OBSERVED (report section 7, no output number or line given): on creation of an M2M the controller sends an empty `alarm` list. UNVERIFIED: the message that carries it, which the report does not give.
+
+### 8. Message flow with an mPort or mPower device
+
+Source: the flow part of the REA report on `ace.jar` 2.1.11 (ticket T-MWMG5ETI, no output number). The steps are OBSERVED as the report describes them. Message fields are the ones of "Measurements" and "Controller responses".
+
+1. The device sends an inform with `alarm`. The report puts `portversion` and `local_version` in this same message; in the "Payload" section they are top-level inform fields. Whether they are nested inside `alarm` is UNVERIFIED.
+2. The controller replies with `setparam` if the configuration changed, with `cmd` if a task is queued, or with `noop` otherwise (rules of "Controller responses").
+3. The controller saves the measurements in `M2mgeneric` and compares the reported output values with the configured ones (see `configed_val` in "Commands to the device").
+4. User commands (`mfi-output`, `kick-serial`) become tasks, and the device gets them in the reply to its next inform.
+
+The report writes both `localversion` and `local_version`. This file uses `local_version` for the inform field and `mgmt.localversion` for the configuration key, as in the sections above.
 
 ## Discovery (UDP 10001)
 
@@ -502,12 +514,16 @@ Status: OBSERVED or UNVERIFIED per item below. Source: the REA report on `ace.ja
 
 ## Statistics
 
-Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11, question 5. The transcribed part of the report ends before its statistics answer, so every item below is UNVERIFIED and no finding is given here.
+Status: OBSERVED or UNVERIFIED per item below. Source: the REA report on `ace.jar` 2.1.11, question 5 (ticket T-MWMG5EW9, rest of the report). Items cite the report's output number (n.X) where it gives one, otherwise its section.
 
-- UNVERIFIED: whether the controller aggregates measurements per hour or per day; not in the transcribed report, which has no statistics answer.
-- UNVERIFIED: the collections (`stat_*` or similar); not in the transcribed report.
-- UNVERIFIED: the fields of the aggregated records; not in the transcribed report.
-- UNVERIFIED: the retention period; not in the transcribed report.
+- OBSERVED (report section 5, "Misure"): every measurement point is saved in the collection `m2mgeneric` with the fields `sId`, `tag`, `type`, `val`, `time` (milliseconds) and `ttl_time`. The name matches `M2mgeneric` in the mPort part below (same collection, INFERRED from the name).
+- OBSERVED (n.20): for every numeric value the controller updates four aggregate collections: `minute` (60 s), `quarterhour` (900 s), `hour` (3600 s) and `day` (86400 s). Each aggregate record has `sId`, `tag`, `type`, `time`, `max`, `min`, `ave`, `size` (number of values), `last_val`, `last_val_time` and `ttl_time`.
+- OBSERVED (n.10): a read chooses the collection by the length of the requested interval: more than 60 days uses `day`, more than 7 days uses `hour`, more than 1 day uses `quarterhour`, otherwise `minute`. Intervals are capped at 3 years.
+- OBSERVED (report section 5, "Energia e contatori"): counters are cumulative. A new value below 90% of the previous one is treated as a reset, and the previous value is added to a base.
+- OBSERVED (report section 5, "Stato"): `stat.*` covers Wi-Fi, users and devices, not measurements.
+- OBSERVED (n.10): the indexes on `ttl_time` are created without an explicit expiry. The `storage` setting has `enable` and `ttl_time`; its default is 13 (unit UNVERIFIED, see below).
+- UNVERIFIED: the unit of the `storage` default 13. Searched `DbService`, `SystemService` (part read) and `class_46`.
+- UNVERIFIED: the job that deletes old data. Searched the same classes. Not verified that the controller removes data with the indexes alone.
 
 ## Open questions (need a real device)
 
