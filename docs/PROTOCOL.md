@@ -440,44 +440,74 @@ The controller 2.1.11 backup format matches UniFi: AES-128-CBC with the public U
 
 ## Device configuration (setparam)
 
-Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 verified none of these items. Nothing here is a finding.
+Status: OBSERVED or UNVERIFIED per item below. Source: the REA report on `ace.jar` 2.1.11, questions 1 and 2. The report cites classes by their number in the report (n.2, n.8). Where it gives no method name, the citation gives the class only.
 
 The `setparam` message itself is described under "Controller responses" (OBSERVED, `ConfigService`). This section does not repeat or change that paragraph.
 
-- UNVERIFIED: when a `setparam` is sent after adoption, after a rename, or after a settings change.
-- UNVERIFIED: how the device confirms a configuration (`cfgversion` or another field).
-- UNVERIFIED: where the outlet names and the port labels are stored, and whether they reach the device or stay in the controller.
-- UNVERIFIED: outlet settings (state at power-on, lock, timer, thresholds) and where each one is stored.
+- OBSERVED (`DeviceManager`, n.8, inform handler): a `setparam` is sent when `cfgversion` differs from the device (with `port_cfg` only if `portversion` also differs or is missing), when `portversion` differs, after a reboot (uptime lower than expected: `port_cfg`, `device_cfg` and, for M2S, `ser2net_cfg`), when `new_config` is set (`port_cfg` and `device_cfg`), when `resetcounter` is set (`port_cfg`), and when a device that still uses the adoption key informs (a new key goes in `mgmt_cfg`).
+- OBSERVED (`DeviceManager`, n.8, change listener): a rename, and a change of the WLAN, admin, timezone, rsyslog, country or guest access settings, change `cfgversion`. A change of `port_cfg` or `device_cfg` changes `portversion`.
+- OBSERVED (`DeviceManager`, n.8): the device confirms a configuration by sending back the same `cfgversion` or `portversion` in its inform. When the value matches, the controller sends nothing. After a send, the device state becomes 5, with a 120 second timeout.
+- OBSERVED (`ConfigService`, n.2): the device name is the `name` field of the `device` collection. `system_cfg` carries it only as a host name, with non-alphanumeric characters removed and at most 31 characters.
+- OBSERVED (`ConfigService`, n.2; `DeviceManager`, n.8): each port label is the `label` field of its `sensor` record (`mac`, `port`, `model`, `label`) and is sent as `port.N.label` in `port_cfg`. The default label is "Outlet" plus the last 6 characters of the MAC without colons plus the port number; the IWD1U type is "Dimmer Switch". If the local version block of the inform reports changed labels, the controller updates `sensor.label`.
+- OBSERVED (`ConfigService`, n.2, outlet part): for each outlet, `relay` and `output` come from the configured state (`configed_val`) or the reported state (`output_val`); for IWD1U only `output` is sent. `lock` comes from `output_lock`, and the `rep_*` flags and `*_tag` names are sent too. `device_cfg` carries `dimmer_mode` (default `switch`). Tags, maps and `sensor.tags` stay in the controller.
+- OBSERVED (`DeviceManager`, n.8; `DbService`, n.10): the `mfi-output` command has a `timer` field in seconds, default 0. A global setting `outputTimer` also has default 0.
+- UNVERIFIED: the state at power-on and the thresholds of an outlet; searched `ConfigService`, `DeviceManager` and the sensor service, where no field has that name. Thresholds are rules, see "Rules and scenes".
 
 The report found no new command to the device, so the table under "Commands to the device" is unchanged.
 
 ## Events
 
-Status: UNVERIFIED for every item below except the event keys listed as known. Source: the REA report on `ace.jar` 2.1.11 answered none of these, except the serial kick event (section 6 of "mPort and sensors (from ace.jar 2.1.11)"). Nothing else here is a finding.
+Status: OBSERVED or UNVERIFIED per item below. Source: the REA report on `ace.jar` 2.1.11, question 3, and the serial kick event of section 6 of "mPort and sensors (from ace.jar 2.1.11)". The report cites classes by their number; where it gives no method name, the citation gives the class only.
 
-- UNVERIFIED: the other event type keys (`EVT_*`). Known: `EVT_AP_Lost_Contact` (OBSERVED, see "Device states in the controller") and `EVT_mFi_SerialKick` (OBSERVED, section 6 of "mPort and sensors (from ace.jar 2.1.11)").
-- UNVERIFIED: the fields of a saved event.
-- UNVERIFIED: what generates an event (connection, disconnection, outlet on or off, adoption, update, sensor thresholds).
-- UNVERIFIED: the collection where events are saved.
+- OBSERVED (`EventManager`, n.6; `DbService`, n.10): events are saved in the collection `event`, rule and scene actions in `actionevent`, and alarms in `alarm`.
+- OBSERVED (`EventManager`, n.6, event creation method): a saved event has `datetime`, `ttl_time` (same date), `key` (the event type), `msg` (localized text), and the fields the caller passes, such as `ap` (device MAC), `sId` (sensor id as ObjectId), `admin`, `version_from`, `version_to` and `duration`.
+- OBSERVED (`DbService`, n.10): when the key has a definition in `alarmdef`, the event creates or updates an `alarm` with the fields `archived`, `occurs` and `handled_*`. The definitions created at startup are DiscoveredPending, RediscoveredPending, Lost_Contact, WU_AssocPending, WG_AssocPending and AD_UpdateAvailable.
+- OBSERVED (`DeviceManager`, n.8): the event keys and what raises them:
+
+| Key | Raised when |
+|---|---|
+| `EVT_AP_DiscoveredPending` | a new device is found |
+| `EVT_AP_RediscoveredPending` | an adopted device informs again |
+| `EVT_AP_AutoReadopted` | automatic re-adoption |
+| `EVT_AP_Adopted` | adoption by the administrator |
+| `EVT_AP_Deleted` | deletion |
+| `EVT_AP_Restarted` | restart requested by the administrator |
+| `EVT_AP_UpgradeScheduled` | upgrade scheduled |
+| `EVT_AP_Upgraded` | version changed |
+| `EVT_AP_Connected` | first connection after a loss |
+| `EVT_AP_Lost_Contact` | more than 120 seconds without an inform |
+| `EVT_AP_RestartedUnknown` | uptime lower than expected |
+| `EVT_WU_Disconnected`, `EVT_WG_Disconnected` | Wi-Fi client disconnected |
+| `EVT_WC_Blocked`, `EVT_WC_Unblocked` | a client blocked or unblocked |
+| `EVT_mFi_SerialKick` | serial command |
+| `EVT_mFi_Action` | action of a rule or scene (saved in `actionevent`) |
+| `EVT_<product>_SensorRuleset` | "event" action of a rule (n.12) |
+
+- OBSERVED (`DeviceManager`, n.8): a device with no inform for more than 40 seconds gets state 6. After more than 120 seconds the controller raises `EVT_AP_Lost_Contact`. The check timer runs every 60 seconds.
+- Already known: `EVT_AP_Lost_Contact` (OBSERVED, see "Device states in the controller") and `EVT_mFi_SerialKick` (OBSERVED, section 6 of "mPort and sensors (from ace.jar 2.1.11)").
+- UNVERIFIED: the texts of `msg`; searched `EventManager` and the localization method (inner class 51). The texts are in a resource file, not in the code.
+- UNVERIFIED: `EVT_*` keys not in the table above; the report lists only the keys it saw in `DeviceManager` (n.8). Also an event for a sensor threshold other than `SensorRuleset`.
 
 ## Rules and scenes
 
-Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 answered none of these. Nothing here is a finding. No rule is imported by this section; rule import belongs to a later epic.
+Status: OBSERVED or UNVERIFIED per item below. Source: the REA report on `ace.jar` 2.1.11, question 4 (classes n.3, n.11, n.12, n.13, n.14). The transcribed part of the report ends after the fields of `ruleaction`, so the items after them are UNVERIFIED. The citations give the class only. No rule is imported by this section; rule import belongs to a later epic.
 
-- UNVERIFIED: the fields and types of `rule`, `ruleaction`, `ruleset` and `scene`.
-- UNVERIFIED: the trigger types (sensor value, time, state change).
-- UNVERIFIED: the conditions.
-- UNVERIFIED: the actions (outlet, output, scene, notification).
-- UNVERIFIED: the time format.
+- OBSERVED (n.3, n.13, n.14): collections `rule` (fields `label` and `val`, default -1, and `type` "embed"), `ruleset` (conditions), `ruleaction`, `rulestate`, `rulestatecalendar`, `ruleschedule`, `rulecondition`, `scene`, `sceneaction` and `script`.
+- OBSERVED (`service.D`, inner class 31, rules engine, n.11): a condition in `ruleset` has `rulesetId` (ObjectId of the rule), `rulesetName`, `trigger`, `sId`, `type`, `compare`, `limit`, `duration`, `enable`, `allorany`, `edgeorlevel` and `conditionset`. Its state is kept in `violation`, `condition_since` and `last_checked`.
+- OBSERVED (n.11): `trigger` is `sensor`, `state` or `time`.
+- OBSERVED (n.11): `compare` 0 means greater than, 2 equal and 4 less than. `duration` is in minutes. `allorany` is `all` (default) or `any`; `edgeorlevel` is `edge` (default) or `level`.
+- OBSERVED (`service.D`, inner class 33, rule actions, n.12): a `ruleaction` has `rulesetId`, `type`, `sId`, `val`, `timer`, `minute` (minimum minutes between two actions), `addr` (list of addresses, for e-mail and URL actions), `scriptId` and `stateId`.
+- UNVERIFIED: the values of `type` in `ruleaction` (the kinds of action: outlet, output, scene, notification). The transcribed part of the report stops before them; searched the `ruleaction` fields only.
+- UNVERIFIED: the fields of `scene` and `sceneaction` (inner class 34, n.18) and the time format (scheduler, inner class 35, n.19); not in the transcribed part of the report.
 
 ## Statistics
 
-Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11 answered none of these. Nothing here is a finding.
+Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1.11, question 5. The transcribed part of the report ends before its statistics answer, so every item below is UNVERIFIED and no finding is given here.
 
-- UNVERIFIED: whether the controller aggregates measurements per hour or per day.
-- UNVERIFIED: the collections (`stat_*` or similar).
-- UNVERIFIED: the fields of the aggregated records.
-- UNVERIFIED: the retention period.
+- UNVERIFIED: whether the controller aggregates measurements per hour or per day; not in the transcribed report, which has no statistics answer.
+- UNVERIFIED: the collections (`stat_*` or similar); not in the transcribed report.
+- UNVERIFIED: the fields of the aggregated records; not in the transcribed report.
+- UNVERIFIED: the retention period; not in the transcribed report.
 
 ## Open questions (need a real device)
 
@@ -494,7 +524,7 @@ Status: UNVERIFIED for every item below. Source: the REA report on `ace.jar` 2.1
 11. mPort processor, system and factory reset.
 12. Whether a modern SSH library accepts the devices' legacy algorithms.
 13. Real memory of mPower mini and PRO.
-14. After how many seconds without an inform the controller shows a device as heartbeat lost (40 s or 60 s).
+14. After how many seconds without an inform the controller shows a device as heartbeat lost (40 s or 60 s). (answered: see section Events)
 15. The exact `inform_addr` format accepted by the Wi-Fi setup page (`host:6080` like the mPort, or a full inform URL).
 16. What `cloud_name` and `cloud_pass` do with a personal controller, and whether they travel in the inform (see question 10).
 17. What a Wi-Fi device does after Apply when the home network or the controller is not reachable, and whether the mPort setup page is TLS 1.0 only too.
