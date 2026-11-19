@@ -81,6 +81,9 @@ class TestRunScript(unittest.TestCase):
         self.assertIn("/recorder.py", self.run_sh)
         self.assertIn("--chuid mfi:mfi", self.run_sh)
 
+    def test_recordings_folder_is_private(self):
+        self.assertIn('chmod 0700 "$out"', self.run_sh)
+
     def test_certificate_and_missing_https_message(self):
         self.assertIn("openssl req -x509 -newkey rsa:2048", self.run_sh)
         self.assertIn("https recording unavailable: the controller did not move to 16443", self.run_sh)

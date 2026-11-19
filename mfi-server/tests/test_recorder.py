@@ -110,6 +110,10 @@ class TestRedact(unittest.TestCase):
     def test_empty_header_list(self):
         self.assertEqual(recorder.redact_headers([]), [])
 
+    def test_header_name_that_contains_a_secret_word_is_replaced(self):
+        self.assertEqual(recorder.redact_headers([("X-Auth-Token", "abc"), ("X-Api-Secret", "s"), ("Host", "h")]),
+                         [("X-Auth-Token", "REDACTED"), ("X-Api-Secret", "REDACTED"), ("Host", "h")])
+
     def test_json_sensitive_fields_are_replaced(self):
         body = recorder.redact_body(b'{"name":"a","x_password":"p","Token":"t"}', "application/json")
         self.assertEqual(json.loads(body.decode("utf-8")),
@@ -208,6 +212,31 @@ class TestRecordLine(unittest.TestCase):
         self.assertEqual(entry["req_body_b64"], "")
         with open(str(day_file(self.tmp))) as handle:
             self.assertNotIn("device-key-bytes", handle.read())
+
+    def test_6443_malformed_json_response_is_omitted(self):
+        self.assertTrue(self.record(6443, b'{"password":"malformed-secret", bad', "application/json"))
+        entry = read_lines(self.tmp)[0]
+        self.assertTrue(entry["body_omitted"])
+        self.assertEqual(entry["resp_body_b64"], "")
+        self.assertEqual(entry["resp_length"], len(b'{"password":"malformed-secret", bad'))
+        with open(str(day_file(self.tmp))) as handle:
+            self.assertNotIn("malformed-secret", handle.read())
+
+    def test_6443_multipart_response_is_omitted(self):
+        self.assertTrue(self.record(6443, b'{"password":"mp-secret"}', "multipart/form-data; boundary=x"))
+        entry = read_lines(self.tmp)[0]
+        self.assertTrue(entry["body_omitted"])
+        self.assertEqual(entry["resp_body_b64"], "")
+        with open(str(day_file(self.tmp))) as handle:
+            self.assertNotIn("mp-secret", handle.read())
+
+    def test_sensitive_query_parameters_in_the_path_are_redacted(self):
+        recorder.record_line(self.tmp, 6080, CLIENT, "GET", "/api/x?token=leak-token&keep=1", [],
+                             b"", 200, [], b"ok", None, 200)
+        entry = read_lines(self.tmp)[0]
+        self.assertEqual(entry["path"], "/api/x?token=REDACTED&keep=1")
+        with open(str(day_file(self.tmp))) as handle:
+            self.assertNotIn("leak-token", handle.read())
 
     def test_size_limit_refuses_the_line_and_returns_false(self):
         path = day_file(self.tmp)
