@@ -65,8 +65,16 @@ RECORDER_END="# mfi-recorder end"
 write_recorder_properties() {
     local props="$DATA_DIR/system.properties"
     touch "$props" || return 1
-    sed -i "/^# mfi-recorder begin$/,/^# mfi-recorder end$/d" "$props" || return 1
+    # Remove a previous block only when BOTH markers are present, so a file that
+    # has only the begin marker (hand-edited or truncated) is not deleted to EOF.
+    if grep -q "^# mfi-recorder begin$" "$props" && grep -q "^# mfi-recorder end$" "$props"; then
+        sed -i "/^# mfi-recorder begin$/,/^# mfi-recorder end$/d" "$props" || return 1
+    fi
     if [ "$RECORD_TRAFFIC" = true ]; then
+        # Make sure the file ends with a newline, so the marker starts its own line.
+        if [ -s "$props" ] && [ -n "$(tail -c1 "$props")" ]; then
+            echo >> "$props" || return 1
+        fi
         {
             echo "$RECORDER_BEGIN"
             echo "unifi.http.port=16080"

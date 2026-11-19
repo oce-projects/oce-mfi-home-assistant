@@ -199,6 +199,16 @@ class TestRecordLine(unittest.TestCase):
         self.assertEqual(json.loads(base64.b64decode(entry["req_body_b64"]).decode("utf-8")),
                          {"authkey": "REDACTED"})
 
+    def test_6443_binary_request_body_is_omitted(self):
+        recorder.record_line(
+            self.tmp, 6443, CLIENT, "POST", "/upload",
+            [("Content-Type", "multipart/form-data; boundary=x")], b"device-key-bytes",
+            200, [("Content-Type", "application/json")], b'{"ok":1}', "application/json", 200)
+        entry = read_lines(self.tmp)[0]
+        self.assertEqual(entry["req_body_b64"], "")
+        with open(str(day_file(self.tmp))) as handle:
+            self.assertNotIn("device-key-bytes", handle.read())
+
     def test_size_limit_refuses_the_line_and_returns_false(self):
         path = day_file(self.tmp)
         with open(str(path), "w") as handle:

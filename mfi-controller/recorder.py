@@ -139,6 +139,15 @@ def record_line(out_dir, port_label, client, method, path, req_headers, req_body
     else:
         stored = b""
         omitted = True
+    req_ctype = _header_value(req_headers, "Content-Type")
+    if port == INFORM_PORT:
+        req_stored = redact_body(req_body, req_ctype)
+    else:
+        req_lc = (req_ctype or "").lower()
+        if "json" in req_lc or "x-www-form-urlencoded" in req_lc:
+            req_stored = redact_body(req_body, req_ctype)
+        else:
+            req_stored = b""
     entry = {
         "t": int(now * 1000),
         "port": port,
@@ -146,7 +155,7 @@ def record_line(out_dir, port_label, client, method, path, req_headers, req_body
         "method": method,
         "path": path,
         "req_headers": redact_headers(req_headers),
-        "req_body_b64": _b64(redact_body(req_body, _header_value(req_headers, "Content-Type"))),
+        "req_body_b64": _b64(req_stored),
         "status": int(status),
         "resp_headers": redact_headers(resp_headers),
         "resp_body_b64": _b64(stored),
@@ -159,7 +168,8 @@ def record_line(out_dir, port_label, client, method, path, req_headers, req_body
         if _file_size(day_file) >= limit_bytes:
             _log_limit_once(day_file)
             return False
-        with open(day_file, "a") as handle:
+        fd = os.open(day_file, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        with os.fdopen(fd, "a") as handle:
             handle.write(line)
     return True
 
@@ -184,7 +194,13 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
 
     def _forward(self):
         req_headers = list(self.headers.items())
-        req_body = self._read_request_body()
+        length = self._content_length()
+        if length is None:
+            log.warning("rejecting a request with a bad Content-Length from %s", self.client_address[0])
+            self.close_connection = True
+            self._send_empty(400)
+            return
+        req_body = self.rfile.read(length)
         try:
             status, resp_headers, resp_body = self._send_upstream(req_headers, req_body)
         except Exception as exc:
@@ -199,11 +215,17 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         except (OSError, ValueError) as exc:
             log.error("recording failed (%s)", type(exc).__name__)
 
-    def _read_request_body(self):
+    def _content_length(self):
         raw = self.headers.get("Content-Length")
         if not raw:
-            return b""
-        return self.rfile.read(int(raw))
+            return 0
+        try:
+            n = int(raw)
+        except ValueError:
+            return None
+        if n < 0:
+            return None
+        return n
 
     def _send_upstream(self, req_headers, req_body):
         host, port = self.server.proxy_target
@@ -213,8 +235,11 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         else:
             conn = http.client.HTTPConnection(host, port, timeout=TIMEOUT_SECONDS)
         try:
+            strip = set(HOP_BY_HOP_HEADERS)
+            if self.server.port_label == WEB_PORT:
+                strip.add("accept-encoding")
             headers = dict((name, value) for name, value in req_headers
-                           if name.lower() not in HOP_BY_HOP_HEADERS)
+                           if name.lower() not in strip)
             conn.request(self.command, self.path, body=req_body, headers=headers)
             resp = conn.getresponse()
             return resp.status, resp.getheaders(), resp.read()
