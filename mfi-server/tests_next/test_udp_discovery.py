@@ -320,6 +320,45 @@ class TestScan(unittest.TestCase):
         UdpDiscovery(sock_factory=factory, clock=FakeClock())
         self.assertEqual(opened, [])
 
+    def test_non_finite_timeout_is_rejected_before_opening_a_socket(self):
+        opened = []
+
+        def factory():
+            opened.append(1)
+            return FakeSocket(FakeClock())
+
+        for bad in (float("inf"), float("nan")):
+            with self.subTest(timeout=bad):
+                with self.assertRaises(ValueError):
+                    UdpDiscovery(sock_factory=factory, clock=FakeClock()).scan(timeout=bad)
+        self.assertEqual(opened, [])
+
+    def test_reply_after_deadline_is_not_read(self):
+        clock = FakeClock()
+        second = reply(tlv(1, bytes.fromhex("02000000aa02")), tlv(12, b"P3E"))
+
+        class DeadlineSocket(FakeSocket):
+            def recvfrom(self, size):
+                if self.replies:
+                    data = self.replies.pop(0)
+                    self.clock.now += 2.0
+                    return data, (FAKE_IP, DISCOVERY_PORT)
+                return super().recvfrom(size)
+
+        sock = DeadlineSocket(clock, replies=[synthetic_reply(), second])
+        result = self.scan_with(sock, clock, timeout=1.0)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["mac"], "02000000aa01")
+
+    def test_short_type_1_mac_falls_back_to_type_2(self):
+        fields = parse_reply(reply(
+            tlv(1, b"\x02\x00\x00"),
+            tlv(2, FAKE_MAC_BYTES + FAKE_IP_BYTES),
+        ))["fields"]
+        info = device_info(fields)
+        self.assertEqual(info["mac"], FAKE_MAC)
+        self.assertEqual(info["ip"], FAKE_IP)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,6 +6,7 @@ docs/PROTOCOL.md (Discovery). Standard library only.
 """
 from __future__ import annotations
 
+import math
 import re
 import socket
 import struct
@@ -133,8 +134,8 @@ class UdpDiscovery:
 
     def scan(self, timeout: float = DEFAULT_TIMEOUT_S) -> list[dict]:
         """Return the devices that answered within timeout seconds, one entry per MAC."""
-        if timeout <= 0:
-            raise ValueError("discovery timeout must be above 0 seconds")
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("discovery timeout must be a finite number of seconds above 0")
         try:
             sock = self._sock_factory()
         except OSError as exc:
