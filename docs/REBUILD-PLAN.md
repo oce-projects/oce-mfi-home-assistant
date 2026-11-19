@@ -183,12 +183,12 @@ The controller stores its data in MongoDB collections. The new server uses sqlit
 | device | `devices.json` in the data folder (existing) | Written by temp file then rename |
 | task | `state.sqlite3`, table `task` (new) | Queue needs transactional updates |
 | sensor | `state.sqlite3`, table `sensor` (new) | Port links and calibration |
-| rule, ruleset, ruleaction, rulestate, rulestatecalendar, ruleschedule, rulecondition | `automations.json` (existing automations file) | Home Assistant format; state fields kept in the same file |
+| rule, ruleset, ruleaction, rulestate, rulestatecalendar, ruleschedule, rulecondition | `automations.json` (existing automations file) | Home Assistant format; state fields kept in the same file; rulestate write frequency not yet measured (measure in EPIC-05) |
 | scene, sceneaction, script | `automations.json` (existing automations file) | Script fields UNVERIFIED, needs device test |
 | event, actionevent | `state.sqlite3`, tables `event` and `actionevent` (new) | Retention by age, needs device test |
 | alarm, alarmdef | `state.sqlite3`, tables `alarm` and `alarmdef` (new) | Definitions created at startup |
 | minute, quarterhour, hour, day | `history.sqlite3` (existing) | 30-day retention (ARCHITECTURE) |
-| m2mgeneric (raw measurements) | `history.sqlite3`, table `raw` (new) | 30-day retention |
+| m2mgeneric (raw measurements) | `history.sqlite3`, table `raw` (new) | 30-day retention; raw table volume for 50+ devices not yet measured (measure in EPIC-07) |
 | setting | `settings.json` (existing, optional) | Environment variables take precedence |
 | cometmessage | `comet.py` ring buffer in memory | Not persisted; size limit set by the owner |
 | map (and GridFS image) | `maps.json` plus image files in `maps/` in the data folder (new) | Image size limit to be set |
@@ -288,7 +288,7 @@ The migration runs at start, is idempotent, and makes a timestamped backup of ev
 - Password hashes: salted PBKDF2 hashes stay as they are. Migration keeps the stored iteration count and salt and only adds a user record when none exists.
 - Imported .unf backup: the device keys imported from a backup stay in devices.json, as today. A backup is only read; the migration never writes a backup back. The restore of the controller database (drop and rebuild) is not carried over (system area, `docs/controller/system.md`, section 2).
 
-Each step writes a copy named with the date and time before the change. If a step fails, the copy is restored and the start stops with a message that names the file.
+Each step writes a copy named with the date and time before the change. Because devices.json holds device keys, every timestamped copy is written with file permissions 0600 (owner read and write only), and only the most recent copies are kept (the number is a setting, default 5); older copies are deleted. If a step fails, the copy is restored and the start stops with a message that names the file.
 
 ## mfi-controller and mfi-wifi-setup
 
@@ -310,11 +310,11 @@ Rules for every epic: at most 10 subtasks, each with at most 10 files. Common in
 9. **EPIC-08 Alarms.** Files: `alarms.py` and its tests. Dependencies: EPIC-06, EPIC-02. Expected version: mfi-server minor.
 10. **EPIC-09 Users.** Files: `auth.py` and its tests. Dependencies: EPIC-01. Expected version: mfi-server minor.
 11. **EPIC-10 System.** Files: `migrate.py` and its tests. Dependencies: EPIC-01, EPIC-07, EPIC-02. Expected version: mfi-server minor.
-12. **EPIC-11 Web API.** Files: `web.py`, `comet.py` and their tests. Dependencies: EPIC-02, EPIC-04, EPIC-05, EPIC-07, EPIC-09. Expected version: mfi-server minor.
+12. **EPIC-11 Web API.** Files: `web.py`, `comet.py` and their tests. Dependencies: EPIC-02, EPIC-04, EPIC-05, EPIC-06, EPIC-07, EPIC-08, EPIC-09, EPIC-10 (web.py exposes the events, alarms and backup-import routes, so it needs those modules). Expected version: mfi-server minor.
 13. **EPIC-12 Maps and dashboard.** Files: `maps.py` and its tests. Dependencies: EPIC-11. Expected version: mfi-server minor, only if approved.
-14. **EPIC-13 Network and Wi-Fi.** Files: the Wi-Fi setup fields in `web.py` and the Wi-Fi block in `sensors.py`, with tests. The webshell, SSH from the browser, UPnP and guest page are built only if the owner approves them. Dependencies: EPIC-02, EPIC-09, EPIC-11. Expected version: mfi-server minor.
+14. **EPIC-13 Network and Wi-Fi.** Files: the Wi-Fi setup fields in `web.py` and the Wi-Fi block in `sensors.py`, with tests. The webshell, SSH from the browser, UPnP and guest page are built only if the owner approves them. The Wi-Fi setup fields in `web.py` are built only if the owner answers the open question in section 8 about moving the mfi-wifi-setup fields into the web page; until then only the Wi-Fi block in `sensors.py` is in scope. Dependencies: EPIC-02, EPIC-09, EPIC-11. Expected version: mfi-server minor.
 15. **EPIC-14 MQTT discovery.** Files: `mqtt.py` and its tests. Dependencies: EPIC-02, EPIC-04, EPIC-05, EPIC-07, EPIC-08. Expected version: mfi-server minor.
-16. **EPIC-15 Migration and 1.0.0 switch.** Files: `migrate.py` wiring, the add-on entry point, `config.yaml`, `Dockerfile`, `CHANGELOG.md`, `mfi_server/__init__.py`. Dependencies: all epics above. Expected version: mfi-server 1.0.0 (major).
+16. **EPIC-15 Migration and 1.0.0 switch.** Files: `migrate.py` wiring, the add-on entry point, `config.yaml`, `Dockerfile`, `CHANGELOG.md`, `mfi_server/__init__.py`. Dependencies: all approved epics above (EPIC-12 and the Wi-Fi setup part of EPIC-13 only if the owner approves them). Expected version: mfi-server 1.0.0 (major).
 
 ## Version strategy
 
