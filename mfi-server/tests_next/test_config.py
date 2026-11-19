@@ -57,6 +57,40 @@ class TestLoadSettings(unittest.TestCase):
                 load_settings(d, environ={})
             self.assertIn(str(path), str(cm.exception))
 
+    def test_port_out_of_range_raises(self):
+        for value in ("0", "70000", "-5"):
+            with self.subTest(value=value):
+                with tempfile.TemporaryDirectory() as d:
+                    with self.assertRaises(ValueError) as cm:
+                        load_settings(d, environ={"MFI_INFORM_PORT": value})
+                    self.assertIn("inform_port", str(cm.exception))
+
+    def test_port_bounds_are_accepted(self):
+        for value, expected in (("1", 1), ("65535", 65535)):
+            with self.subTest(value=value):
+                with tempfile.TemporaryDirectory() as d:
+                    s = load_settings(d, environ={"MFI_INFORM_PORT": value})
+                    self.assertEqual(s["inform_port"], expected)
+
+    def test_non_integer_env_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError):
+                load_settings(d, environ={"MFI_INFORM_PORT": "abc"})
+
+    def test_empty_env_is_ignored(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = load_settings(d, environ={"MFI_INFORM_PORT": ""})
+            self.assertEqual(s["inform_port"], 6080)
+
+    def test_negative_history_and_backup_raise(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(ValueError) as cm:
+                load_settings(d, environ={"MFI_HISTORY_DAYS": "-1"})
+            self.assertIn("history_days", str(cm.exception))
+            with self.assertRaises(ValueError) as cm:
+                load_settings(d, environ={"MFI_BACKUP_COPIES": "-1"})
+            self.assertIn("backup_copies", str(cm.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
