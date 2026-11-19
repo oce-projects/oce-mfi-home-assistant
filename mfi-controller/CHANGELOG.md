@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-11-19
+
+- Optional compatibility recorder: options `record_traffic` (off by default) and `record_max_mb` (10 to 2,000 MB, default 200). Recordings go to `/share/mfi-recordings`; the add-on maps `share:rw`.
+- Image: `python3` and `openssl` added; `recorder.py` copied to `/recorder.py`.
+- With the recorder off (default) the add-on behaves exactly as 0.1.4.
+- Version 0.2.0 in `config.yaml`, `CHANGELOG.md` and `Dockerfile`.
+
 ## 0.1.4 - 2026-11-16
 
 - Store presentation: the add-on name is now «Ubiquiti mFi Controller (original)», with a short legacy description that points to mFi Server (new).

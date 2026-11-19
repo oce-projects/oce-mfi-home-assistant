@@ -2,3 +2,9 @@ configuration:
   java_max_memory_mb:
     name: "Memoria massima di Java (MB)"
     description: "Memoria massima (heap) per il processo Java del controller, in megabyte. Valore predefinito 1024. Aumentala solo se il controller esaurisce la memoria."
+  record_traffic:
+    name: "Registra il traffico dei dispositivi"
+    description: "Accende il registratore di compatibilità sulle porte 6080 (inform) e 6443 (web). Le registrazioni vanno in /share/mfi-recordings. Spento di default: con il registratore spento l'add-on si comporta esattamente come la versione 0.1.4."
+  record_max_mb:
+    name: "Limite di dimensione della registrazione (MB)"
+    description: "Limite giornaliero della dimensione delle registrazioni, in megabyte (da 10 a 2000). Valore predefinito 200. Raggiunto il limite, il registratore smette di scrivere per quel giorno."

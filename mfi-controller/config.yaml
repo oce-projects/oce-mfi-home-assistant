@@ -5,7 +5,7 @@
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "Ubiquiti mFi Controller (original)"
-version: "0.1.4"
+version: "0.2.0"
 slug: "mfi_controller"
 description: "The original Ubiquiti controller 2.1.11, unchanged. Legacy: use mFi Server (new) instead."
 url: "https://github.com/oce-projects/oce-mfi-home-assistant"
@@ -26,7 +26,13 @@ ports:
 ports_description:
   6080/tcp: "Inform: mFi devices report to the controller (HTTP)"
   6443/tcp: "Controller web UI and API (HTTPS)"
+map:
+  - share:rw
 options:
   java_max_memory_mb: 1024
+  record_traffic: false
+  record_max_mb: 200
 schema:
   java_max_memory_mb: "int(256,4096)"
+  record_traffic: bool
+  record_max_mb: "int(10,2000)"

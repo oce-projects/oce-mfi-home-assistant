@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.23.0 - 2026-11-19
+
+- feat(mfi-controller): optional compatibility recorder on ports 6080 and 6443, offline decoder in tools/decode_recording.py (ticket T-MWN7CKW9).
+
 ## 0.22.22 - 2026-11-19
 
 - docs: rebuild plan for feature parity with the 2.1.11 controller (ticket T-MWMSGNAB).
