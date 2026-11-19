@@ -101,6 +101,8 @@ def _validate_adopt_input(ip, inform_url, authkey, admin_user, admin_password, e
         raise AdoptionError("admin_user is not a valid user name")
     if not isinstance(admin_password, str) or admin_password == "":
         raise AdoptionError("admin_password must not be empty")
+    if "\x00" in admin_password:
+        raise AdoptionError("admin_password must not contain a NUL byte")
     for option in extra_options:
         if not isinstance(option, str) or EXTRA_OPTION_RE.fullmatch(option) is None:
             raise AdoptionError("ssh_extra_options: option not allowed")
@@ -147,7 +149,7 @@ def _run_ssh(ip, username, password, inform_url, authkey, extra_options, runner,
         except OSError as exc:
             raise AdoptionError("ssh could not be started") from exc
     finally:
-        shutil.rmtree(folder)
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 def set_adopt(
@@ -240,7 +242,14 @@ class DeviceRegistry:
             current = self._records.get(mac)
             if current is not None and current["adopted"]:
                 return dict(current)
-            record = _new_record(mac, model=model, ip=ip, adopted=False, state=PENDING_STATE)
+            keep = current or {}
+            record = _new_record(
+                mac,
+                model=model if model is not None else keep.get("model"),
+                ip=ip if ip is not None else keep.get("ip"),
+                adopted=False,
+                state=PENDING_STATE,
+            )
             self._records[mac] = record
             return dict(record)
 
@@ -275,6 +284,7 @@ class DeviceRegistry:
         _check_mac(mac)
         with self._lock:
             self._records.pop(mac, None)
+            self._last_seen.pop(mac, None)
 
     def factory_reset(self, mac) -> None:
         """Remove the record of mac after a factory reset."""
