@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.0 - 2026-11-19
+
+- EPIC-02: inform and devices in `mfi_server_next` — `firmware.py` (firmware_for_model, build_upgrade), `devices.py` (DeviceRegistry, SSH set-adopt with administrator-then-factory retry, devices.json at 0600), `tasks.py` (TaskQueue, mfi-output command, 20-byte wake-up on UDP 3478) and `inform.py` (TNBU decrypt with key trial, handle_inform reply noop/setparam/upgrade/cmd, inform HTTP server on port 6080). The EPIC-01b compatibility fixtures owned by EPIC-02 are now checked instead of pending.
+
 ## 0.16.0 - 2026-11-19
 
 - EPIC-01b: synthetic compatibility replay bench in `mfi-server/tests_next` (fixtures in `fixtures/compat/`, helper `compat_replay.py`, test `test_compat_replay.py`); every exchange is PENDING until its owner epic implements the handler; real recordings are added later as more fixtures.
