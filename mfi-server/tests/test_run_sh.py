@@ -131,5 +131,27 @@ class TestTranslations(unittest.TestCase):
                 self.assertNotEqual(it, en)
 
 
+class TestUdpCapture(unittest.TestCase):
+    def setUp(self):
+        self.config = (ADDON / "config.yaml").read_text(encoding="utf-8")
+        self.run_sh = (ADDON / "run.sh").read_text(encoding="utf-8")
+
+    def test_host_network_is_top_level(self):
+        self.assertIn("host_network: true", self.config.splitlines())
+
+    def test_net_raw_is_granted_under_privileged(self):
+        self.assertIn("privileged:", self.config.splitlines())
+        self.assertIn("- NET_RAW", top_level_section(self.config, "privileged"))
+
+    def test_recording_stays_off_by_default(self):
+        self.assertIn("record_traffic: false", top_level_section(self.config, "options"))
+
+    def test_udp_capture_flag_is_in_the_recorder_arguments(self):
+        self.assertIn("--udp-capture", self.run_sh)
+        arg_lines = [line for line in self.run_sh.splitlines() if line.strip().startswith("args=(")]
+        self.assertEqual(len(arg_lines), 1)
+        self.assertIn("--udp-capture", arg_lines[0])
+
+
 if __name__ == "__main__":
     unittest.main()

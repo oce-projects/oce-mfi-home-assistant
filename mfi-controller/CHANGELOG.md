@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 - 2026-11-19
+
+- Passive UDP capture of the discovery port 10001 and the wake-up port 3478 in the recorder, when `record_traffic` is on. The recorder only listens: it never answers or injects packets. Captured packets go to the same daily file as the TCP lines, under the same size limit.
+- `config.yaml` now uses `host_network: true` and the `NET_RAW` capability under `privileged`, needed to listen on the link layer. Security change: the add-on sees the host network.
+- Decoding of the discovery and wake-up packets in `tools/decode_recording.py`.
+- Version 0.3.0 in `config.yaml`, `CHANGELOG.md` and `Dockerfile`.
+
 ## 0.2.0 - 2026-11-19
 
 - Optional compatibility recorder: options `record_traffic` (off by default) and `record_max_mb` (10 to 2,000 MB, default 200). Recordings go to `/share/mfi-recordings`; the add-on maps `share:rw`.

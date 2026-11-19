@@ -15,6 +15,7 @@
 #   0.1.0 - 2026-11-15 - first version.
 #   0.1.2 - 2026-11-15 - version line removed from the header.
 #   0.2.0 - 2026-11-19 - compatibility recorder: options record_traffic and record_max_mb.
+#   0.3.0 - 2026-11-19 - passive UDP capture (10001/3478): --udp-capture to the recorder.
 # =============================================================================
 set -u
 
@@ -156,7 +157,7 @@ start_recorder() {
         https=0
     fi
 
-    args=(--inform-listen 6080 --inform-target 16080 --out "$out" --max-mb "$RECORD_MAX_MB")
+    args=(--inform-listen 6080 --inform-target 16080 --out "$out" --max-mb "$RECORD_MAX_MB" --udp-capture)
     if [ "$https" = 1 ]; then
         args+=(--https-listen 6443 --https-target 16443 --cert "$dir/cert.pem" --key "$dir/key.pem")
     fi
