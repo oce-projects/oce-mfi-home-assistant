@@ -37,6 +37,8 @@ If the app does not appear: **Settings > System > Logs**, choose **Supervisor** 
 | Option | Default | Meaning |
 |---|---|---|
 | `java_max_memory_mb` | 1,024 | maximum Java heap, 256 to 4,096 MB |
+| `record_traffic` | false | turns the compatibility recorder on (records inform 6080 and web 6443) |
+| `record_max_mb` | 200 | daily recording size limit, 10 to 2000 MB |
 
 ## Connecting the mFi devices
 
@@ -99,6 +101,50 @@ The controller is from 2015 and gets no updates: Java 7 and MongoDB 2.4 are out 
 - The controller 2.1.11 has a published authentication bypass (published 2015-09-03, UNVERIFIED: date not checked against the original advisory) that lets an attacker skip the login and read the administrator password. Ubiquiti never released a fix. An unofficial patch of the class `com/ubnt/ace/view/AuthFilter` exists (https://github.com/ikkisoft/mFiPatchMe); **this app does not apply it**. Anyone who can reach port 6443 can take over the controller and, through it, the devices.
 - The controller stores the administrator password in clear text and gives the same user name and password to every adopted device for SSH and its web page (source: decompiled `ace.jar` 2.1.11, analysis done outside this repository; UNVERIFIED with this app). Use a dedicated password that is not used anywhere else.
 - Devices are adopted over SSH with the factory user `ubnt` / `ubnt` and the controller does not check the SSH host key (same source, UNVERIFIED with this app).
+
+## Compatibility recorder
+
+The compatibility recorder is optional and off by default. It records the exchanges with the original controller, so that the new mFi Server can be tested against real traffic. It is a test bench for the compatibility checks of the new server, not a feature for daily use.
+
+### Turning it on
+
+1. Set the option `record_traffic` to `true`.
+2. Set `record_max_mb` to the daily size limit (10 to 2000 MB, default 200).
+3. Restart the app.
+
+With `record_traffic` off, the app is identical to the version without the recorder: the controller listens on 6080 and 6443 as usual.
+
+### How it works
+
+With `record_traffic` on, the controller moves its own listeners to the internal ports 16080 (inform) and 16443 (web). The recorder listens on 6080 and 6443, forwards each request unchanged to the controller and returns the answer of the controller unchanged. Devices and browsers keep using the same ports. After each exchange the recorder writes one line.
+
+If the controller does not move to 16443 within 120 seconds, the log says `https recording unavailable: the controller did not move to 16443` and only the inform port 6080 is recorded.
+
+### Where the files are
+
+One file per day: `/share/mfi-recordings/YYYY-MM-DD.jsonl`, with one JSON object per exchange, on one line. When the file of the day reaches `record_max_mb`, no more lines are written until the next day; the log says so once per day.
+
+### Browser certificate
+
+On port 6443 the recorder presents a self-signed certificate, generated at the first start under `/data/recorder/`. The browser asks for confirmation, as it does for the controller itself.
+
+### Risk
+
+The recordings contain MAC addresses and site data. Port 6443 is masked for passwords, cookies and tokens, but its responses still contain site data: treat the recordings as private. The files stay in `/share` and never enter the repository. Do not publish them and do not attach them to issues.
+
+### Decoding
+
+On your PC, with a checkout of this repository and the `.unf` backup of the same site:
+
+```
+python3 tools/decode_recording.py --recording FILE.jsonl --backup FILE.unf --out DIR [--anonymize]
+```
+
+The device keys come from the backup and never leave your PC. Only the anonymized output (`--anonymize`) may go into the repository.
+
+### Security rule
+
+Ports 6080 and 6443 must never be exposed to the internet (AGENTS.md, rule 8). Keep the devices and the controller on an isolated network. The recorder adds no protection of its own.
 
 ## Data
 
