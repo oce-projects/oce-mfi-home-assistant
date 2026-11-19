@@ -1,16 +1,80 @@
-"""Device archive: devices.json, atomic writes and transactions. Implemented in EPIC-01."""
+"""Storage of mfi_server_next: sqlite3 databases and atomic JSON files. Standard library only."""
+from __future__ import annotations
+
+import contextlib
+import json
+import os
+import sqlite3
+from collections.abc import Iterator
+from pathlib import Path
+
+STATE_DB = "state.sqlite3"
+HISTORY_DB = "history.sqlite3"
+DIR_MODE = 0o700
+PRIVATE_FILE_MODE = 0o600
+PUBLIC_FILE_MODE = 0o644
 
 
 class Store:
-    """Device archive stored in devices.json. Implemented in EPIC-01."""
+    """Data folder of the server: state.sqlite3, history.sqlite3 and JSON files."""
 
-    def __init__(self):
-        raise NotImplementedError("store: implemented in EPIC-01")
+    def __init__(self, data_dir: Path, state: sqlite3.Connection, history: sqlite3.Connection) -> None:
+        self.data_dir = data_dir
+        self._state = state
+        self._history = history
 
-    def open(self):
-        """Open devices.json in the data folder. Implemented in EPIC-01."""
-        raise NotImplementedError("store: implemented in EPIC-01")
+    @classmethod
+    def open(cls, data_dir) -> Store:
+        """Create the folder with mode 0700 if missing and open both databases."""
+        folder = Path(data_dir)
+        os.makedirs(folder, mode=DIR_MODE, exist_ok=True)
+        os.chmod(folder, DIR_MODE)
+        state = sqlite3.connect(folder / STATE_DB)
+        try:
+            history = sqlite3.connect(folder / HISTORY_DB)
+        except BaseException:
+            state.close()
+            raise
+        return cls(folder, state, history)
 
-    def transaction(self):
-        """Run a group of writes that succeed or fail together. Implemented in EPIC-01."""
-        raise NotImplementedError("store: implemented in EPIC-01")
+    @contextlib.contextmanager
+    def transaction(self) -> Iterator[sqlite3.Connection]:
+        """Yield the state connection: commit on a clean exit, roll back and re-raise on error."""
+        try:
+            yield self._state
+        except BaseException:
+            self._state.rollback()
+            raise
+        self._state.commit()
+
+    def write_json(self, name: str, obj, *, private: bool = False) -> None:
+        """Write obj to data_dir/name through a temporary file in the same folder, then replace."""
+        final = self.data_dir / name
+        tmp = self.data_dir / (name + ".tmp")
+        text = json.dumps(obj, indent=2, sort_keys=True)
+        mode = PRIVATE_FILE_MODE if private else PUBLIC_FILE_MODE
+        try:
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(text)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(tmp, final)
+        except BaseException:
+            tmp.unlink(missing_ok=True)
+            raise
+
+    def read_json(self, name: str, default=None):
+        """Return the parsed JSON of data_dir/name, or default when the file does not exist."""
+        try:
+            with open(self.data_dir / name, encoding="utf-8") as handle:
+                return json.load(handle)
+        except FileNotFoundError:
+            return default
+
+    def close(self) -> None:
+        """Close both sqlite3 connections."""
+        try:
+            self._history.close()
+        finally:
+            self._state.close()
