@@ -9,6 +9,7 @@ The tests run offline and use the Python standard library only. Run these comman
 ```
 python3 -m unittest discover -s tests -v
 python3 -m unittest discover -s mfi-server/tests -t mfi-server -v
+python3 -m unittest discover -s mfi-server/tests_next -t mfi-server -v
 python3 -m unittest discover -s mfi-wifi-setup/tests -t mfi-wifi-setup -v
 ```
 

@@ -170,7 +170,7 @@ Standalone: mfi-server runs with all of its functions without Home Assistant. Ho
 
 ### Current modules
 
-The 30 files of `mfi-server/mfi_server/` (directory listing of 2026-11-19), and the module of `mfi_server_next/` that replaces each one. Files that this plan did not read in full (for example `bridge.py`, `server.py`, `packet.py`, `states.py`) are mapped by name only; the mapping is checked in EPIC-00.
+The 30 Python modules of `mfi-server/mfi_server/` (directory listing of 2026-11-19), and the module of `mfi_server_next/` that replaces each one. The data file `firmware_bundles.json` and the `web/` folder are not Python modules of their own and are not in the table: `firmware_bundles.json` is firmware data used by `firmware.py`, and `web/` is rebuilt in EPIC-16. EPIC-00 verified this mapping against the directory listing; every row is correct.
 
 | Current file in mfi_server/ | Replaced by in mfi_server_next/ | Epic | Note |
 |---|---|---|---|

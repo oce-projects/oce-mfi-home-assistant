@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.25.0 - 2026-11-19
+
+- feat(mfi-server): EPIC-00 skeleton of the new server package `mfi_server_next` and the `mfi-server/tests_next` suite (ticket T-MWNRGISH).
+
 ## 0.24.0 - 2026-11-19
 
 - feat(mfi-controller): passive UDP capture (discovery 10001 and wake-up 3478) in the recorder, host_network and NET_RAW, TLV decoding in tools/decode_recording.py (ticket T-MWNRGIIJ).

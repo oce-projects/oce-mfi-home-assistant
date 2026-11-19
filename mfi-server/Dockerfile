@@ -6,7 +6,7 @@
 # Digest not measured yet: pin it by hand after a real build
 FROM python:3.12-slim
 
-ARG BUILD_VERSION="0.13.1"
+ARG BUILD_VERSION="0.14.0"
 ARG BUILD_ARCH="amd64"
 ARG FW_URL="https://dl.ubnt.com/mfi/2.1.11/firmware/M2M/firmware.bin"
 ARG FW_SHA256="7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79"
