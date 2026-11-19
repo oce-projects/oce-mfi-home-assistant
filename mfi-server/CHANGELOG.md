@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.0 - 2026-11-19
+
+- EPIC-01b: synthetic compatibility replay bench in `mfi-server/tests_next` (fixtures in `fixtures/compat/`, helper `compat_replay.py`, test `test_compat_replay.py`); every exchange is PENDING until its owner epic implements the handler; real recordings are added later as more fixtures.
+
 ## 0.15.0 - 2026-11-19
 
 - EPIC-01: shared modules of the new server (`mfi_server_next`): `config.load_settings`, `store.Store`, `crypto` (AES-128-CBC and PBKDF2) and `bson.read_bson_stream`, each with tests in `mfi-server/tests_next`. The new package is still not wired in and the Dockerfile keeps copying only `mfi_server`.
