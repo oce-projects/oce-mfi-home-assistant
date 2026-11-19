@@ -4,14 +4,16 @@ This is a clean-room report of the network and Wi-Fi area of the mFi Controller 
 
 ## 1. SSH and web shell: what they allow, credentials, who may use them
 
-- The controller has an SSH session and a web shell toward a managed device. Their names suggest a terminal on the device, opened from the web interface. INFERRED from the class names SshServlet, WebshellServlet and WebshellInputServlet, and from the Network and Wi-Fi row of INV, which is itself INFERRED. Source: INV "Areas" (Network and Wi-Fi row) and INV "Classes" table.
+- The controller has an SSH session and a web shell. The web shell is a command line toward a **serial-based device** connected to an mPort Serial, not a terminal on the controller. UG-V11 p. 13 says the Shell icon is "only available for serial-based devices" and that TCP port 2323 must be open on the controller firewall; UG-V11 p. 28 shows the IP address, port and protocol of the serial device and a "Web Shell" button. CONFIRMED (official guide) for the serial purpose. Source: UG-V11 p. 13, p. 28.
+- Code check (REA, class `com.ubnt.ace.view.WebshellServlet`): the request carries `host`, `port` and `protocol` (`ssh` or `telnet`) and the servlet requires a logged-in admin session (`api.err.LoginRequired` otherwise). OBSERVED. Source: REA report, network section.
+- Security: the host and port come from the request and the code read shows no check that they belong to an adopted device, so the web shell can open a connection to any host and port reachable from the controller. OBSERVED for the parameters, UNVERIFIED for the absence of a check (rest of the class not read). Source: REA report, network section.
 - The SSH connection to a device is made during adoption: the controller connects on port 22 and sends the adoption command with the inform address and the device key. OBSERVED. Source: PROTO "Adoption", item 3.
 - For a factory device, the controller uses the fixed factory credentials described in PROTO. The values are not reproduced here. OBSERVED. Source: PROTO "Adoption", item 4; PROTO "Factory state".
 - For an automatic re-adoption, the controller uses its own administrator name and password. OBSERVED. Source: PROTO "Adoption", item 4.
 - The administrator password is written into the device configuration as a DES-based Unix crypt with a random two-letter salt, and it becomes the SSH and web password of every adopted device. OBSERVED. Source: PROTO "Security summary"; PROTO "Controller responses" (system_cfg).
 - The controller code contains other SSH commands: one restores factory defaults and one sets the default flag in the management configuration. The existence of these commands is OBSERVED; when they are called is UNVERIFIED. Source: PROTO "Adoption" (last paragraph).
 - Who may use a web shell: a connected administrator of the controller, as the class names and the Users area suggest. The access check in the code is not in the repository documents. INFERRED for the purpose, UNVERIFIED for the check. Source: INV "Areas" (Users row); INV "Classes" table (WebshellServlet row).
-- A telnet mode of the web shell and the exact protocol and port of the web shell are mentioned only by REA. UNVERIFIED. Source: REA report, network section.
+- The web shell protocol is `ssh` or `telnet`, carried in the request. OBSERVED. Source: REA report, network section.
 - The configuration sent to a device at adoption includes a setting that disables the telnet service. The setting is approximate in PROTO. INFERRED. Source: PROTO "Controller responses" (system_cfg).
 - Terminal type, session timeouts and output buffering of the web shell come from REA only. UNVERIFIED. Source: REA report, network section.
 
