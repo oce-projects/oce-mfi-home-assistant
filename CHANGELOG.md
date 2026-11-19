@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.22 - 2026-11-19
+
+- docs: rebuild plan for feature parity with the 2.1.11 controller (ticket T-MWMSGNAB).
+
 ## 0.22.21 - 2026-11-19
 
 - docs: SSH, webshell, UPnP and Wi-Fi configuration of the 2.1.11 controller (clean room report) (ticket T-MWMRRHDF).

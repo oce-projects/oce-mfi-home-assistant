@@ -61,6 +61,7 @@ page (`docs/WIFI-SETUP.md`). Wired devices do not need it.
 | 2026-11-16 | Automations use the Home Assistant format; the engine is our own code, written clean room (no Home Assistant code copied) |
 | 2026-11-16 | Repository published on GitHub (public, existing history kept); standard install from the add-on store |
 | 2026-11-17 | First setup of Wi-Fi devices through a Windows program (`mfi-wifi-setup/`, one `.exe`, nothing installed), not a browser extension: an extension cannot add TLS 1.0 to Chrome |
+| 2026-11-18 | Full rewrite: feature parity with the 2.1.11 controller, Home Assistant style, whole repository; plan in docs/REBUILD-PLAN.md |
 
 ## Existing work (checked 2026-11-15)
 
