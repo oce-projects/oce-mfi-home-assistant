@@ -2,7 +2,7 @@
 
 This is a clean-room inventory of `ace.jar` 2.1.11, built from the reverse-engineering report of epic T-MWMRQZYG. It records behaviour, class names, method names, field names and MongoDB collection names only. It contains no code and no pseudocode. Classes that were not opened have their area INFERRED from the name.
 
-Counts: the report gives class counts per package that add up to 141 (com.ubnt.data 48, com.ubnt.service 41, com.ubnt.ace 22, com.ubiquiti.discovery 18, com.ubnt.net 12). The build preparation produced 140 source files (service 40 instead of 41); this difference is UNVERIFIED. The report does not list every obfuscated class one by one, so the Classes table below lists only the classes the report names. The other classes stay UNVERIFIED until the per-area epics open them with classi_java.
+Counts: the report gives class counts per package that add up to 141 (com.ubnt.data 48, com.ubnt.service 41, com.ubnt.ace 22, com.ubiquiti.discovery 18, com.ubnt.net 12). The report does not list every obfuscated class one by one, so the Classes table below lists only the classes the report names. The other classes stay UNVERIFIED until the per-area epics open them with classi_java.
 
 ## Areas
 
