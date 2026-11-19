@@ -90,6 +90,20 @@ class TestBsonReader(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     read_bson_stream(io.BytesIO(raw[:-cut]))
 
+    def test_declared_length_larger_than_data_raises(self):
+        with self.assertRaises(ValueError):
+            read_bson_stream(io.BytesIO(struct.pack("<i", 100) + b"\x00" * 4))
+
+    def test_length_below_five_or_negative_raises(self):
+        for raw in (struct.pack("<i", 4) + b"\x00", struct.pack("<i", -1) + b"\x00" * 4):
+            with self.subTest(raw=raw):
+                with self.assertRaises(ValueError):
+                    read_bson_stream(io.BytesIO(raw))
+
+    def test_unknown_type_byte_raises(self):
+        with self.assertRaises(ValueError):
+            read_bson_stream(io.BytesIO(doc(element(0x7F, "x", b""))))
+
 
 if __name__ == "__main__":
     unittest.main()

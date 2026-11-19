@@ -1,4 +1,4 @@
-"""Effective settings: environment, settings file and defaults. Implemented in EPIC-01."""
+"""Effective settings: environment, settings file and defaults. Standard library only."""
 from __future__ import annotations
 
 import json
@@ -13,11 +13,12 @@ ENV_NAMES = {
 }
 INT_KEYS = ("inform_port", "history_days", "backup_copies")
 SETTINGS_FILE = "settings.json"
+DEFAULT_DATA_DIR = "./data"
 
 
 def load_settings(data_dir=None, environ=None):
     """Load the effective settings of one run: defaults, then settings.json, then environment."""
-    folder = Path(data_dir) if data_dir is not None else Path("./data")
+    folder = Path(data_dir) if data_dir is not None else Path(DEFAULT_DATA_DIR)
     env = os.environ if environ is None else environ
     settings = dict(DEFAULTS)
     settings.update(_read_settings_file(folder / SETTINGS_FILE))
@@ -27,6 +28,7 @@ def load_settings(data_dir=None, environ=None):
             settings[key] = value
     for key in INT_KEYS:
         settings[key] = _to_int(key, settings[key])
+    _check_ranges(settings)
     settings["data_dir"] = str(folder)
     return settings
 
@@ -54,3 +56,13 @@ def _to_int(key, value):
         return int(value)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{key} must be an integer") from exc
+
+
+def _check_ranges(settings):
+    """Reject values outside their allowed range, naming the key in the message."""
+    if not 1 <= settings["inform_port"] <= 65535:
+        raise ValueError("inform_port must be between 1 and 65535")
+    if settings["history_days"] < 0:
+        raise ValueError("history_days must be >= 0")
+    if settings["backup_copies"] < 0:
+        raise ValueError("backup_copies must be >= 0")

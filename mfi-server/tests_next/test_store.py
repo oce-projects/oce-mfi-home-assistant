@@ -45,6 +45,20 @@ class TestJson(StoreTestCase):
         self.assertEqual(self.store.read_json("devices.json"), {"a": 1})
         self.assertFalse((self.folder / "devices.json.tmp").exists())
 
+    def test_unsafe_names_are_rejected(self):
+        for name in ("../x.json", "/etc/x.json", "", ".", ".."):
+            with self.subTest(name=name):
+                with self.assertRaises(ValueError):
+                    self.store.write_json(name, {})
+                with self.assertRaises(ValueError):
+                    self.store.read_json(name)
+
+    def test_corrupt_json_raises_value_error_naming_file(self):
+        (self.folder / "bad.json").write_text("{oops", encoding="utf-8")
+        with self.assertRaises(ValueError) as cm:
+            self.store.read_json("bad.json")
+        self.assertIn("bad.json", str(cm.exception))
+
 
 class TestPrivateFile(StoreTestCase):
     def test_private_file_has_mode_0600(self):
@@ -52,6 +66,14 @@ class TestPrivateFile(StoreTestCase):
         path = self.folder / "keys.json"
         self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
         self.assertEqual(self.store.read_json("keys.json"), {"authkey": FAKE_AUTHKEY})
+
+    def test_private_write_over_residual_tmp_is_0600(self):
+        tmp_path = self.folder / "keys.json.tmp"
+        tmp_path.write_text("", encoding="utf-8")
+        os.chmod(tmp_path, 0o644)
+        self.store.write_json("keys.json", {"authkey": FAKE_AUTHKEY}, private=True)
+        self.assertEqual(stat.S_IMODE(os.stat(self.folder / "keys.json").st_mode), 0o600)
+        self.assertFalse(tmp_path.exists())
 
 
 class TestFolderAndConnections(StoreTestCase):
@@ -62,6 +84,13 @@ class TestFolderAndConnections(StoreTestCase):
         self.assertEqual(stat.S_IMODE(os.stat(folder).st_mode), 0o700)
         self.assertTrue((folder / "state.sqlite3").is_file())
         self.assertTrue((folder / "history.sqlite3").is_file())
+
+    def test_sqlite_files_have_mode_0600(self):
+        folder = self.folder / "sqlite"
+        store = Store.open(folder)
+        self.addCleanup(store.close)
+        self.assertEqual(stat.S_IMODE(os.stat(folder / "state.sqlite3").st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(os.stat(folder / "history.sqlite3").st_mode), 0o600)
 
 
 class TestTransaction(StoreTestCase):

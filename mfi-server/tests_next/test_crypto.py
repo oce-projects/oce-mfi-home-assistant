@@ -57,6 +57,14 @@ class TestAes128(unittest.TestCase):
         with self.assertRaises(ValueError):
             crypto.aes128_encrypt(FAKE_KEY, b"v" * 17, INFORM_PLAIN)
 
+    def test_wrong_key_sizes_raise(self):
+        with self.assertRaises(ValueError):
+            crypto.aes128_decrypt(b"", FAKE_IV, FIPS_CIPHER)
+        with self.assertRaises(ValueError):
+            crypto.aes128_encrypt(b"k" * 32, FAKE_IV, INFORM_PLAIN)
+        with self.assertRaises(ValueError):
+            crypto.aes128_encrypt(FAKE_KEY, b"", INFORM_PLAIN)
+
 
 class TestPbkdf2(unittest.TestCase):
     def test_verify_accepts_right_password_and_rejects_wrong(self):
