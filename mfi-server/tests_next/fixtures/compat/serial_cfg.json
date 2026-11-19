@@ -1,0 +1,25 @@
+{
+  "code": "R-SERIAL",
+  "source": "synthetic",
+  "owner_epic": "EPIC-04",
+  "handler": "mfi_server_next.serial.build_ser2net_cfg",
+  "request": {
+    "mac": "002722000001",
+    "ip": "192.168.1.20",
+    "model": "M2S",
+    "serial": {
+      "enable": "on",
+      "baudRate": "9600",
+      "parity": "none",
+      "uartMode": "rs232",
+      "termination": "off",
+      "antenna": "off"
+    }
+  },
+  "expected": {
+    "keys": {
+      "_type": "str",
+      "mgmt": "dict"
+    }
+  }
+}

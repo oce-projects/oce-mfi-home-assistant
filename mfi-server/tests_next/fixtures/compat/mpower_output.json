@@ -1,0 +1,19 @@
+{
+  "code": "R-MPOWER",
+  "source": "synthetic",
+  "owner_epic": "EPIC-02",
+  "handler": "mfi_server_next.inform.handle_inform",
+  "request": {
+    "mac": "002722000001",
+    "ip": "192.168.1.20",
+    "model": "P3E",
+    "cmd": "mfi-output",
+    "port": 1,
+    "output": 1
+  },
+  "expected": {
+    "keys": {
+      "_type": "str"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "code": "R-DISC",
+  "source": "synthetic",
+  "owner_epic": "EPIC-03",
+  "handler": "mfi_server_next.udp_discovery.UdpDiscovery",
+  "request": {
+    "probe": "01 00 00 00",
+    "sample_device": {
+      "mac": "002722000001",
+      "ip": "192.168.1.20",
+      "platform": "P1E"
+    }
+  },
+  "expected": {
+    "tlv_order": [2, 1, 10, 11, 12, 13, 14, 3]
+  }
+}

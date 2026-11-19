@@ -1,0 +1,23 @@
+{
+  "code": "R-POWER",
+  "source": "synthetic",
+  "owner_epic": "EPIC-02",
+  "handler": "mfi_server_next.inform.handle_inform",
+  "request": {
+    "method": "POST",
+    "path": "/inform",
+    "mac": "002722000001",
+    "ip": "192.168.1.20",
+    "model": "P3E",
+    "adopted": true,
+    "state": 1,
+    "cfgversion": "0123456789abcdef",
+    "portversion": "fedcba9876543210"
+  },
+  "expected": {
+    "status": 200,
+    "keys": {
+      "_type": "str"
+    }
+  }
+}

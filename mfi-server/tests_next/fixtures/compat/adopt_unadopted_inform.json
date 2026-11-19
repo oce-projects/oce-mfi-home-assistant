@@ -1,0 +1,21 @@
+{
+  "code": "R-ADOPT",
+  "source": "synthetic",
+  "owner_epic": "EPIC-02",
+  "handler": "mfi_server_next.inform.handle_inform",
+  "request": {
+    "method": "POST",
+    "path": "/inform",
+    "mac": "002722000001",
+    "ip": "192.168.1.20",
+    "model": "M2M",
+    "adopted": false,
+    "inform_url": "http://mfi-server:6080/inform"
+  },
+  "expected": {
+    "status": 200,
+    "keys": {
+      "_type": "str"
+    }
+  }
+}
