@@ -31,7 +31,7 @@ Counts: the report gives class counts per package that add up to 141 (com.ubnt.d
 | EM3 | Model code in the table of accepted models; 3 ports created at adoption | Product and functions not identified in the report | UNVERIFIED |
 | EM24, THERM | Accepted models; no ports created at adoption; no firmware entry | Functions not read in the report | UNVERIFIED |
 | mPort, code M2M | Model code; 3 ports created at adoption; firmware entry present | Sensor ports through port lines PWR, AI, DI and DO; mfi-output with port 2*(port-1) plus the output port | OBSERVED; See [mport.md](mport.md): full report available |
-| mPort Serial, code M2S | Model code; 1 port created at adoption | Ports as M2M; serial configuration ser2net_cfg; kick-serial command | OBSERVED |
+| mPort Serial, code M2S | Model code; 1 port created at adoption | Ports as M2M; serial configuration ser2net_cfg; kick-serial command | OBSERVED; See [mport-serial.md](mport-serial.md): full report available |
 | In-wall outlet, code IWO2U | Model code; 2 ports created at adoption | Outlet measures; mfi-output | OBSERVED |
 | In-wall dimmer, code IWD1U | Model code; 1 port created at adoption, dimmer_mode switch, dimmer_lock 0, led_brightness 255 | dimmer_lock_setting command, dimmer_level in mfi-output; measures as the outlet | OBSERVED |
 | In-wall switch, code IWS1U | Accepted model; no ports at adoption; listed only in the port configuration list, not with mfi=true in discovery | Functions not read in the report | UNVERIFIED |
