@@ -24,9 +24,6 @@ MODULE_NAMES = [
 
 FUNCTIONS = {
     "__main__": ["main"],
-    "config": ["load_settings"],
-    "crypto": ["aes128_decrypt", "pbkdf2_hash", "pbkdf2_verify"],
-    "bson": ["read_bson_stream"],
     "inform": ["handle_inform"],
     "firmware": ["firmware_for_model"],
     "sensors": ["build_port_config"],
@@ -42,7 +39,6 @@ FUNCTIONS = {
 }
 
 CLASSES = {
-    "store": {"Store": ["open", "transaction"]},
     "devices": {"DeviceRegistry": []},
     "tasks": {"TaskQueue": ["enqueue", "pop_for_mac"]},
     "udp_discovery": {"UdpDiscovery": []},
