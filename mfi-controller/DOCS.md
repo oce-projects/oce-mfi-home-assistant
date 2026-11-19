@@ -116,7 +116,7 @@ With `record_traffic` off, the app is identical to the version without the recor
 
 ### How it works
 
-With `record_traffic` on, the controller moves its own listeners to the internal ports 16080 (inform) and 16443 (web). The recorder listens on 6080 and 6443, forwards each request unchanged to the controller and returns the answer of the controller unchanged. Devices and browsers keep using the same ports. After each exchange the recorder writes one line.
+With `record_traffic` on, the controller moves its own listeners to the internal ports 16080 (inform) and 16443 (web). The move of the web port is set through the property `unifi.https.port`, which is a naming assumption: UNVERIFIED on the 2.1.11 controller (the inform port `unifi.http.port` is OBSERVED in `docs/controller/system.md`). The recorder listens on 6080 and 6443, forwards each request unchanged to the controller and returns the answer of the controller unchanged. Devices and browsers keep using the same ports. After each exchange the recorder writes one line.
 
 If the controller does not move to 16443 within 120 seconds, the log says `https recording unavailable: the controller did not move to 16443` and only the inform port 6080 is recorded.
 
