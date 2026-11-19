@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.23.1 - 2026-11-19
+
+- docs: rebuild plan corrected: separate next package, compatibility test bench, web page, automation editor and import, security option A, controller-compatible API (ticket T-MWN7CLH0).
+
 ## 0.23.0 - 2026-11-19
 
 - feat(mfi-controller): optional compatibility recorder on ports 6080 and 6443, offline decoder in tools/decode_recording.py (ticket T-MWN7CKW9).
