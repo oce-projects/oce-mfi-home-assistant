@@ -175,6 +175,14 @@ class TestBuildInformResponse(unittest.TestCase):
         raw = build_packet(bytes.fromhex(AUTHKEY), {"mac": MAC, "cfgversion": CFGVERSION})
         self.assertEqual(inform.build_inform_response(raw, _CorruptRegistry()), (400, b""))
 
+    def test_unexpected_registry_error_gives_500(self):
+        class _ExplodingRegistry:
+            def get(self, mac):
+                raise RuntimeError("boom")
+
+        raw = build_packet(bytes.fromhex(AUTHKEY), {"mac": MAC, "cfgversion": CFGVERSION})
+        self.assertEqual(inform.build_inform_response(raw, _ExplodingRegistry()), (500, b""))
+
     def test_factory_key_does_not_drain_an_adopted_queue(self):
         registry = adopted_registry()
         queue = tasks.TaskQueue()

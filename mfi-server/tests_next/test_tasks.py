@@ -107,6 +107,20 @@ class TestTaskQueueOrder(unittest.TestCase):
     def test_empty_queue_gives_none(self):
         self.assertIsNone(tasks.TaskQueue().pop_for_mac(MAC))
 
+    def test_queue_is_bounded_per_mac(self):
+        queue = tasks.TaskQueue()
+        total = tasks.MAX_QUEUE_PER_MAC + 10
+        for port in range(total):
+            queue.enqueue(tasks.build_output_command(MAC, port, 1))
+        popped = []
+        while True:
+            task = queue.pop_for_mac(MAC)
+            if task is None:
+                break
+            popped.append(task)
+        self.assertEqual(len(popped), tasks.MAX_QUEUE_PER_MAC)
+        self.assertEqual(popped[0]["port"], 10)
+
     def test_macs_are_independent(self):
         queue = tasks.TaskQueue()
         queue.enqueue(tasks.build_output_command(MAC, 1, 1))

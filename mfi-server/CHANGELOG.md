@@ -3,6 +3,7 @@
 ## 0.17.0 - 2026-11-19
 
 - EPIC-02: inform and devices in `mfi_server_next` — `firmware.py` (firmware_for_model, build_upgrade), `devices.py` (DeviceRegistry, SSH set-adopt with administrator-then-factory retry, devices.json at 0600), `tasks.py` (TaskQueue, mfi-output command, 20-byte wake-up on UDP 3478) and `inform.py` (TNBU decrypt with key trial, handle_inform reply noop/setparam/upgrade/cmd, inform HTTP server on port 6080). The EPIC-01b compatibility fixtures owned by EPIC-02 are now checked instead of pending.
+- EPIC-02 hardening: `build_inform_response` returns a clean 500 instead of a traceback on an unexpected error and no longer mutates the reply dict in place; the per-device command queue is bounded (`MAX_QUEUE_PER_MAC`, oldest dropped).
 
 ## 0.16.0 - 2026-11-19
 
