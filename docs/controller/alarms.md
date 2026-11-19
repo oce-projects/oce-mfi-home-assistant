@@ -9,7 +9,7 @@ This is a clean-room report of the alarms, monitors and notifications of the mFi
 - OBSERVED: the alarm definitions the controller creates at startup are `EVT_AP_DiscoveredPending`, `EVT_AP_RediscoveredPending`, `EVT_AP_Lost_Contact` (with a repeat set), `EVT_WU_AssocPending`, `EVT_WG_AssocPending` and `EVT_AD_UpdateAvailable`. Source: PROTO "Events" (`DbService`).
 - OBSERVED: who raises each one. A new device found raises `EVT_AP_DiscoveredPending`; an adopted device informing again raises `EVT_AP_RediscoveredPending`; more than 120 seconds without an inform raises `EVT_AP_Lost_Contact`; a pending Wi-Fi association raises `EVT_WU_AssocPending` or `EVT_WG_AssocPending`. Source: PROTO "Events".
 - UNVERIFIED: when `EVT_AD_UpdateAvailable` (firmware update available) is raised; its trigger is not in the classes the report read. Source: PROTO "Events".
-- INFERRED: the four classes of trigger of the dossier map as follows: device disconnected -> `EVT_AP_Lost_Contact`; sensor threshold -> handled by rules, not by an `alarmdef` (see section 5); rule -> a rule "event" action, saved in `actionevent` (see section 3); system -> discovery and firmware definitions (`DiscoveredPending`, `RediscoveredPending`, `AD_UpdateAvailable`). Source: PROTO "Events" and "Rules and scenes".
+- INFERRED: the four trigger categories -- device disconnected, sensor threshold, rule and system -- map as follows: device disconnected -> `EVT_AP_Lost_Contact`; sensor threshold -> handled by rules, not by an `alarmdef` (see section 5); rule -> a rule "event" action, saved in `actionevent` (see section 3); system -> discovery and firmware definitions (`DiscoveredPending`, `RediscoveredPending`, `AD_UpdateAvailable`). Source: PROTO "Events" and "Rules and scenes".
 - UNVERIFIED: the complete field list of an `alarmdef` record (a repeat flag is OBSERVED only on `EVT_AP_Lost_Contact`; a level or text field is not in the repository documents). Source: PROTO "Events".
 
 ## 2. `Monitor`: what it watches, interval and fields
@@ -25,7 +25,8 @@ This is a clean-room report of the alarms, monitors and notifications of the mFi
 - OBSERVED: a second outbound channel is the URL action, `type` `url`: with `enable` true it sends a POST whose body carries URL-encoded `rule`, `sensor` and `value` fields. Source: PROTO "Rules and scenes".
 - OBSERVED: `addr` is a list of addresses used for the e-mail and URL actions. Source: PROTO "Rules and scenes".
 - INFERRED: the Events class the report names as the e-mail sender is `event.class_26` ("sends e-mail"). Source: INV "Areas" (Events row).
-- UNVERIFIED: no SMS or push channel was found. The rule action `type` has eight values (`email`, `event`, `relaySwitch`, `script`, `state`, `url`, `scene`, `rule`); none is SMS or push. Source: PROTO "Rules and scenes".
+- OBSERVED: the rule action `type` has eight values (`email`, `event`, `relaySwitch`, `script`, `state`, `url`, `scene`, `rule`). Source: PROTO "Rules and scenes".
+- UNVERIFIED: no SMS or push channel was found; none of the eight `type` values is SMS or push. Source: PROTO "Rules and scenes".
 - UNVERIFIED: the mail-server settings (SMTP host, port, authentication, sender address). INFERRED that a `Setting` record holds them (INV places `Setting` in the System area), but the repository documents do not name the fields. Source: INV "Areas" (System row, `Setting`).
 - OBSERVED: the message text of an event comes from a resource file named `messages`, read in the system language under the event `key`; a name in curly brackets is replaced by the event field of the same name, and a missing key yields the key itself between two tildes. UNVERIFIED: the texts themselves, because the `messages` file is not in the code and could not be read. Source: PROTO "Events".
 - OBSERVED: the recipients of the e-mail channel are the addresses in the `addr` list of the rule action. UNVERIFIED: whether administrators receive a copy by default; not in the repository documents. Source: PROTO "Rules and scenes".
@@ -52,7 +53,7 @@ The events and the rule engine are already documented. This section only points 
 
 The mfi-server code was not read for this report; the comparison is with INV and ARCH only.
 
-- OBSERVED: mfi-server has no alarm or alarmdef model; INV marks the Alarms area "In mfi-server: no". Source: INV "Areas".
-- OBSERVED: mfi-server automations use the Home Assistant format with its own clean-room engine; the controller's `email` and `url` rule actions and its `alarmdef` definitions are not implemented. Source: ARCH "Decisions" (2026-11-16); INV "Areas".
+- INFERRED: mfi-server has no alarm or alarmdef model; INV marks the Alarms area "In mfi-server: no". Source: INV "Areas".
+- INFERRED: mfi-server automations use the Home Assistant format with its own clean-room engine; the controller's `email` and `url` rule actions and its `alarmdef` definitions are not implemented. Source: ARCH "Decisions" (2026-11-16); INV "Areas".
 - INFERRED: mfi-server has no SMTP or push notification channel of its own; it exposes its data over MQTT and lets Home Assistant raise notifications. Source: ARCH "Decisions" (2026-11-15, MQTT discovery).
 - UNVERIFIED: the behaviour of the Home Assistant core `mfi` integration (`mficlient`) against an alarm API; mfi-server does not expose the controller `alarm`/`alarmdef` collections or an archive/ack route, so the controller alarm UI is not reproduced. Source: INV "Areas"; AGENTS.md "Facts".
