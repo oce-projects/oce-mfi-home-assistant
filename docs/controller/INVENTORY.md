@@ -1,23 +1,25 @@
 # ace.jar 2.1.11 inventory (clean room)
 
-This is a clean-room inventory of `ace.jar` 2.1.11, built from the reverse-engineering report of epic T-MWMRQZYG. It records behaviour, class names, method names, field names and MongoDB collection names only. It contains no code and no pseudocode. Classes that were not opened have their area INFERRED from the name. The report lists 140 class names as counts per package (ace 22, discovery 18, data 48, net 12, service 40), not 141, and gives service as 40 where the dossier gives 41. It does not list the classes one by one, so the Classes table below names only the classes the report mentions. The other classes are missing here and stay UNVERIFIED until a full list is available.
+This is a clean-room inventory of `ace.jar` 2.1.11, built from the reverse-engineering report of epic T-MWMRQZYG. It records behaviour, class names, method names, field names and MongoDB collection names only. It contains no code and no pseudocode. Classes that were not opened have their area INFERRED from the name.
+
+Counts: the report gives class counts per package that add up to 141 (com.ubnt.data 48, com.ubnt.service 41, com.ubnt.ace 22, com.ubiquiti.discovery 18, com.ubnt.net 12). The build preparation produced 140 source files (service 40 instead of 41); this difference is UNVERIFIED. The report does not list every obfuscated class one by one, so the Classes table below lists only the classes the report names. The other classes stay UNVERIFIED until the per-area epics open them with classi_java.
 
 ## Areas
 
 | Area | What it does | Classes | MongoDB collections | In mfi-server | Detail doc | Status |
 |---|---|---|---|---|---|---|
-| Inform e dispositivi | Receives inform packets, chooses the response, keeps device state and the command queue | InformServlet, DeviceManager, ConfigService, Device, Task, class_6, class_39 (wake-up request), net.class_3/4/5/63/69 | device (OBSERVED from the PROTOCOL device collection); task (UNVERIFIED name) | partial | device-lifecycle.md | INFERRED |
-| Discovery | UDP discovery on port 10001: TLV announcements and replies | com.ubiquiti.discovery.* (18), UbntDiscoveryServer, DatagramQueryServer, LiteStationQueryServer | none found | yes | network-tools.md | OBSERVED |
-| Sensori e mPort | Reads measurements and new sensors from the inform, sensor model table | sensor service (ooOO.class_13), class_46, CustomSensors, M2mgeneric, TagMapping, SensorTagMapping | sensor, m2mgeneric | no | mport.md | INFERRED |
-| Regole e scene | Rules engine: triggers, conditions, actions, time rules, scenes, scripts | service.D class_31, class_32, class_33, class_34, class_35, class_30, class_27, class_15 | rule, ruleset, ruleaction, rulestate, rulestatecalendar, ruleschedule, rulecondition, scene, sceneaction, script | partial | ../PROTOCOL.md | OBSERVED |
-| Eventi | Saves device events and rule actions, sends e-mail | EventManager, event.class_26 (e-mail) | event, actionevent, alarmdef | no | ../PROTOCOL.md | OBSERVED |
-| Statistiche | Minute, quarter-hour, hour and day aggregates, read by interval length | Minute, Quarterhour, Hour, Stat, Rawdata | minute, quarterhour, hour, day, m2mgeneric | partial | ../PROTOCOL.md | INFERRED |
-| API web | HTTP API under /api/v1.0/<verb>/<object>, long-poll messages | ApiServlet, CometServlet, CometMessage, api.class_46, api.class_47, api.class_50, O0OO, oOOO | cometmessage (capped at 1,000,000 bytes) | partial | web-api.md | OBSERVED |
-| Allarmi | Alarm records and their definitions, monitor thread | Alarm, AlarmDef, Monitor | alarm, alarmdef | no | alarms.md | INFERRED |
-| Utenti | Administrators, sessions, tokens, login filter, groups | User, Admin, Session, Token, AuthServer, Groups, AuthFilter | UNVERIFIED | partial | users.md | INFERRED |
-| Mappe e dashboard | Locations, geofences, live view, widgets, templates | Location, Geofence (service.A.class_38), LiveView, Widget, Template, ConfigTemplate | map | no | ui.md | INFERRED |
-| Sistema | Service start, database and migration, backup and restore, upgrade check, settings | SystemService, DbService, DbMigrator, Setting, UploadServlet, DownloadServlet, StatusServlet, Launcher, LauncherUI, JspUtils, ServiceLocator, AppContext, class_12, class_8 | setting (UNVERIFIED name) | partial | system.md | OBSERVED |
-| Rete e Wi-Fi | SSH and web shell, UPnP, guest access, Wi-Fi configuration | SshServlet, WebshellServlet, WebshellInputServlet, UpnpServlet, GuestServlet, WlanConf | none found | no | network-tools.md | INFERRED |
+| Inform and devices | Receives inform packets, chooses the response, keeps device state and the command queue | InformServlet, DeviceManager, ConfigService, Device record, Task, class_6, class_39, net.class_3/5/63/69 | device (OBSERVED from the PROTOCOL device collection); task (UNVERIFIED name) | partial | device-lifecycle.md | INFERRED |
+| Discovery | UDP discovery on port 10001: TLV announcements and replies | com.ubiquiti.discovery.* (18), UbntDiscoveryServer, DatagramQueryServer, LiteStationQueryServer, class_4 | none found | yes | network-tools.md | OBSERVED |
+| Sensors and mPort | Reads measurements and new sensors from the inform, sensor model table | sensor service (ooOO.class_13), class_46, Sensor, CustomSensors, M2mgeneric, TagMapping, SensorTagMapping | sensor, m2mgeneric | no | mport.md | INFERRED |
+| Rules and scenes | Rules engine: triggers, conditions, actions, time rules, scenes, scripts | service.D class_31, class_32, class_33, class_34, class_35, class_30, class_27, class_15, Ruleset, Scene, Script | rule, ruleset, ruleaction, rulestate, rulestatecalendar, ruleschedule, rulecondition, scene, sceneaction, script | partial | ../PROTOCOL.md | OBSERVED |
+| Events | Saves device events and rule actions, sends e-mail | EventManager, event.class_26 (e-mail), Event, ActionEvent | event, actionevent, alarmdef | no | ../PROTOCOL.md | OBSERVED |
+| Statistics | Minute, quarter-hour, hour and day aggregates, read by interval length | Minute, Quarterhour, Hour, Stat, Rawdata | minute, quarterhour, hour, day, m2mgeneric | partial | ../PROTOCOL.md | INFERRED |
+| Web API | HTTP API under /api/v1.0/<verb>/<object>, long-poll messages | ApiServlet, CometServlet, CometMessage, api.class_46, api.class_47, api.class_50, O0OO, oOOO | cometmessage (capped at 1,000,000 bytes) | partial | web-api.md | OBSERVED |
+| Alarms | Alarm records and their definitions, monitor thread | Alarm, AlarmDef, Monitor | alarm, alarmdef | no | alarms.md | INFERRED |
+| Users | Administrators, sessions, tokens, login filter, groups | User, Admin, Session, Token, AuthServer, Groups, AuthFilter | UNVERIFIED | partial | users.md | INFERRED |
+| Maps and dashboard | Locations, geofences, live view, widgets, templates | Location, Geofence (service.A.class_38), LiveView, Widget, Template, ConfigTemplate | map | no | ui.md | INFERRED |
+| System | Service start, database and migration, backup and restore, upgrade check, settings | SystemService, DbService, DbMigrator, Setting, UploadServlet, DownloadServlet, StatusServlet, Launcher, LauncherUI, JspUtils, ServiceLocator, AppContext, class_12 (properties file), class_8 | setting (UNVERIFIED name) | partial | system.md | OBSERVED |
+| Network and Wi-Fi | SSH and web shell, UPnP, guest access, Wi-Fi configuration | SshServlet, WebshellServlet, WebshellInputServlet, UpnpServlet, GuestServlet, WlanConf | none found | no | network-tools.md | INFERRED |
 
 ## Products
 
@@ -59,52 +61,95 @@ This is a clean-room inventory of `ace.jar` 2.1.11, built from the reverse-engin
 
 ## Classes
 
-Only the classes the report names are listed here. The other classes of ace.jar are not in the report; they are missing from this table and stay UNVERIFIED.
+The report does not list every class one by one. This table lists only the classes the report names, and the package counts above give the totals. The other classes of ace.jar are not in this table and stay UNVERIFIED until the per-area epics open them with classi_java. When they are opened, their area is INFERRED from the name.
 
 | Class | Package | Area | Status |
 |---|---|---|---|
-| InformServlet | com.ubnt.net | Inform e dispositivi | OBSERVED |
-| DeviceManager | UNVERIFIED | Inform e dispositivi | OBSERVED |
-| ConfigService | UNVERIFIED | Inform e dispositivi | OBSERVED |
-| Device (record) | UNVERIFIED | Inform e dispositivi | OBSERVED |
-| Task | UNVERIFIED | Inform e dispositivi | OBSERVED |
-| class_6 (listener interface) | UNVERIFIED | Inform e dispositivi | INFERRED |
-| class_39 (wake-up request, JSTUN) | com.ubnt.net (UNVERIFIED for this class) | Inform e dispositivi | OBSERVED |
-| class_4 (discovery interface; the report also lists it under Inform) | UNVERIFIED | Discovery | UNVERIFIED |
+| InformServlet | com.ubnt.net | Inform and devices | OBSERVED |
+| DeviceManager | UNVERIFIED | Inform and devices | OBSERVED |
+| ConfigService | UNVERIFIED | Inform and devices | OBSERVED |
+| Device record | UNVERIFIED | Inform and devices | OBSERVED |
+| Task | UNVERIFIED | Inform and devices | OBSERVED |
+| class_6 (listener interface) | UNVERIFIED | Inform and devices | INFERRED |
+| class_39 (wake-up request, JSTUN) | com.ubnt.net | Inform and devices | OBSERVED |
+| net.class_3 | com.ubnt.net | Inform and devices | INFERRED |
+| net.class_5 | com.ubnt.net | Inform and devices | INFERRED |
+| net.class_63 | com.ubnt.net | Inform and devices | INFERRED |
+| net.class_69 | com.ubnt.net | Inform and devices | INFERRED |
+| com.ubiquiti.discovery.* (18 classes, not named one by one in the report) | com.ubiquiti.discovery | Discovery | INFERRED |
 | UbntDiscoveryServer | com.ubnt.net | Discovery | OBSERVED |
 | DatagramQueryServer | UNVERIFIED | Discovery | OBSERVED |
 | LiteStationQueryServer | UNVERIFIED | Discovery | OBSERVED |
-| sensor service (ooOO.class_13) | UNVERIFIED | Sensori e mPort | OBSERVED |
-| class_46 (measurement ingestion) | UNVERIFIED | Sensori e mPort | OBSERVED |
-| M2mgeneric | UNVERIFIED | Sensori e mPort | INFERRED |
-| service.D class_31 (rules engine) | com.ubnt.service (UNVERIFIED) | Regole e scene | OBSERVED |
-| service.D class_32 (comparisons) | com.ubnt.service (UNVERIFIED) | Regole e scene | OBSERVED |
-| service.D class_33 (rule actions) | com.ubnt.service (UNVERIFIED) | Regole e scene | OBSERVED |
-| service.D class_34 (scenes) | com.ubnt.service (UNVERIFIED) | Regole e scene | OBSERVED |
-| service.D class_35 (scheduler) | com.ubnt.service (UNVERIFIED) | Regole e scene | OBSERVED |
-| class_30 (URL action) | UNVERIFIED | Regole e scene | OBSERVED |
-| class_27 (script over telnet) | UNVERIFIED | Regole e scene | OBSERVED |
-| class_15 (template) | UNVERIFIED | Regole e scene | INFERRED |
+| class_4 (discovery interface; the report also mentions it under Inform) | com.ubnt.net | Discovery | INFERRED |
+| sensor service (ooOO.class_13) | UNVERIFIED | Sensors and mPort | OBSERVED |
+| class_46 (measurement ingestion) | UNVERIFIED | Sensors and mPort | OBSERVED |
+| Sensor | UNVERIFIED | Sensors and mPort | INFERRED |
+| CustomSensors | UNVERIFIED | Sensors and mPort | INFERRED |
+| M2mgeneric | UNVERIFIED | Sensors and mPort | INFERRED |
+| TagMapping | UNVERIFIED | Sensors and mPort | INFERRED |
+| SensorTagMapping | UNVERIFIED | Sensors and mPort | INFERRED |
+| service.D class_31 (rules engine) | com.ubnt.service | Rules and scenes | OBSERVED |
+| class_32 (comparisons) | com.ubnt.service | Rules and scenes | OBSERVED |
+| class_33 (rule actions) | com.ubnt.service | Rules and scenes | OBSERVED |
+| class_34 (scenes) | com.ubnt.service | Rules and scenes | OBSERVED |
+| class_35 (scheduler) | com.ubnt.service | Rules and scenes | OBSERVED |
+| class_30 (URL action) | UNVERIFIED | Rules and scenes | OBSERVED |
+| class_27 (script over telnet) | UNVERIFIED | Rules and scenes | OBSERVED |
+| class_15 (template) | UNVERIFIED | Rules and scenes | INFERRED |
+| Ruleset | UNVERIFIED | Rules and scenes | INFERRED |
+| Scene | UNVERIFIED | Rules and scenes | INFERRED |
+| Script | UNVERIFIED | Rules and scenes | INFERRED |
+| EventManager | UNVERIFIED | Events | OBSERVED |
+| event.class_26 (e-mail) | UNVERIFIED | Events | OBSERVED |
+| Event | UNVERIFIED | Events | INFERRED |
+| ActionEvent | UNVERIFIED | Events | INFERRED |
+| Minute | UNVERIFIED | Statistics | INFERRED |
+| Quarterhour | UNVERIFIED | Statistics | INFERRED |
+| Hour | UNVERIFIED | Statistics | INFERRED |
+| Stat | UNVERIFIED | Statistics | INFERRED |
+| Rawdata | UNVERIFIED | Statistics | INFERRED |
+| ApiServlet | UNVERIFIED | Web API | OBSERVED |
+| CometServlet | UNVERIFIED | Web API | OBSERVED |
+| CometMessage | UNVERIFIED | Web API | INFERRED |
+| O0OO | UNVERIFIED | Web API | INFERRED |
+| oOOO | UNVERIFIED | Web API | INFERRED |
+| api.class_46 | UNVERIFIED | Web API | INFERRED |
+| api.class_47 | UNVERIFIED | Web API | INFERRED |
+| api.class_50 | UNVERIFIED | Web API | INFERRED |
+| Alarm | UNVERIFIED | Alarms | INFERRED |
+| AlarmDef | UNVERIFIED | Alarms | INFERRED |
+| Monitor | UNVERIFIED | Alarms | INFERRED |
+| User | UNVERIFIED | Users | INFERRED |
+| Admin | UNVERIFIED | Users | INFERRED |
+| Session | UNVERIFIED | Users | INFERRED |
+| Token | UNVERIFIED | Users | INFERRED |
+| AuthServer | UNVERIFIED | Users | INFERRED |
+| Groups | UNVERIFIED | Users | INFERRED |
+| AuthFilter | UNVERIFIED | Users | OBSERVED |
+| Location | UNVERIFIED | Maps and dashboard | INFERRED |
+| Geofence (service.A.class_38) | com.ubnt.service | Maps and dashboard | INFERRED |
+| LiveView | UNVERIFIED | Maps and dashboard | INFERRED |
+| Widget | UNVERIFIED | Maps and dashboard | INFERRED |
+| Template | UNVERIFIED | Maps and dashboard | INFERRED |
+| ConfigTemplate | UNVERIFIED | Maps and dashboard | INFERRED |
+| SystemService | com.ubnt.service.system | System | OBSERVED |
+| DbService | UNVERIFIED | System | OBSERVED |
+| DbMigrator | UNVERIFIED | System | OBSERVED |
+| Setting | UNVERIFIED | System | INFERRED |
+| UploadServlet | UNVERIFIED | System | OBSERVED |
+| DownloadServlet | UNVERIFIED | System | INFERRED |
+| StatusServlet | UNVERIFIED | System | INFERRED |
+| Launcher | com.ubnt.ace | System | OBSERVED |
+| LauncherUI | com.ubnt.ace | System | INFERRED |
+| JspUtils | UNVERIFIED | System | INFERRED |
+| ServiceLocator | UNVERIFIED | System | INFERRED |
+| AppContext | UNVERIFIED | System | INFERRED |
+| class_12 (properties file) | UNVERIFIED | System | INFERRED |
+| class_8 | UNVERIFIED | System | INFERRED |
+| SshServlet | UNVERIFIED | Network and Wi-Fi | INFERRED |
+| WebshellServlet | UNVERIFIED | Network and Wi-Fi | INFERRED |
+| WebshellInputServlet | UNVERIFIED | Network and Wi-Fi | INFERRED |
+| UpnpServlet | UNVERIFIED | Network and Wi-Fi | INFERRED |
+| GuestServlet | UNVERIFIED | Network and Wi-Fi | INFERRED |
+| WlanConf | UNVERIFIED | Network and Wi-Fi | INFERRED |
 | class_37 | UNVERIFIED | unclassified: the report reads it but does not state its function | UNVERIFIED |
-| EventManager | UNVERIFIED | Eventi | OBSERVED |
-| event.class_26 (e-mail) | UNVERIFIED | Eventi | OBSERVED |
-| Minute | UNVERIFIED | Statistiche | INFERRED |
-| Quarterhour | UNVERIFIED | Statistiche | INFERRED |
-| Hour | UNVERIFIED | Statistiche | INFERRED |
-| ApiServlet | UNVERIFIED | API web | OBSERVED |
-| CometServlet | UNVERIFIED | API web | OBSERVED |
-| CometMessage | UNVERIFIED | API web | INFERRED |
-| Alarm | UNVERIFIED | Allarmi | INFERRED |
-| AlarmDef | UNVERIFIED | Allarmi | INFERRED |
-| AuthFilter | UNVERIFIED | Utenti | OBSERVED |
-| Token | UNVERIFIED | Utenti | INFERRED |
-| Location | UNVERIFIED | Mappe e dashboard | INFERRED |
-| Geofence (service.A.class_38) | com.ubnt.service (UNVERIFIED) | Mappe e dashboard | INFERRED |
-| SystemService | com.ubnt.service.system | Sistema | OBSERVED |
-| Launcher | com.ubnt.ace | Sistema | OBSERVED |
-| DbService | UNVERIFIED | Sistema | OBSERVED |
-| DbMigrator | UNVERIFIED | Sistema | OBSERVED |
-| UploadServlet | UNVERIFIED | Sistema | OBSERVED |
-| class_12 (properties file) | UNVERIFIED | Sistema | INFERRED |
-| SshServlet | UNVERIFIED | Rete e Wi-Fi | INFERRED |
-| UpnpServlet | UNVERIFIED | Rete e Wi-Fi | INFERRED |
