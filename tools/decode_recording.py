@@ -3,7 +3,8 @@
 A recording is one JSON object per line (see mfi-controller/recorder.py).
 Lines of port 6080 hold inform packets: they are decrypted with the device keys
 of a controller backup (.unf) and with the default key. Lines of port 6443 hold
-web API bodies: the JSON bodies are decoded.
+web API bodies: the JSON bodies are decoded. Lines of UDP ports 10001 (discovery)
+and 3478 (wake-up) hold the decoded TLV fields and the connection flag, never the payload.
 
 With --anonymize, MACs and IPv4 addresses are replaced by stable placeholders
 in order of appearance, e-mail addresses and host names are replaced, and keys
@@ -41,6 +42,20 @@ EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+\x40[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.
 IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?!\d)(?!\.\d)")
 MAC_RE = re.compile(r"(?i)(?<![0-9a-f])(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}(?![0-9a-f])")
 MAC_KEY_RE = re.compile(r"(?i)[0-9a-f]{12}|(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}")
+# Discovery TLV types of the controller (docs/PROTOCOL.md, section Discovery).
+DISCOVERY_TLV_TYPES = {
+    1: "mac",
+    2: "mac_ipv4",
+    3: "version",
+    10: "uptime",
+    11: "hostname",
+    12: "platform",
+    13: "essid",
+    14: "field14",
+    21: "model",
+    22: "firmware",
+    23: "default_flag",
+}
 
 
 class _Anonymizer:
@@ -107,7 +122,7 @@ class _Anonymizer:
     def _text(self, text: str, key: str) -> str:
         """Anonymize one string; key is the name of the field that holds it."""
         lowered = key.lower()
-        if lowered in ("hostname", "host", "fqdn", "alias"):
+        if lowered in ("hostname", "host", "fqdn", "alias", "essid"):
             return self.host(text)
         if ("mac" in lowered or "serial" in lowered) and MAC_KEY_RE.fullmatch(text):
             return self.mac(text)
@@ -187,6 +202,59 @@ def _decode_web(record: dict) -> dict:
     return entry
 
 
+def parse_discovery_tlv(payload: bytes) -> list[dict]:
+    """Return the TLV fields of a discovery reply; the 4-byte header is skipped."""
+    fields = []
+    pos = 4
+    while len(payload) - pos >= 3:
+        field_type = payload[pos]
+        length = int.from_bytes(payload[pos + 1:pos + 3], "big")
+        start = pos + 3
+        if length > len(payload) - start:
+            break
+        fields.append(_decode_tlv_field(field_type, payload[start:start + length]))
+        pos = start + length
+    return fields
+
+
+def _decode_tlv_field(field_type: int, data: bytes) -> dict:
+    """Decode one TLV field; unknown or short data is kept as hex, text is decoded as UTF-8."""
+    field = {"type": field_type, "name": DISCOVERY_TLV_TYPES.get(field_type)}
+    if field_type == 1 and len(data) == 6:
+        field["mac"] = data.hex()
+    elif field_type == 2 and len(data) == 10:
+        field["mac"] = data[0:6].hex()
+        field["ipv4"] = ".".join(str(octet) for octet in data[6:10])
+    elif field_type == 10 and data:
+        field["uptime"] = int.from_bytes(data, "big")
+    elif field_type in (3, 11, 12, 13):
+        field[DISCOVERY_TLV_TYPES[field_type]] = data.decode("utf-8", "replace")
+    else:
+        field["hex"] = data.hex()
+    return field
+
+
+def _decode_udp(record: dict) -> dict:
+    """Decode a UDP line: TLV fields for discovery (10001), a connection flag for wake-up (3478)."""
+    entry = {
+        "time": record.get("time"),
+        "port": record.get("port"),
+        "src": record.get("src"),
+        "dst": record.get("dst"),
+    }
+    try:
+        payload = _b64(record["payload_b64"])
+    except (KeyError, TypeError, ValueError) as exc:
+        entry["error"] = f"payload not decodable: {exc}"
+        return entry
+    if record.get("port") == "udp10001":
+        entry["fields"] = parse_discovery_tlv(payload)
+    else:
+        entry["length"] = len(payload)
+        entry["connection_request"] = payload[:2] == b"\x88\x88"
+    return entry
+
+
 def _decode_record(line: str, keys: dict[str, list[bytes]]) -> dict:
     """Decode one recording line; an unreadable line gives an entry with an error."""
     try:
@@ -200,6 +268,8 @@ def _decode_record(line: str, keys: dict[str, list[bytes]]) -> dict:
         return _decode_inform(record, keys)
     if port == WEB_PORT:
         return _decode_web(record)
+    if port in ("udp10001", "udp3478"):
+        return _decode_udp(record)
     return dict(_new_entry(record), error=f"unknown port {port!r}")
 
 

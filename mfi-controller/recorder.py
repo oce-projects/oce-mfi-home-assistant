@@ -6,6 +6,8 @@ HTTPS); this program listens on the public ports 6080 and 6443 and forwards each
 request unchanged to the controller and the answer back unchanged. Every
 exchange is appended as one JSON line to <out>/<YYYY-MM-DD>.jsonl. Sensitive
 headers and fields are replaced by REDACTED before the line is written.
+With --udp-capture the program also listens passively (raw socket, never answers)
+to UDP ports 10001 and 3478 and appends those packets to the same day file.
 
 Standard library only. Python 3.4: no f-strings, annotations, async or typing.
 """
@@ -17,8 +19,10 @@ import http.server
 import json
 import logging
 import os
+import socket
 import socketserver
 import ssl
+import struct
 import sys
 import threading
 import time
@@ -36,6 +40,13 @@ TIMEOUT_SECONDS = 130
 LISTEN_HOST = "0.0.0.0"
 INFORM_PORT = 6080
 WEB_PORT = 6443
+UDP_PORTS = (10001, 3478)
+ETH_P_ALL = 0x0003
+ETH_HEADER_LEN = 14
+ETHERTYPE_IPV4 = 0x0800
+IPV4_MIN_HEADER_LEN = 20
+IPPROTO_UDP = 17
+UDP_HEADER_LEN = 8
 
 log = logging.getLogger("mfi-recorder")
 _write_lock = threading.Lock()
@@ -162,8 +173,6 @@ def record_line(out_dir, port_label, client, method, path, req_headers, req_body
     """Append one JSON line for an exchange; return False when the day's size limit is reached."""
     now = time.time()
     port = int(port_label)
-    limit_bytes = int(max_mb * 1024 * 1024)
-    day_file = os.path.join(out_dir, time.strftime("%Y-%m-%d", time.localtime(now)) + ".jsonl")
     if port == INFORM_PORT:
         stored = resp_body
         omitted = False
@@ -189,6 +198,13 @@ def record_line(out_dir, port_label, client, method, path, req_headers, req_body
     }
     if omitted:
         entry["resp_length"] = len(resp_body)
+    return _append_entry(out_dir, now, entry, max_mb)
+
+
+def _append_entry(out_dir, now, entry, max_mb):
+    """Append one JSON line to the day file of now; return False when the day's size limit is reached."""
+    limit_bytes = int(max_mb * 1024 * 1024)
+    day_file = os.path.join(out_dir, time.strftime("%Y-%m-%d", time.localtime(now)) + ".jsonl")
     line = json.dumps(entry) + "\n"
     with _write_lock:
         if _file_size(day_file) >= limit_bytes:
@@ -198,6 +214,100 @@ def record_line(out_dir, port_label, client, method, path, req_headers, req_body
         with os.fdopen(fd, "a") as handle:
             handle.write(line)
     return True
+
+
+def udp_port_wanted(src_port, dst_port):
+    """True when a UDP packet has port 10001 or 3478 as source or destination."""
+    return src_port in UDP_PORTS or dst_port in UDP_PORTS
+
+
+def _dotted(raw):
+    """Format 4 raw bytes as a dotted IPv4 address."""
+    return "%d.%d.%d.%d" % tuple(raw)
+
+
+def parse_ipv4_udp(frame):
+    """Return (src_ip, src_port, dst_ip, dst_port, payload) of an Ethernet II frame with IPv4 and UDP, else None."""
+    if len(frame) < ETH_HEADER_LEN + IPV4_MIN_HEADER_LEN:
+        return None
+    if struct.unpack(">H", frame[12:14])[0] != ETHERTYPE_IPV4:
+        return None
+    ip = ETH_HEADER_LEN
+    if frame[ip] >> 4 != 4:
+        return None
+    if frame[ip + 9] != IPPROTO_UDP:
+        return None
+    ihl = (frame[ip] & 0x0F) * 4
+    if ihl < IPV4_MIN_HEADER_LEN:
+        return None
+    frag = struct.unpack(">H", frame[ip + 6:ip + 8])[0]
+    if frag & 0x1FFF:
+        return None
+    udp = ip + ihl
+    if len(frame) < udp + UDP_HEADER_LEN:
+        return None
+    src_port, dst_port = struct.unpack(">HH", frame[udp:udp + 4])
+    udp_len = struct.unpack(">H", frame[udp + 4:udp + 6])[0]
+    if udp_len < UDP_HEADER_LEN:
+        return None
+    payload = frame[udp + UDP_HEADER_LEN:udp + udp_len]
+    return (_dotted(frame[ip + 12:ip + 16]), src_port, _dotted(frame[ip + 16:ip + 20]), dst_port,
+            payload)
+
+
+def record_udp_line(out_dir, src_ip, src_port, dst_ip, dst_port, payload, max_mb):
+    """Append one UDP line in the shared format; return False when the day's size limit is reached."""
+    now = time.time()
+    label = "udp10001" if 10001 in (src_port, dst_port) else "udp3478"
+    entry = {
+        "time": int(now * 1000),
+        "port": label,
+        "src": "%s:%d" % (src_ip, src_port),
+        "dst": "%s:%d" % (dst_ip, dst_port),
+        "payload_b64": _b64(payload),
+    }
+    return _append_entry(out_dir, now, entry, max_mb)
+
+
+def open_capture_socket():
+    """Return a raw AF_PACKET socket that receives every Ethernet frame; raises OSError when not allowed."""
+    return socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ALL))
+
+
+def capture_udp(out_dir, max_mb, open_socket=None):
+    """Listen passively to UDP 10001 and 3478 and record those packets; never answers.
+
+    When the socket cannot be opened it logs one warning and returns, so TCP
+    recording keeps working.
+    """
+    opener = open_socket or open_capture_socket
+    try:
+        sock = opener()
+    except OSError as exc:
+        log.warning("udp capture unavailable: %s", exc)
+        return
+    logged_write_error = False
+    try:
+        while True:
+            try:
+                frame = sock.recv(65535)
+            except OSError as exc:
+                log.error("udp capture stopped: %s", exc)
+                return
+            parsed = parse_ipv4_udp(frame)
+            if parsed is None:
+                continue
+            src_ip, src_port, dst_ip, dst_port, payload = parsed
+            if not udp_port_wanted(src_port, dst_port):
+                continue
+            try:
+                record_udp_line(out_dir, src_ip, src_port, dst_ip, dst_port, payload, max_mb)
+            except OSError as exc:
+                if not logged_write_error:
+                    log.error("udp recording failed (%s)", type(exc).__name__)
+                    logged_write_error = True
+    finally:
+        sock.close()
 
 
 class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
@@ -329,6 +439,8 @@ def main(argv=None):
     parser.add_argument("--key", required=True, help="PEM key for the web port")
     parser.add_argument("--out", required=True, help="folder for the <date>.jsonl files")
     parser.add_argument("--max-mb", type=int, default=200, help="size limit of each day file in MB (default 200)")
+    parser.add_argument("--udp-capture", action="store_true",
+                        help="passively record UDP ports 10001 and 3478 (needs NET_RAW)")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="[mfi-recorder] %(asctime)s %(levelname)s %(message)s")
@@ -339,6 +451,11 @@ def main(argv=None):
                              cert_file=args.cert, key_file=args.key)
     log.info("recording inform %d -> %d and web %d -> %d into %s",
              args.inform_listen, args.inform_target, args.https_listen, args.https_target, args.out)
+
+    if args.udp_capture:
+        udp_worker = threading.Thread(target=capture_udp, args=(args.out, args.max_mb))
+        udp_worker.daemon = True
+        udp_worker.start()
 
     worker = threading.Thread(target=inform.serve_forever)
     worker.daemon = True

@@ -37,7 +37,7 @@ If the app does not appear: **Settings > System > Logs**, choose **Supervisor** 
 | Option | Default | Meaning |
 |---|---|---|
 | `java_max_memory_mb` | 1,024 | maximum Java heap, 256 to 4,096 MB |
-| `record_traffic` | false | turns the compatibility recorder on (records inform 6080 and web 6443) |
+| `record_traffic` | false | turns the compatibility recorder on (records inform 6080 and web 6443, and passively the UDP traffic of ports 10001 and 3478, see Passive UDP capture) |
 | `record_max_mb` | 200 | daily recording size limit, 10 to 2000 MB |
 
 ## Connecting the mFi devices
@@ -112,7 +112,7 @@ The compatibility recorder is optional and off by default. It records the exchan
 2. Set `record_max_mb` to the daily size limit (10 to 2000 MB, default 200).
 3. Restart the app.
 
-With `record_traffic` off, the app is identical to the version without the recorder: the controller listens on 6080 and 6443 as usual.
+With `record_traffic` off, nothing is recorded and the controller listens on 6080 and 6443 as usual. The add-on still runs with the host network and the NET_RAW permission, because they are set in the add-on configuration, not by the option (see Passive UDP capture).
 
 ### How it works
 
@@ -120,9 +120,28 @@ With `record_traffic` on, the controller moves its own listeners to the internal
 
 If the controller does not move to 16443 within 120 seconds, the log says `https recording unavailable: the controller did not move to 16443` and only the inform port 6080 is recorded.
 
+### Passive UDP capture
+
+With `record_traffic` on, the recorder also captures the UDP traffic of the original controller, on two ports:
+
+- port **10001** (discovery): the discovery requests of the controller and the replies of the devices;
+- port **3478** (wake-up): the wake-up traffic that makes devices connect to the controller.
+
+The capture is passive: the recorder only listens. It never answers, sends or injects packets. Each captured packet is one JSON line in the same daily file as the TCP exchanges, with `port` set to `udp10001` or `udp3478`, the `src` and `dst` addresses and ports, and the UDP payload in base64.
+
+To receive packets that are not addressed to the add-on, the add-on uses the host network, and it needs the NET_RAW permission to open a raw AF_PACKET socket. Both settings are in the add-on configuration, not in the option: they apply also when `record_traffic` is off, although then nothing is captured. If the socket cannot be opened, the log writes `udp capture unavailable:` once, with the reason, and the TCP recording keeps working. Whether AF_PACKET works inside Home Assistant OS is UNVERIFIED.
+
+**Risk of the host network.** With the host network, the internal ports 16080 and 16443 that the controller uses while recording become reachable from the local network. A client that connects to them reaches the controller without passing through the recorder, so that exchange is not recorded. The 2.1.11 controller has no documented bind-address property that would limit these ports, so the add-on sets none. Whether the controller listens on all interfaces is UNVERIFIED with this add-on.
+
+Rules for this option:
+
+- Do not start this add-on at the same time as mFi Server: both use port 6080.
+- Keep the devices and the controller on an isolated network. Never expose ports 6080 and 6443 to the internet (AGENTS.md, rule 8).
+- The UDP lines hold MAC addresses, IP addresses, host names and the ESSID of your devices: treat them as private, like the TCP recordings.
+
 ### Where the files are
 
-One file per day: `/share/mfi-recordings/YYYY-MM-DD.jsonl`, with one JSON object per exchange, on one line. When the file of the day reaches `record_max_mb`, no more lines are written until the next day; the log says so once per day.
+One file per day: `/share/mfi-recordings/YYYY-MM-DD.jsonl`, with one JSON object per exchange, on one line. Captured UDP packets (see Passive UDP capture) go to the same file, one JSON object per packet. When the file of the day reaches `record_max_mb`, no more lines are written until the next day; the log says so once per day.
 
 ### Browser certificate
 
@@ -141,6 +160,8 @@ python3 tools/decode_recording.py --recording FILE.jsonl --backup FILE.unf --out
 ```
 
 The device keys come from the backup and never leave your PC. Only the anonymized output (`--anonymize`) may go into the repository.
+
+The decoder also reads the UDP lines. For port 10001 it lists the discovery fields of the packet (MAC, IPv4 address, version, uptime, host name, platform, ESSID, model, firmware and the default flag, when present). For port 3478 it gives the packet length and whether the packet is a connection request. The discovery field layout comes from the controller code and is UNVERIFIED on a device (`docs/PROTOCOL.md`, section Discovery). With `--anonymize` the MAC addresses, IP addresses, host names and ESSID are replaced by stable placeholders.
 
 ### Security rule
 
@@ -211,3 +232,4 @@ The `readme_mFi.txt` in the Ubiquiti package says backup and restore do not work
 - Installation and build on Home Assistant OS.
 - Adoption of a real device, charts in the Data tab, entities in Home Assistant.
 - Final time and disk space of a full-history restore.
+- Passive UDP capture (ports 10001 and 3478) with the host network and NET_RAW on Home Assistant OS: not tested.
