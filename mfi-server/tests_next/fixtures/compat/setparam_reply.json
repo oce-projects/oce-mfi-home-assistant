@@ -1,0 +1,22 @@
+{
+  "code": "R-MPORT",
+  "source": "synthetic",
+  "owner_epic": "EPIC-04",
+  "handler": "mfi_server_next.sensors.build_port_config",
+  "request": {
+    "mac": "002722000001",
+    "ip": "192.168.1.20",
+    "model": "M2M",
+    "sensor": {
+      "port": 1,
+      "model": "MSW",
+      "label": "Motion"
+    }
+  },
+  "expected": {
+    "keys": {
+      "_type": "str",
+      "mgmt": "dict"
+    }
+  }
+}
