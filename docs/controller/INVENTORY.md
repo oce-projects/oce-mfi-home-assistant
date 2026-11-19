@@ -25,9 +25,9 @@ Counts: the report gives class counts per package that add up to 141 (com.ubnt.d
 
 | Product | How the controller recognises the model | Functions (commands, settings, measures) | Status |
 |---|---|---|---|
-| mPower mini, codes P1U and P1E | The model field of the inform is looked up in the firmware table; discovery sets mfi=true | 1 outlet created at adoption; outlet measures output, pf, energy_sum, v_rms, i_rms, active_pwr; mfi-output | OBSERVED (codes); INFERRED (commercial name) |
-| mPower, codes P3U, P3E | Same as above | 3 outlets created at adoption; same measures and commands | OBSERVED (codes); INFERRED (commercial name) |
-| mPower PRO, codes P8U and P6E | Same as above | 8 outlets (P8U) or 6 outlets (P6E) at adoption; same measures and commands | OBSERVED (codes); INFERRED (commercial name) |
+| mPower mini, codes P1U and P1E | The model field of the inform is looked up in the firmware table; discovery sets mfi=true | 1 outlet created at adoption; outlet measures output, pf, energy_sum, v_rms, i_rms, active_pwr; mfi-output | OBSERVED (codes); INFERRED (commercial name); See [mpower.md](mpower.md): full report available |
+| mPower, codes P3U, P3E | Same as above | 3 outlets created at adoption; same measures and commands | OBSERVED (codes); INFERRED (commercial name); See [mpower.md](mpower.md): full report available |
+| mPower PRO, codes P8U and P6E | Same as above | 8 outlets (P8U) or 6 outlets (P6E) at adoption; same measures and commands | OBSERVED (codes); INFERRED (commercial name); See [mpower.md](mpower.md): full report available |
 | EM3 | Model code in the table of accepted models; 3 ports created at adoption | Product and functions not identified in the report | UNVERIFIED |
 | EM24, THERM | Accepted models; no ports created at adoption; no firmware entry | Functions not read in the report | UNVERIFIED |
 | mPort, code M2M | Model code; 3 ports created at adoption; firmware entry present | Sensor ports through port lines PWR, AI, DI and DO; mfi-output with port 2*(port-1) plus the output port | OBSERVED |
