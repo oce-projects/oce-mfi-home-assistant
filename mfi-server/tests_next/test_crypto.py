@@ -93,6 +93,18 @@ class TestPbkdf2(unittest.TestCase):
         with self.assertRaises(ValueError):
             crypto.pbkdf2_hash("x", iterations=0)
 
+    def test_hash_rejects_too_many_iterations(self):
+        with self.assertRaises(ValueError):
+            crypto.pbkdf2_hash("x", iterations=crypto.MAX_ITERATIONS + 1)
+
+    def test_verify_rejects_excessive_iterations(self):
+        salt_hex = "00" * 16
+        digest_hex = "ab" * 32
+        stored = f"pbkdf2_sha256${crypto.MAX_ITERATIONS + 1}${salt_hex}${digest_hex}"
+        self.assertFalse(crypto.pbkdf2_verify("pw", stored))
+        h = crypto.pbkdf2_hash("pw", salt=bytes(16), iterations=1000)
+        self.assertTrue(crypto.pbkdf2_verify("pw", h))
+
     def test_empty_and_non_ascii_password(self):
         h_empty = crypto.pbkdf2_hash("", iterations=1000)
         self.assertTrue(crypto.pbkdf2_verify("", h_empty))

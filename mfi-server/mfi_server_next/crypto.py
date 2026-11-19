@@ -16,6 +16,7 @@ BLOCK_SIZE = 16
 KEY_SIZE = 16
 ROUNDS = 10
 DEFAULT_ITERATIONS = 600000
+MAX_ITERATIONS = 10_000_000  # upper bound: a crafted stored hash must not pin the CPU.
 PBKDF2_ALGORITHM = "pbkdf2_sha256"
 PBKDF2_SALT_SIZE = 16
 _HEX = re.compile(r"[0-9a-fA-F]*")
@@ -208,6 +209,8 @@ def pbkdf2_hash(password: str, *, salt: bytes | None = None, iterations: int = D
     """Return 'pbkdf2_sha256$<iterations>$<salt_hex>$<hash_hex>' for the password."""
     if iterations < 1:
         raise ValueError("iterations must be at least 1")
+    if iterations > MAX_ITERATIONS:
+        raise ValueError(f"iterations must not exceed {MAX_ITERATIONS}")
     if salt is None:
         salt = secrets.token_bytes(PBKDF2_SALT_SIZE)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
@@ -223,7 +226,7 @@ def pbkdf2_verify(password: str, stored: str) -> bool:
         if not fields[1].isdigit():
             return False
         iterations = int(fields[1])
-        if iterations < 1 or not _HEX.fullmatch(fields[2]) or not _HEX.fullmatch(fields[3]):
+        if iterations < 1 or iterations > MAX_ITERATIONS or not _HEX.fullmatch(fields[2]) or not _HEX.fullmatch(fields[3]):
             return False
         salt = bytes.fromhex(fields[2])
         expected = bytes.fromhex(fields[3])
