@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 WAKEUP_PORT = 3478
 WAKEUP_LEN = 20
 OUTPUT_CMD = "mfi-output"
+MAX_QUEUE_PER_MAC = 64
 
 
 def build_wakeup() -> bytes:
@@ -43,7 +44,7 @@ class TaskQueue:
         self._queues: dict[str, list[dict]] = {}
 
     def enqueue(self, task):
-        """Add a command for task["mac"]; a new mfi-output replaces a queued one for the same port."""
+        """Add a command for task["mac"]; a new mfi-output replaces a queued one for the same port. At most MAX_QUEUE_PER_MAC commands are kept per device; the oldest is dropped when the cap is passed."""
         if not isinstance(task, dict) or not isinstance(task.get("mac"), str):
             raise ValueError("task needs a mac address")
         item = dict(task)
@@ -55,6 +56,9 @@ class TaskQueue:
                         queue[index] = item
                         return
             queue.append(item)
+            if len(queue) > MAX_QUEUE_PER_MAC:
+                # Bound memory per device: drop the oldest queued command.
+                queue.pop(0)
 
     def pop_for_mac(self, mac=None):
         """Remove and return the oldest queued command of mac, or None when there is none."""

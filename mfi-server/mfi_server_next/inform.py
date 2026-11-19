@@ -195,27 +195,32 @@ def build_inform_response(raw: bytes, registry, tasks: task_queue.TaskQueue | No
     """Decrypt one inform packet and return (status, body) for the HTTP answer.
 
     A packet that cannot be decrypted, or whose payload MAC differs from the header MAC,
-    gets (400, b""). The reason is logged and never sent back.
+    gets (400, b""). Any unexpected error gets a clean (500, b"") instead of a traceback.
+    The reason is logged and never sent back.
     """
     try:
         mac = parse_header(raw).mac.hex()
         header, payload, key = decode(raw, candidate_keys(_device_of(registry, mac)))
         if payload.get("mac") != mac:
             raise InformError("payload mac differs from the header mac")
+        # Only an inform decrypted with the device key is authenticated; the public factory key is not.
+        reply = handle_inform(payload, registry, tasks, authenticated=key != FACTORY_KEY)
+        if reply.get("_type") == "upgrade":
+            upgrade = firmware.build_upgrade(payload.get("model"), host=host, port=port)
+            if upgrade is not None:
+                reply = upgrade
+        # Build a new dict so a shared/queued reply dict is never mutated in place.
+        reply = {**reply, "server_time_in_utc": str(int(time.time() * 1000))}
+        return 200, encode_response(header, key, reply)
     except InformError as exc:
         logger.warning("inform rejected: %s", exc.reason)
         return exc.status, b""
     except ValueError as exc:
         logger.warning("inform rejected: stored key is not valid: %s", exc)
         return 400, b""
-    # Only an inform decrypted with the device key is authenticated; the public factory key is not.
-    reply = handle_inform(payload, registry, tasks, authenticated=key != FACTORY_KEY)
-    if reply.get("_type") == "upgrade":
-        upgrade = firmware.build_upgrade(payload.get("model"), host=host, port=port)
-        if upgrade is not None:
-            reply = upgrade
-    reply["server_time_in_utc"] = str(int(time.time() * 1000))
-    return 200, encode_response(header, key, reply)
+    except Exception as exc:  # HTTP boundary: a forged packet must not crash the request with a traceback
+        logger.warning("inform rejected: unexpected error: %s", exc)
+        return 500, b""
 
 
 def make_server(registry, tasks: task_queue.TaskQueue | None = None, host="127.0.0.1", port=0) -> http.server.ThreadingHTTPServer:
