@@ -1,5 +1,7 @@
 # ace.jar 2.1.11 inventory (clean room)
 
+All 12 areas documented (2026-11-19).
+
 This is a clean-room inventory of `ace.jar` 2.1.11, built from the reverse-engineering report of epic T-MWMRQZYG. It records behaviour, class names, method names, field names and MongoDB collection names only. It contains no code and no pseudocode. Classes that were not opened have their area INFERRED from the name.
 
 Counts: the report gives class counts per package that add up to 141 (com.ubnt.data 48, com.ubnt.service 41, com.ubnt.ace 22, com.ubiquiti.discovery 18, com.ubnt.net 12). The report does not list every obfuscated class one by one, so the Classes table below lists only the classes the report names. The other classes stay UNVERIFIED until the per-area epics open them with classi_java.
@@ -19,7 +21,7 @@ Counts: the report gives class counts per package that add up to 141 (com.ubnt.d
 | Users | Administrators, sessions, tokens, login filter, groups | User, Admin, Session, Token, AuthServer, Groups, AuthFilter | UNVERIFIED | partial | [users.md](users.md) | INFERRED |
 | Maps and dashboard | Locations, geofences, live view, widgets, templates | Location, Geofence (service.A.class_38), LiveView, Widget, Template, ConfigTemplate | map | no | [ui.md](ui.md) | INFERRED |
 | System | Service start, database and migration, backup and restore, upgrade check, settings | SystemService, DbService, DbMigrator, Setting, UploadServlet, DownloadServlet, StatusServlet, Launcher, LauncherUI, JspUtils, ServiceLocator, AppContext, class_12 (properties file), class_8 | setting (UNVERIFIED name) | partial | [system.md](system.md) | OBSERVED |
-| Network and Wi-Fi | SSH and web shell, UPnP, guest access, Wi-Fi configuration | SshServlet, WebshellServlet, WebshellInputServlet, UpnpServlet, GuestServlet, WlanConf | none found | no | network-tools.md | INFERRED |
+| Network and Wi-Fi | SSH and web shell, UPnP, guest access, Wi-Fi configuration | SshServlet, WebshellServlet, WebshellInputServlet, UpnpServlet, GuestServlet, WlanConf | none found | no | [network-tools.md](network-tools.md) | INFERRED |
 
 ## Products
 
