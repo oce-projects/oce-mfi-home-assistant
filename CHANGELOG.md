@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.28.0 - 2026-11-19
+
+- EPIC-02 (T-MWNRGM6J): inform protocol, device registry, adoption, command queue, firmware and wake-up in the new server (`mfi_server_next`).
+
 ## 0.27.0 - 2026-11-19
 
 - EPIC-01b: replay bench with synthetic fixtures for the new server.
