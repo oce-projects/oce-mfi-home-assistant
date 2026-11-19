@@ -93,6 +93,15 @@ class TestBrokenFixtures(unittest.TestCase):
         with self.assertRaises((ModuleNotFoundError, AttributeError)):
             resolve_handler("mfi_server_next.nope.nope")
 
+    def test_handler_outside_package_is_rejected(self):
+        broken = good_fixture()
+        broken["handler"] = "os.system"
+        problems = validate_fixture(broken)
+        self.assertTrue(problems)
+        self.assertIn("mfi_server_next", " ".join(problems))
+        with self.assertRaises(ValueError):
+            resolve_handler("os.system")
+
     def test_unknown_code_and_source_are_both_reported(self):
         broken = good_fixture()
         broken["code"] = "R-NOPE"

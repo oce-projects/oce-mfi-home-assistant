@@ -19,6 +19,7 @@ REQUIRED_KEYS = ("code", "source", "owner_epic", "handler", "request", "expected
 VALID_CODES = frozenset({"R-ADOPT", "R-POWER", "R-FORGET", "R-RESET", "R-UPDATE", "R-MPORT", "R-SERIAL", "R-MPOWER", "R-WEB", "R-DISC"})
 VALID_SOURCES = frozenset({"synthetic", "recording"})
 KNOWN_EPICS = frozenset({f"EPIC-{i:02d}" for i in range(0, 20)} | {"EPIC-01b"})
+HANDLER_PREFIX = "mfi_server_next."
 
 
 def load_fixtures() -> list[tuple[pathlib.Path, dict]]:
@@ -26,7 +27,10 @@ def load_fixtures() -> list[tuple[pathlib.Path, dict]]:
     loaded = []
     for path in sorted(FIXTURES_DIR.glob("*.json")):
         with path.open(encoding="utf-8") as handle:
-            loaded.append((path, json.load(handle)))
+            try:
+                loaded.append((path, json.load(handle)))
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"{path.name}: {exc}") from exc
     return loaded
 
 
@@ -53,8 +57,12 @@ def validate_fixture(data: dict) -> list[str]:
         problems.append(f"unknown source {data['source']!r}")
     if "owner_epic" in data and not _in(data["owner_epic"], KNOWN_EPICS):
         problems.append(f"unknown owner_epic {data['owner_epic']!r}")
-    if "handler" in data and not _is_dotted(data["handler"]):
-        problems.append(f"handler {data['handler']!r} is not module.attr")
+    if "handler" in data:
+        handler = data["handler"]
+        if not _is_dotted(handler):
+            problems.append(f"handler {handler!r} is not module.attr")
+        elif not handler.startswith(HANDLER_PREFIX):
+            problems.append(f"handler {handler!r} is not inside mfi_server_next")
     if "expected" in data and not isinstance(data["expected"], dict):
         problems.append("expected is not an object")
     return problems
@@ -63,10 +71,13 @@ def validate_fixture(data: dict) -> list[str]:
 def resolve_handler(dotted: str):
     """Return the object named by a dotted name: the module is the part before the last dot.
 
-    Raises ModuleNotFoundError or AttributeError when the name does not exist.
+    Raises ValueError when the name is outside mfi_server_next, and
+    ModuleNotFoundError or AttributeError when the name does not exist.
     """
     if not _is_dotted(dotted):
         raise ValueError(f"handler {dotted!r} is not module.attr")
+    if not dotted.startswith(HANDLER_PREFIX):
+        raise ValueError(f"handler {dotted!r} is not inside mfi_server_next")
     module_name, _, attr = dotted.rpartition(".")
     return getattr(importlib.import_module(module_name), attr)
 

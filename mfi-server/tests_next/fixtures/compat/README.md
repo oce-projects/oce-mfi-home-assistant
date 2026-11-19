@@ -31,8 +31,8 @@ Each file is one JSON object for one exchange, with exactly these top-level keys
 
 `R-ADOPT`, `R-POWER`, `R-FORGET`, `R-RESET`, `R-UPDATE`, `R-MPORT`, `R-SERIAL`,
 `R-MPOWER`, `R-WEB`, `R-DISC`. The meaning of each code is in
-`docs/REBUILD-PLAN.md`, section 8. `R-WEB` and `R-INWALL` are not covered by a
-fixture yet.
+`docs/REBUILD-PLAN.md`, section 8. `R-WEB` has no fixture yet. `R-INWALL` is
+UNVERIFIED and is not an allowed `code`.
 
 ### Allowed values of `source`
 
@@ -47,7 +47,9 @@ Must be an epic known to the bench: `EPIC-00` to `EPIC-19`, or `EPIC-01b`.
 
 A dotted name of at least `module.attribute` inside `mfi_server_next`. The
 helper imports the module and reads the attribute. A name that does not exist
-is rejected.
+is rejected. Only names that start with `mfi_server_next.` are accepted: a
+handler in another module (for example `os.system`) is rejected by the
+validation, so a fixture cannot import a foreign module.
 
 ### `expected`
 
@@ -56,6 +58,10 @@ is rejected.
   Allowed type names: `str`, `int`, `float`, `bool`, `list`, `dict`, `null`.
 - `tlv_order` (optional, only for discovery): a list of TLV type numbers in the
   order they must appear in the reply.
+- `values` (optional): a map of key name to the exact value the handler must
+  return, for keys whose value is not a per-device value (for example a firmware
+  URL or version). Recorded for reference; per-device values stay compared by
+  type.
 
 Per-device values (MAC address, key, time) are compared by TYPE, not by value,
 because the new server generates its own values. Only the type named in `keys`
