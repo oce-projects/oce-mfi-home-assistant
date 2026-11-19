@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.19 - 2026-11-19
+
+- docs: locations, dashboards and widgets of the 2.1.11 controller (clean room report) (ticket T-MWMRRC4H).
+
 ## 0.22.18 - 2026-11-19
 
 - docs: users and permissions of the 2.1.11 controller (clean room report) (ticket T-MWMRRB2I).
