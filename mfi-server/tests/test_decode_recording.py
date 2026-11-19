@@ -352,6 +352,17 @@ class TestDecodeUdp(unittest.TestCase):
             {"type": 11, "name": "hostname", "hostname": "host"},
         ])
 
+    def test_discovery_non_ascii_hostname_is_anonymized(self):
+        payload = discovery_payload(tlv(11, b"caf\xe9"))
+        line = udp_line("udp10001", "203.0.113.5:10001", "198.51.100.255:10001", payload)
+        result = decode_recording.decode_lines([line], {}, True)
+        self.assertIsNone(result[0].get("error"))
+        field = result[0]["fields"][0]
+        self.assertEqual(field["name"], "hostname")
+        self.assertNotIn("hex", field)
+        self.assertEqual(field["hostname"], "device-1")
+        self.assertNotIn(b"caf\xe9".hex(), json.dumps(result))
+
 
 class TestMain(unittest.TestCase):
     def test_main_returns_one_when_the_backup_is_missing(self):

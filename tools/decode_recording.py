@@ -218,7 +218,7 @@ def parse_discovery_tlv(payload: bytes) -> list[dict]:
 
 
 def _decode_tlv_field(field_type: int, data: bytes) -> dict:
-    """Decode one TLV field; unknown, short or non-ASCII data is kept as hex."""
+    """Decode one TLV field; unknown or short data is kept as hex, text is decoded as UTF-8."""
     field = {"type": field_type, "name": DISCOVERY_TLV_TYPES.get(field_type)}
     if field_type == 1 and len(data) == 6:
         field["mac"] = data.hex()
@@ -227,8 +227,8 @@ def _decode_tlv_field(field_type: int, data: bytes) -> dict:
         field["ipv4"] = ".".join(str(octet) for octet in data[6:10])
     elif field_type == 10 and data:
         field["uptime"] = int.from_bytes(data, "big")
-    elif field_type in (3, 11, 12, 13) and data.isascii():
-        field[DISCOVERY_TLV_TYPES[field_type]] = data.decode("ascii")
+    elif field_type in (3, 11, 12, 13):
+        field[DISCOVERY_TLV_TYPES[field_type]] = data.decode("utf-8", "replace")
     else:
         field["hex"] = data.hex()
     return field

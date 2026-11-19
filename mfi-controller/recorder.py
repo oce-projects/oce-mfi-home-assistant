@@ -240,12 +240,19 @@ def parse_ipv4_udp(frame):
     ihl = (frame[ip] & 0x0F) * 4
     if ihl < IPV4_MIN_HEADER_LEN:
         return None
+    frag = struct.unpack(">H", frame[ip + 6:ip + 8])[0]
+    if frag & 0x1FFF:
+        return None
     udp = ip + ihl
     if len(frame) < udp + UDP_HEADER_LEN:
         return None
     src_port, dst_port = struct.unpack(">HH", frame[udp:udp + 4])
+    udp_len = struct.unpack(">H", frame[udp + 4:udp + 6])[0]
+    if udp_len < UDP_HEADER_LEN:
+        return None
+    payload = frame[udp + UDP_HEADER_LEN:udp + udp_len]
     return (_dotted(frame[ip + 12:ip + 16]), src_port, _dotted(frame[ip + 16:ip + 20]), dst_port,
-            frame[udp + UDP_HEADER_LEN:])
+            payload)
 
 
 def record_udp_line(out_dir, src_ip, src_port, dst_ip, dst_port, payload, max_mb):
@@ -279,6 +286,7 @@ def capture_udp(out_dir, max_mb, open_socket=None):
     except OSError as exc:
         log.warning("udp capture unavailable: %s", exc)
         return
+    logged_write_error = False
     try:
         while True:
             try:
@@ -295,7 +303,9 @@ def capture_udp(out_dir, max_mb, open_socket=None):
             try:
                 record_udp_line(out_dir, src_ip, src_port, dst_ip, dst_port, payload, max_mb)
             except OSError as exc:
-                log.error("udp recording failed (%s)", type(exc).__name__)
+                if not logged_write_error:
+                    log.error("udp recording failed (%s)", type(exc).__name__)
+                    logged_write_error = True
     finally:
         sock.close()
 

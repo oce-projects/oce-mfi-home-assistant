@@ -420,13 +420,16 @@ UDP_SRC = "203.0.113.5"
 UDP_DST = "198.51.100.7"
 
 
-def ipv4_udp_frame(src_ip, dst_ip, src_port, dst_port, payload=b"", protocol=17, ethertype=0x0800):
-    """Build an Ethernet II frame with a 20-byte IPv4 header and a UDP header, by hand."""
+def ipv4_udp_frame(src_ip, dst_ip, src_port, dst_port, payload=b"", protocol=17,
+                   ethertype=0x0800, frag=0, options=b""):
+    """Build an Ethernet II frame with an IPv4 header (optional options) and a UDP header, by hand."""
     eth = bytes([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 2]) + struct.pack(">H", ethertype)
     udp = struct.pack(">HHHH", src_port, dst_port, 8 + len(payload), 0) + payload
-    ip = struct.pack(">BBHHHBBH", 0x45, 0, 20 + len(udp), 0, 0, 64, protocol, 0)
+    ver_ihl = 0x40 | ((20 + len(options)) // 4)
+    ip = struct.pack(">BBHHHBBH", ver_ihl, 0, 20 + len(options) + len(udp), 0, frag, 64, protocol, 0)
     ip += bytes(int(part) for part in src_ip.split("."))
     ip += bytes(int(part) for part in dst_ip.split("."))
+    ip += options
     return eth + ip + udp
 
 
@@ -463,6 +466,21 @@ class TestUdpParse(unittest.TestCase):
         parsed = recorder.parse_ipv4_udp(ipv4_udp_frame(UDP_SRC, UDP_DST, 53, 53, b"dns"))
         self.assertIsNotNone(parsed)
         self.assertFalse(recorder.udp_port_wanted(parsed[1], parsed[3]))
+
+    def test_padding_after_the_udp_payload_is_trimmed(self):
+        frame = ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x01\x00\x00\x00") + b"\x00" * 14
+        self.assertEqual(recorder.parse_ipv4_udp(frame),
+                         (UDP_SRC, 40000, UDP_DST, 10001, b"\x01\x00\x00\x00"))
+
+    def test_ip_fragment_after_the_first_is_none(self):
+        frame = ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"data", frag=0x0001)
+        self.assertIsNone(recorder.parse_ipv4_udp(frame))
+
+    def test_ipv4_header_options_are_skipped(self):
+        frame = ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x01\x00\x00\x00",
+                               options=b"\x00\x00\x00\x00")
+        self.assertEqual(recorder.parse_ipv4_udp(frame),
+                         (UDP_SRC, 40000, UDP_DST, 10001, b"\x01\x00\x00\x00"))
 
 
 class TestUdpCapture(unittest.TestCase):
@@ -516,6 +534,19 @@ class TestUdpCapture(unittest.TestCase):
         self.assertEqual(lines[1]["port"], "udp3478")
         self.assertEqual(lines[1]["dst"], "198.51.100.7:3478")
         self.assertEqual(base64.b64decode(lines[1]["payload_b64"]), b"\x88\x88")
+
+    def test_write_error_is_logged_once(self):
+        sock = mock.Mock()
+        sock.recv.side_effect = [
+            ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x01\x00\x00\x00"),
+            ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 3478, b"\x88\x88"),
+            OSError("capture stopped by the test"),
+        ]
+        with mock.patch.object(recorder, "record_udp_line", side_effect=OSError("disk full")):
+            with self.assertLogs("mfi-recorder", level="ERROR") as logs:
+                recorder.capture_udp(self.tmp, 200, open_socket=lambda: sock)
+        failed = [r for r in logs.records if "udp recording failed" in r.getMessage()]
+        self.assertEqual(len(failed), 1)
 
 
 if __name__ == "__main__":
