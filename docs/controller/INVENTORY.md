@@ -10,7 +10,7 @@ Counts: the report gives class counts per package that add up to 141 (com.ubnt.d
 |---|---|---|---|---|---|---|
 | Inform and devices | Receives inform packets, chooses the response, keeps device state and the command queue | InformServlet, DeviceManager, ConfigService, Device record, Task, class_6, class_39, net.class_3/5/63/69 | device (OBSERVED from the PROTOCOL device collection); task (name confirmed by REA, see device-lifecycle.md §3) | partial | device-lifecycle.md | OBSERVED |
 | Discovery | UDP discovery on port 10001: TLV announcements and replies | com.ubiquiti.discovery.* (18), UbntDiscoveryServer, DatagramQueryServer, LiteStationQueryServer, class_4 | none found | yes | network-tools.md | OBSERVED |
-| Sensors and mPort | Reads measurements and new sensors from the inform, sensor model table | sensor service (ooOO.class_13), class_46, Sensor, CustomSensors, M2mgeneric, TagMapping, SensorTagMapping | sensor, m2mgeneric | no | mport.md | INFERRED |
+| Sensors and mPort | Reads measurements and new sensors from the inform, sensor model table | sensor service (ooOO.class_13), class_46, Sensor, CustomSensors, M2mgeneric, TagMapping, SensorTagMapping | sensor, m2mgeneric | no | mport.md | OBSERVED |
 | Rules and scenes | Rules engine: triggers, conditions, actions, time rules, scenes, scripts | service.D class_31, class_32, class_33, class_34, class_35, class_30, class_27, class_15, Ruleset, Scene, Script | rule, ruleset, ruleaction, rulestate, rulestatecalendar, ruleschedule, rulecondition, scene, sceneaction, script | partial | ../PROTOCOL.md | OBSERVED |
 | Events | Saves device events and rule actions, sends e-mail | EventManager, event.class_26 (e-mail), Event, ActionEvent | event, actionevent, alarmdef | no | ../PROTOCOL.md | OBSERVED |
 | Statistics | Minute, quarter-hour, hour and day aggregates, read by interval length | Minute, Quarterhour, Hour, Stat, Rawdata | minute, quarterhour, hour, day, m2mgeneric | partial | ../PROTOCOL.md | INFERRED |
@@ -30,23 +30,23 @@ Counts: the report gives class counts per package that add up to 141 (com.ubnt.d
 | mPower PRO, codes P8U and P6E | Same as above | 8 outlets (P8U) or 6 outlets (P6E) at adoption; same measures and commands | OBSERVED (codes); INFERRED (commercial name); See [mpower.md](mpower.md): full report available |
 | EM3 | Model code in the table of accepted models; 3 ports created at adoption | Product and functions not identified in the report | UNVERIFIED |
 | EM24, THERM | Accepted models; no ports created at adoption; no firmware entry | Functions not read in the report | UNVERIFIED |
-| mPort, code M2M | Model code; 3 ports created at adoption; firmware entry present | Sensor ports through port lines PWR, AI, DI and DO; mfi-output with port 2*(port-1) plus the output port | OBSERVED |
+| mPort, code M2M | Model code; 3 ports created at adoption; firmware entry present | Sensor ports through port lines PWR, AI, DI and DO; mfi-output with port 2*(port-1) plus the output port | OBSERVED; See [mport.md](mport.md): full report available |
 | mPort Serial, code M2S | Model code; 1 port created at adoption | Ports as M2M; serial configuration ser2net_cfg; kick-serial command | OBSERVED |
 | In-wall outlet, code IWO2U | Model code; 2 ports created at adoption | Outlet measures; mfi-output | OBSERVED |
 | In-wall dimmer, code IWD1U | Model code; 1 port created at adoption, dimmer_mode switch, dimmer_lock 0, led_brightness 255 | dimmer_lock_setting command, dimmer_level in mfi-output; measures as the outlet | OBSERVED |
 | In-wall switch, code IWS1U | Accepted model; no ports at adoption; listed only in the port configuration list, not with mfi=true in discovery | Functions not read in the report | UNVERIFIED |
-| mFi-MSW (wall motion) | Sensor model name in the sensor table of the system service | motion and tamper tags | OBSERVED |
-| mFi-MSC (ceiling motion) | Sensor model name in the sensor table | motion and tamper tags | OBSERVED |
-| mFi-CS (current) | Sensor model name in the sensor table | amps and ampHours tags; conversion xyz*100, maximum 120 | OBSERVED |
-| mFi-DS (door or window) | Sensor model name in the sensor table | magnetic tag, inversion applied | OBSERVED |
-| mFi-THS (temperature and humidity) | Sensor model name in the sensor table | temperature and degreeHours tags (conversion xyz*30 - 10); humidity tag (conversion xyz*50) | OBSERVED |
-| Counter | Sensor name in the sensor table | counter tag | OBSERVED |
-| Input Digital | Sensor name in the sensor table | input tag | OBSERVED |
-| Input Analog | Sensor name in the sensor table | volts and voltSum tags, range -2 V to +2 V | OBSERVED |
-| RTD (PT-100) | Sensor name in the sensor table | temperature tag | OBSERVED |
-| Output 5v, Output 12v, Output 24v | Sensor names in the sensor table | output tag; the mapping of a port to these models is UNVERIFIED | OBSERVED |
-| UVC PRO (to camera) | Sensor name in the sensor table | output tag | OBSERVED |
-| Serial | Sensor name in the sensor table | no tags | OBSERVED |
+| mFi-MSW (wall motion) | Sensor model name in the sensor table of the system service | motion and tamper tags | OBSERVED; See [mport.md](mport.md): full report available |
+| mFi-MSC (ceiling motion) | Sensor model name in the sensor table | motion and tamper tags | OBSERVED; See [mport.md](mport.md): full report available |
+| mFi-CS (current) | Sensor model name in the sensor table | amps and ampHours tags; conversion xyz*100, maximum 120 | OBSERVED; See [mport.md](mport.md): full report available |
+| mFi-DS (door or window) | Sensor model name in the sensor table | magnetic tag, inversion applied | OBSERVED; See [mport.md](mport.md): full report available |
+| mFi-THS (temperature and humidity) | Sensor model name in the sensor table | temperature and degreeHours tags (conversion xyz*30 - 10); humidity tag (conversion xyz*50) | OBSERVED; See [mport.md](mport.md): full report available |
+| Counter | Sensor name in the sensor table | counter tag | OBSERVED; See [mport.md](mport.md): full report available |
+| Input Digital | Sensor name in the sensor table | input tag | OBSERVED; See [mport.md](mport.md): full report available |
+| Input Analog | Sensor name in the sensor table | volts and voltSum tags, range -2 V to +2 V | OBSERVED; See [mport.md](mport.md): full report available |
+| RTD (PT-100) | Sensor name in the sensor table | temperature tag | OBSERVED; See [mport.md](mport.md): full report available |
+| Output 5v, Output 12v, Output 24v | Sensor names in the sensor table | output tag; the mapping of a port to these models is UNVERIFIED | OBSERVED; See [mport.md](mport.md): full report available |
+| UVC PRO (to camera) | Sensor name in the sensor table | output tag | OBSERVED; See [mport.md](mport.md): full report available |
+| Serial | Sensor name in the sensor table | no tags | OBSERVED; See [mport.md](mport.md): full report available |
 
 ## Device lifecycle
 
