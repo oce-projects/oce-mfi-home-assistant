@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.14 - 2026-11-19
+
+- docs: mPort Serial functions of the 2.1.11 controller (clean room report) (ticket T-MWMRR5WC).
+
 ## 0.22.13 - 2026-11-19
 
 - docs: mPort and sensor functions of the 2.1.11 controller (clean room report) (ticket T-MWMRR4K2).
