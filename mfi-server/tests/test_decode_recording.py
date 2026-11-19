@@ -260,6 +260,99 @@ class TestDecodeLines(unittest.TestCase):
         self.assertEqual(decode_recording.decode_lines(["", "   \n"], {}, False), [])
 
 
+def discovery_payload(*fields: bytes) -> bytes:
+    """Return a discovery reply: 4-byte header (version 1, command 0, length) then the TLV fields."""
+    body = b"".join(fields)
+    return bytes([1, 0]) + len(body).to_bytes(2, "big") + body
+
+
+def tlv(field_type: int, data: bytes) -> bytes:
+    """Return one TLV field: type (1 byte), length (2 bytes big-endian), data."""
+    return bytes([field_type]) + len(data).to_bytes(2, "big") + data
+
+
+def udp_line(port: str, src: str, dst: str, payload: bytes) -> str:
+    return json.dumps({
+        "time": 1700000000000,
+        "port": port,
+        "src": src,
+        "dst": dst,
+        "payload_b64": b64(payload),
+    })
+
+
+DISCOVERY_PAYLOAD = discovery_payload(
+    tlv(2, bytes.fromhex("0027221a2b3c") + bytes([203, 0, 113, 5])),
+    tlv(3, b"MF.ar933x.v2.1.11.1309"),
+    tlv(11, b"lab-host"),
+    tlv(13, b"lab-essid"),
+    tlv(12, b"P1E"),
+)
+DISCOVERY_LINE = udp_line("udp10001", "203.0.113.5:10001", "198.51.100.255:10001", DISCOVERY_PAYLOAD)
+
+
+class TestDecodeUdp(unittest.TestCase):
+    def fields_by_name(self, entry):
+        return {field["name"]: field for field in entry["fields"]}
+
+    def test_discovery_fields_are_decoded(self):
+        result = decode_recording.decode_lines([DISCOVERY_LINE], {}, False)
+        entry = result[0]
+        self.assertIsNone(entry.get("error"))
+        self.assertEqual(entry["port"], "udp10001")
+        self.assertEqual(entry["src"], "203.0.113.5:10001")
+        self.assertNotIn("payload_b64", entry)
+        fields = self.fields_by_name(entry)
+        self.assertEqual(fields["mac_ipv4"]["mac"], "0027221a2b3c")
+        self.assertEqual(fields["mac_ipv4"]["ipv4"], "203.0.113.5")
+        self.assertEqual(fields["version"]["version"], "MF.ar933x.v2.1.11.1309")
+        self.assertEqual(fields["hostname"]["hostname"], "lab-host")
+        self.assertEqual(fields["essid"]["essid"], "lab-essid")
+        self.assertEqual(fields["platform"]["platform"], "P1E")
+
+    def test_discovery_anonymize_hides_mac_ip_hostname_and_essid(self):
+        result = decode_recording.decode_lines([DISCOVERY_LINE], {}, True)
+        self.assertIsNone(result[0].get("error"))
+        text = json.dumps(result)
+        for secret in ("0027221a2b3c", "0027221A2B3C", "203.0.113.5", "lab-host", "lab-essid"):
+            self.assertNotIn(secret, text)
+        fields = self.fields_by_name(result[0])
+        self.assertEqual(fields["platform"]["platform"], "P1E")
+        self.assertEqual(fields["version"]["version"], "MF.ar933x.v2.1.11.1309")
+
+    def test_wakeup_line_gets_length_and_connection_request_flag(self):
+        payload = bytes([0x88, 0x88]) + bytes(18)
+        line = udp_line("udp3478", "198.51.100.7:3478", "203.0.113.9:3478", payload)
+        entry = decode_recording.decode_lines([line], {}, False)[0]
+        self.assertIsNone(entry.get("error"))
+        self.assertEqual(entry["length"], 20)
+        self.assertIs(entry["connection_request"], True)
+        self.assertNotIn("fields", entry)
+        self.assertNotIn("payload_b64", entry)
+
+    def test_wakeup_line_without_the_request_marker_is_not_a_connection_request(self):
+        line = udp_line("udp3478", "198.51.100.7:3478", "203.0.113.9:3478", bytes(20))
+        entry = decode_recording.decode_lines([line], {}, False)[0]
+        self.assertEqual(entry["length"], 20)
+        self.assertIs(entry["connection_request"], False)
+
+    def test_bad_base64_gives_an_error_entry(self):
+        line = udp_line("udp10001", "203.0.113.5:10001", "198.51.100.255:10001", b"")
+        broken = json.loads(line)
+        broken["payload_b64"] = "!!not base64!!"
+        entry = decode_recording.decode_lines([json.dumps(broken)], {}, False)[0]
+        self.assertTrue(entry["error"])
+        self.assertNotIn("fields", entry)
+
+    def test_unknown_and_truncated_tlv_fields(self):
+        payload = discovery_payload(tlv(9, b"\x01\x02"), tlv(11, b"host"), bytes([12, 0, 9, 1]))
+        fields = decode_recording.parse_discovery_tlv(payload)
+        self.assertEqual(fields, [
+            {"type": 9, "name": None, "hex": "0102"},
+            {"type": 11, "name": "hostname", "hostname": "host"},
+        ])
+
+
 class TestMain(unittest.TestCase):
     def test_main_returns_one_when_the_backup_is_missing(self):
         with tempfile.TemporaryDirectory() as tmp:
