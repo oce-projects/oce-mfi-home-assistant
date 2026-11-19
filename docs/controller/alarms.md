@@ -1,6 +1,6 @@
 # Alarms and monitors of the mFi Controller 2.1.11 (clean room report)
 
-This is a clean-room report of the alarms, monitors and notifications of the mFi Controller 2.1.11 (`ace.jar`). It is built only from the repository documents `docs/PROTOCOL.md` (PROTO, sections "Events" and "Rules and scenes"), `docs/controller/INVENTORY.md` (INV) and `docs/ARCHITECTURE.md` (ARCH), plus the platform facts of `AGENTS.md`. It contains no code from `ace.jar`, no pseudocode and no decompiler output. Every fact has a status (OBSERVED, INFERRED or UNVERIFIED) and a source. Nothing in this report was verified on a device. Field names in backticks (for example `alarm`, `addr`) are data field names quoted from PROTO, not code.
+This is a clean-room report of the alarms, monitors and notifications of the mFi Controller 2.1.11 (`ace.jar`). It is built only from the repository documents `docs/PROTOCOL.md` (PROTO, sections "Events" and "Rules and scenes"), `docs/controller/INVENTORY.md` (INV) and `docs/ARCHITECTURE.md` (ARCH), plus the platform facts of `AGENTS.md`. It contains no code from `ace.jar`, no pseudocode and no decompiler output. Every fact has a status (OBSERVED, INFERRED or UNVERIFIED) and a source. Nothing in this report was verified on a device. In this report OBSERVED means stated in the source documents (PROTO, INV), not read directly from `ace.jar` in this ticket. Field names in backticks (for example `alarm`, `addr`) are data field names quoted from PROTO, not code.
 
 ## 1. Alarm types (`AlarmDef`): list, fields, who raises them
 
@@ -15,7 +15,8 @@ This is a clean-room report of the alarms, monitors and notifications of the mFi
 ## 2. `Monitor`: what it watches, interval and fields
 
 - INFERRED: INV lists a `Monitor` class in the Alarms area, described as a "monitor thread"; the whole Alarms area has status INFERRED in INV and no class of it was opened one by one. Source: INV "Areas" (Alarms row) and INV Classes table (`Monitor` INFERRED).
-- OBSERVED (the documented contact-monitoring behaviour, which may or may not be the `Monitor` class): a device with no inform for more than 40 seconds is set to state 6; after more than 120 seconds the controller raises `EVT_AP_Lost_Contact`; the check timer runs every 60 seconds. Source: PROTO "Events" (`DeviceManager`).
+- OBSERVED: a device with no inform for more than 40 seconds is set to state 6; after more than 120 seconds the controller raises `EVT_AP_Lost_Contact`; the check timer runs every 60 seconds. Source: PROTO "Events" (`DeviceManager`).
+- INFERRED: whether this contact-monitoring behaviour belongs to the `Monitor` class; the link to `Monitor` is not confirmed in the repository documents. Source: INV "Areas" (Alarms row).
 - OBSERVED (the rule and time scheduler, a second periodic watcher): the time-rule job starts 20 seconds after startup and then runs every 5 seconds; a second job starts after 600 seconds and then runs every 60 seconds, checking the sensor rulesets whose `compare` is 2 and whose `duration` is above 0. Source: PROTO "Rules and scenes" (scheduler, inner class 35).
 - UNVERIFIED: what the `Monitor` class itself watches, its exact interval and its fields; the Alarms area was not opened class by class in INV. Source: INV "Areas".
 
@@ -24,9 +25,10 @@ This is a clean-room report of the alarms, monitors and notifications of the mFi
 - OBSERVED: the e-mail channel is a rule action of `type` `email`. It is sent only when `enable` is true, to each valid address in `addr`, at most once per `minute` minutes (the time of the last send is kept in `last_time`). Source: PROTO "Rules and scenes".
 - OBSERVED: a second outbound channel is the URL action, `type` `url`: with `enable` true it sends a POST whose body carries URL-encoded `rule`, `sensor` and `value` fields. Source: PROTO "Rules and scenes".
 - OBSERVED: `addr` is a list of addresses used for the e-mail and URL actions. Source: PROTO "Rules and scenes".
-- INFERRED: the Events class the report names as the e-mail sender is `event.class_26` ("sends e-mail"). Source: INV "Areas" (Events row).
+- INFERRED: INV attributes the e-mail sending to `event.class_26` ("sends e-mail") in the Events area. Source: INV "Areas" (Events row).
 - OBSERVED: the rule action `type` has eight values (`email`, `event`, `relaySwitch`, `script`, `state`, `url`, `scene`, `rule`). Source: PROTO "Rules and scenes".
-- UNVERIFIED: no SMS or push channel was found; none of the eight `type` values is SMS or push. Source: PROTO "Rules and scenes".
+- OBSERVED: none of the eight `type` values (`email`, `event`, `relaySwitch`, `script`, `state`, `url`, `scene`, `rule`) is SMS or push. Source: PROTO "Rules and scenes".
+- UNVERIFIED: whether any other notification channel exists in controller code the report did not read. Source: PROTO "Rules and scenes".
 - UNVERIFIED: the mail-server settings (SMTP host, port, authentication, sender address). INFERRED that a `Setting` record holds them (INV places `Setting` in the System area), but the repository documents do not name the fields. Source: INV "Areas" (System row, `Setting`).
 - OBSERVED: the message text of an event comes from a resource file named `messages`, read in the system language under the event `key`; a name in curly brackets is replaced by the event field of the same name, and a missing key yields the key itself between two tildes. UNVERIFIED: the texts themselves, because the `messages` file is not in the code and could not be read. Source: PROTO "Events".
 - OBSERVED: the recipients of the e-mail channel are the addresses in the `addr` list of the rule action. UNVERIFIED: whether administrators receive a copy by default; not in the repository documents. Source: PROTO "Rules and scenes".
