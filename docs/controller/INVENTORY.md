@@ -55,7 +55,7 @@ Full clean-room report: [device-lifecycle.md](device-lifecycle.md).
 | Step | Class and method | Status |
 |---|---|---|
 | Adoption | DeviceManager, adopt command: opens an SSH session through UbntDiscoveryServer, runs the set-adopt syswrapper command, creates the Device, Token and ports, sets state 7 | OBSERVED |
-| Firmware update | DeviceManager, inform response upgrade (firmware table); SystemService and Launcher for the controller itself | OBSERVED |
+| Firmware update | DeviceManager, inform response upgrade (firmware table); SystemService and Launcher for the controller itself; full report: [firmware.md](firmware.md) | OBSERVED |
 | Forget | DeviceManager, delete-ap command: sends setdefault to a connected device, then removes Device, Alarm, Event, Token, Task and the ap statistics | OBSERVED |
 | Factory reset | DeviceManager, setdefault message for a device; SystemService.restoreFactory for the controller (DbService clears and rebuilds the database on start) | OBSERVED |
 | Data restore | UploadServlet, route /upload/backup, checks the version and timestamp files; SystemService backup command creates the file; the restore body is UNVERIFIED | OBSERVED |
