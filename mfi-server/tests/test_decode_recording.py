@@ -167,6 +167,59 @@ class TestDecodeLines(unittest.TestCase):
         self.assertTrue(result[0]["error"])
         self.assertIsNone(result[0]["response"])
 
+    def test_web_anonymize_redacts_raw_bodies_and_sensitive_headers(self):
+        raw_body = b'{"password":"hunter2","peer":"203.0.113.9"}'
+        body_b64 = b64(raw_body)
+        web = json.dumps({
+            "t": 5,
+            "port": 6443,
+            "client": "203.0.113.7",
+            "method": "POST",
+            "path": "/api/login",
+            "req_headers": [
+                ["Cookie", "sessionid=abc123"],
+                ["Authorization", "Bearer xyz789"],
+                ["Content-Type", "application/json"],
+            ],
+            "req_body_b64": body_b64,
+            "resp_headers": [["Set-Cookie", "sessionid=def456"]],
+            "resp_body_b64": "",
+            "body_omitted": False,
+        })
+        result = decode_recording.decode_lines([web], {}, True)
+        entry = result[0]
+        self.assertIsNone(entry["error"])
+        self.assertEqual(entry["client"], "192.0.2.1")
+        self.assertEqual(entry["req_body_b64"], "REDACTED")
+        self.assertEqual(entry["resp_body_b64"], "REDACTED")
+        headers = dict((h[0], h[1]) for h in entry["req_headers"])
+        self.assertEqual(headers["Cookie"], "REDACTED")
+        self.assertEqual(headers["Authorization"], "REDACTED")
+        self.assertEqual(headers["Content-Type"], "application/json")
+        resp_headers = dict((h[0], h[1]) for h in entry["resp_headers"])
+        self.assertEqual(resp_headers["Set-Cookie"], "REDACTED")
+        text = json.dumps(result)
+        self.assertNotIn(body_b64, text)
+        self.assertNotIn("hunter2", text)
+        self.assertNotIn("sessionid=abc123", text)
+        self.assertNotIn("Bearer xyz789", text)
+
+    def test_web_line_with_malformed_header_entry_does_not_crash(self):
+        web = json.dumps({
+            "t": 6,
+            "port": 6443,
+            "client": "203.0.113.7",
+            "req_headers": [42, ["Content-Type", "application/json"]],
+            "req_body_b64": b64(b'{"name":"a"}'),
+            "resp_headers": [],
+            "resp_body_b64": "",
+            "body_omitted": False,
+        })
+        result = decode_recording.decode_lines([web], {}, False)
+        self.assertEqual(len(result), 1)
+        self.assertIsNone(result[0]["error"])
+        self.assertEqual(result[0]["request"], {"name": "a"})
+
     def test_blank_lines_are_skipped(self):
         self.assertEqual(decode_recording.decode_lines([], {}, False), [])
         self.assertEqual(decode_recording.decode_lines(["", "   \n"], {}, False), [])

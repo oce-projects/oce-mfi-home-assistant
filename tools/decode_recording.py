@@ -33,6 +33,10 @@ REDACTED = "REDACTED"
 REDACTED_EMAIL = "REDACTED_EMAIL"
 DEFAULT_KEY = bytes.fromhex(packet.DEFAULT_KEY_HEX)
 SENSITIVE_KEY_PARTS = ("authkey", "password", "passphrase", "secret", "token", "cookie")
+SENSITIVE_HEADER_NAMES = ("cookie", "set-cookie", "authorization")
+RAW_BODY_KEYS = ("req_body_b64", "resp_body_b64")
+HEADER_KEYS = ("req_headers", "resp_headers")
+# \x40 is the '@' sign, written as an escape so no literal e-mail address appears in this source
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+\x40[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.])")
 MAC_RE = re.compile(r"(?i)(?<![0-9a-f])(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}(?![0-9a-f])")
@@ -69,7 +73,7 @@ class _Anonymizer:
     def value(self, obj, key: str = ""):
         """Return a copy of obj with every identifier replaced."""
         if isinstance(obj, dict):
-            return {k: self._entry(str(k), v) for k, v in obj.items()}
+            return {self._text(str(k), ""): self._entry(str(k), v) for k, v in obj.items()}
         if isinstance(obj, list):
             return [self.value(item, key) for item in obj]
         if isinstance(obj, str):
@@ -77,10 +81,28 @@ class _Anonymizer:
         return obj
 
     def _entry(self, key: str, value):
-        """Redact a sensitive value, anonymize any other."""
+        """Redact a sensitive value or raw body, anonymize any other."""
         if _is_sensitive(key):
             return REDACTED
+        if key in RAW_BODY_KEYS:
+            return REDACTED
+        if key in HEADER_KEYS:
+            return self._redact_headers(value)
         return self.value(value, key)
+
+    def _redact_headers(self, headers):
+        """Redact sensitive header values; anonymize identifiers in the others."""
+        result = []
+        for pair in headers or []:
+            if isinstance(pair, (list, tuple)) and len(pair) == 2:
+                name = str(pair[0])
+                if name.lower() in SENSITIVE_HEADER_NAMES or _is_sensitive(name):
+                    result.append([name, REDACTED])
+                else:
+                    result.append([name, self._text(str(pair[1]), name)])
+            else:
+                result.append(self.value(pair))
+        return result
 
     def _text(self, text: str, key: str) -> str:
         """Anonymize one string; key is the name of the field that holds it."""
@@ -120,7 +142,7 @@ def _b64(text: str) -> bytes:
 def _content_type(headers) -> str:
     """Return the Content-Type header value in lower case, or an empty string."""
     for pair in headers or []:
-        if len(pair) == 2 and str(pair[0]).lower() == "content-type":
+        if isinstance(pair, (list, tuple)) and len(pair) == 2 and str(pair[0]).lower() == "content-type":
             return str(pair[1]).lower()
     return ""
 
@@ -155,7 +177,7 @@ def _decode_web(record: dict) -> dict:
     try:
         entry["request"] = _web_json(record.get("req_body_b64", ""), _content_type(record.get("req_headers")))
         entry["response"] = _web_json(record.get("resp_body_b64", ""), _content_type(record.get("resp_headers")))
-    except ValueError as exc:
+    except (ValueError, TypeError) as exc:
         entry["error"] = f"json body not decodable: {exc}"
     return entry
 
@@ -208,8 +230,15 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     keys: dict[str, list[bytes]] = {}
     for device in devices:
-        if device["authkey"]:
-            keys.setdefault(device["mac"], []).append(bytes.fromhex(device["authkey"]))
+        authkey = device.get("authkey")
+        mac = device.get("mac")
+        if not authkey or not mac:
+            continue
+        try:
+            key_bytes = bytes.fromhex(authkey)
+        except ValueError:
+            continue
+        keys.setdefault(mac, []).append(key_bytes)
     results = decode_lines(lines, keys, args.anonymize)
     os.makedirs(args.out, exist_ok=True)
     name = os.path.splitext(os.path.basename(args.recording))[0]
