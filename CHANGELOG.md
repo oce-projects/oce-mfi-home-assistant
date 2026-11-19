@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.9 - 2026-11-18
+
+- docs: inventory of the 2.1.11 controller, 141 classes in 12 areas (clean room report) (ticket T-MWMRQZYG).
+
 ## 0.22.8 - 2026-11-18
 
 - docs: remaining UNVERIFIED items in setparam, events, rules/scenes and statistics resolved from the full ace.jar 2.1.11 REA report (clean room) (ticket T-MWMQLEZ1).
