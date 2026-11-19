@@ -23,11 +23,12 @@ This is a clean-room report of the alarms, monitors and notifications of the mFi
 ## 3. Notifications: channels, mail-server settings, message text, recipients
 
 - OBSERVED: the e-mail channel is a rule action of `type` `email`. It is sent only when `enable` is true, to each valid address in `addr`, at most once per `minute` minutes (the time of the last send is kept in `last_time`). Source: PROTO "Rules and scenes".
+- The throttle is the UI field "Hold additional email alerts for this event for N minutes"; several addresses are separated by a space; an SMS is sent only through a mail-to-SMS gateway address. CONFIRMED (official guide). Source: UG-V11 p. 23.
 - OBSERVED: a second outbound channel is the URL action, `type` `url`: with `enable` true it sends a POST whose body carries URL-encoded `rule`, `sensor` and `value` fields. Source: PROTO "Rules and scenes".
 - OBSERVED: `addr` is a list of addresses used for the e-mail and URL actions. Source: PROTO "Rules and scenes".
 - INFERRED: INV attributes the e-mail sending to `event.class_26` ("sends e-mail") in the Events area. Source: INV "Areas" (Events row).
 - OBSERVED: the rule action `type` has eight values (`email`, `event`, `relaySwitch`, `script`, `state`, `url`, `scene`, `rule`). Source: PROTO "Rules and scenes".
-- OBSERVED: none of the eight `type` values (`email`, `event`, `relaySwitch`, `script`, `state`, `url`, `scene`, `rule`) is SMS or push. Source: PROTO "Rules and scenes".
+- OBSERVED: none of the eight `type` values (`email`, `event`, `relaySwitch`, `script`, `state`, `url`, `scene`, `rule`) is SMS or push; an SMS is delivered through the e-mail action to a mail-to-SMS gateway address. Source: PROTO "Rules and scenes"; UG-V11 p. 23.
 - UNVERIFIED: whether any other notification channel exists in controller code the report did not read. Source: PROTO "Rules and scenes".
 - UNVERIFIED: the mail-server settings (SMTP host, port, authentication, sender address). INFERRED that a `Setting` record holds them (INV places `Setting` in the System area), but the repository documents do not name the fields. Source: INV "Areas" (System row, `Setting`).
 - OBSERVED: the message text of an event comes from a resource file named `messages`, read in the system language under the event `key`; a name in curly brackets is replaced by the event field of the same name, and a missing key yields the key itself between two tildes. UNVERIFIED: the texts themselves, because the `messages` file is not in the code and could not be read. Source: PROTO "Events".

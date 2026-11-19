@@ -9,7 +9,9 @@ This is a clean-room report of the mPort Serial product (model code M2S) of the 
 - OBSERVED: speed is carried (`baudRate` in `ser2net_cfg`, `speed` in `serial_cfg`); parity is carried (`parity` in `ser2net_cfg`). Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 6.
 - OBSERVED: data bits and stop bits are read but not written to `ser2net_cfg`; their effect on the device is UNVERIFIED. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 6; REA, question 1.
 - UNVERIFIED: flow control. No flow-control key is among the keys the controller emits (`enable`, `baudRate`, `parity`, `uartMode`, `termination`, `antenna`). Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 6.
-- UNVERIFIED: the allowed values and the defaults of `baudRate` and `parity`; the controller code read does not enumerate them. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 6.
+- The UI offers a serial speed from 300 to 115200 and parity none, odd or even (UG-V11 p. 28). CONFIRMED (official guide) for the UI; the exact values sent to the device stay UNVERIFIED (the controller code read does not enumerate them). Source: UG-V11 p. 28; PROTO "mPort and sensors (from ace.jar 2.1.11)", section 6.
+- `uartMode`: UG-V11 p. 28 lists RS232 or RS485; QSG-MPORT-S p. 7 and the specifications list RS232, RS422 and RS485; only one serial port (DB9 or terminal block) can be used at a time. CONFIRMED (official guide) for RS232 and RS485; the RS422 value is UNVERIFIED because the two guides disagree. Source: UG-V11 p. 28; QSG-MPORT-S p. 7.
+- `termination`: a 120 Ohm termination resistor between TX and RX, offered in RS485 mode (UG-V11 p. 28). `antenna`: internal (default) or external (QSG-MPORT-S p. 6). CONFIRMED (official guide). Source: UG-V11 p. 28; QSG-MPORT-S p. 6.
 - OBSERVED: REA found no call to the `serial_cfg` generator in `DeviceManager`, so whether `serial_cfg` reaches the device is UNVERIFIED. Source: REA, question 1.
 - OBSERVED: the serial settings travel to the device inside the `setparam` message (`ser2net_cfg` and `serial_cfg`); the sensor record of a Serial port is kept in the sensor collection. Source: PROTO "Device configuration (setparam)"; PROTO "mPort and sensors (from ace.jar 2.1.11)", section 2.
 
@@ -18,6 +20,7 @@ This is a clean-room report of the mPort Serial product (model code M2S) of the 
 - OBSERVED: the controller sends no TCP port in `ser2net_cfg`; the port the device listens on is UNVERIFIED. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 6; REA, question 2.
 - INFERRED: the configuration key name `ser2net_cfg` points to a serial-to-network daemon on the device side; the daemon itself is device firmware, not `ace.jar`. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 6 (key name `ser2net_cfg`).
 - UNVERIFIED: who opens the serial data channel and how it is authenticated. The controller code read does not show the controller opening a serial data channel, and the device-side behaviour is not in `ace.jar`. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 6.
+- The serial line is served over telnet by the device. UG-V11 p. 28 shows the port "used for Telnetting to the device", a "Connected Host" (the IP of the Telnet client connected to the mPort Serial; the controller IP when connected through the web shell) and a Disconnect button. CONFIRMED (official guide) that the device serves the serial line over telnet; the port number stays UNVERIFIED. INFERRED: the Disconnect button is the `kick-serial` command. Source: UG-V11 p. 28.
 
 ## 3. kick-serial
 

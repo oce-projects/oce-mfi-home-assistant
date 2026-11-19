@@ -16,6 +16,13 @@ The tag, unit and conversion of each model are in PROTO section 2 (model table) 
 - OBSERVED: the Serial model exists only for the M2S variant (serial mPort). Source: REA, SystemService (U12); INV "Products" (mPort Serial row).
 - UNVERIFIED: the spelling "Output  5v" with two spaces in the REA text. INV writes "Output 5v" with one space. The report does not say which one the controller uses. Source: REA, SystemService (U12); INV "Products".
 - UNVERIFIED: the power value of the MSC model. Searched: the model table of SystemService (U12). Source: REA, SystemService (U12).
+- CONFIRMED (official guide): an mPort M2M gets 3 ports at adoption = 2 mFi RJ45 ports + 1 terminal block port. Source: QSG-MPORT specifications.
+- CONFIRMED (official guide): the THS temperature conversion is V x 30 - 10. Source: UG-V11 p. 29.
+- CONFIRMED (official guide): the CS current sensor reads 1 V = 100 A and is not TrueRMS. Source: UG-V11 p. 29; QSG-SENSORS.
+- CONFIRMED (official guide): the RTD model is a PT-100 from -50 to +250 C. Source: UG-V11 p. 29.
+- CONFIRMED (official guide): the Input Analog range is -2 to +2 V. Source: UG-V11 p. 29.
+- CONFIRMED (official guide): the Output 5v, 12v and 24v models show an on/off button and can be a rule output. Source: UG-V11 p. 29.
+- CONFIRMED (official guide): Ubiquiti sensors on the RJ45 ports are detected ("unconfigured sensor (detected)"); terminal block and third-party devices are not. Source: UG-V11 p. 29.
 
 ## 2. Sensor lifecycle (detected, type assignment, port_cfg, removal)
 
