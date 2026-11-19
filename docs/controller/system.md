@@ -7,6 +7,7 @@ This is a clean-room report of the system area of the mFi Controller 2.1.11 (`ac
 - A backup is a file named after the controller version with the `.unf` extension. The file name pattern comes from REA. Whether this is the exact name written by the controller is not in the repository documents. UNVERIFIED. Source: REA report, backup section.
 - The `.unf` format is a ZIP archive with the entries `db.gz`, `format`, `timestamp` and `version`, encrypted as a whole. Its details are in PROTO, section "Controller backups (.unf)". OBSERVED. Source: PROTO "Controller backups (.unf)".
 - The outer encryption is AES-128 in CBC mode with a fixed key and IV. The key and IV are not reproduced here. OBSERVED. Source: PROTO "Controller backups (.unf)".
+- No real `.unf` backup file was opened or decrypted for this report; the encryption described here is taken from PROTO, and decrypting an actual backup remains to be tested. UNVERIFIED. Source: PROTO "Controller backups (.unf)".
 - The padding mode used for the outer encryption is not in the repository documents. REA reports no padding. UNVERIFIED. Source: REA report, backup section.
 - The `format` entry carries a format marker. REA reads its value as a fixed text. The value is not in the repository documents. UNVERIFIED. Source: REA report, backup section; PROTO "Controller backups (.unf)".
 - The `timestamp` entry holds the backup time in milliseconds since 1970, as text. UNVERIFIED. Source: REA report, backup section.
@@ -69,7 +70,7 @@ This is a clean-room report of the system area of the mFi Controller 2.1.11 (`ac
 - `map`: the map collection. INV gives the name for the Maps area; REA reports a GridFS bucket named `map`. The GridFS form is UNVERIFIED. Source: INV "Areas" (Maps and dashboard row, INFERRED); REA report, database section.
 - Other collections named by the data classes (`user`, `admin`, `session`, `token`, `widget`, `monitor`, `wlanconf`, `authserver`, `location`, `geofence`, `rawdata`, `groups`, `configtemplate`, `liveview`, `customsensors`): the names are the class names in lower case, as REA reports. INFERRED. Source: INV "Classes" table; REA report, database section.
 - The indexes on the database: REA lists the key fields of event, alarm, device, user, session, setting, widget, token, monitor, the time-series collections and the schedule collections. The repository documents do not confirm these fields. UNVERIFIED. Source: REA report, database section.
-- The indexes on `ttl_time` exist for `day`, `hour`, `quarterhour`, `minute`, `m2mgeneric`, `event`, `actionevent` and `alarm`, without an expiry time. OBSERVED. Source: PROTO "Statistics" (indexes bullet and the deletion-job bullet).
+- The indexes on `ttl_time` exist for `day`, `hour`, `quarterhour`, `minute`, `m2mgeneric` (collection name case UNVERIFIED, see above), `event`, `actionevent` and `alarm`, without an expiry time. OBSERVED. Source: PROTO "Statistics" (indexes bullet and the deletion-job bullet).
 - DbMigrator: the class exists. OBSERVED. Source: INV "Classes" table (DbMigrator row).
 - DbMigrator: REA reports that a version file in the database folder records the version written last. When it differs from the running version, the migration runs and the file is rewritten. A missing file is created without migration. UNVERIFIED. Source: REA report, migrations section.
 - DbMigrator: REA reports one migration step, for stored versions 1.0.3 to 1.0.8, which removes the byte counters of user documents. REA found no migration for later versions. UNVERIFIED. Source: REA report, migrations section.
@@ -125,6 +126,7 @@ This is a clean-room report of the system area of the mFi Controller 2.1.11 (`ac
 - The update check contacts a vendor address at most once every 86400 seconds, and sends the controller version, identifier, platform and device count per model. An isolated network blocks this request. UNVERIFIED. Source: REA report, startup section; AGENTS hard rule 8.
 - The controller upgrades itself through the system service; the firmware path for the controller itself is in the device lifecycle table. OBSERVED. Source: INV "Device lifecycle" (Firmware update row).
 - The data-removal command and the `ttl_time` indexes are described in section 3. Whether `storage.ttl_time` controls the removal is UNVERIFIED. Source: PROTO "Statistics"; REA report, startup section.
+- Security: the inform port 6080 and the web interface port 6443 must never be exposed to the internet, and the mFi devices belong on an isolated network. OBSERVED. Source: AGENTS hard rule 8.
 
 ## Gaps in mfi-server
 
