@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.12 - 2026-11-19
+
+- docs: mPower functions of the 2.1.11 controller (clean room report) (ticket T-MWMRR3JI).
+
 ## 0.22.11 - 2026-11-19
 
 - docs: firmware handling of the 2.1.11 controller (clean room report) (ticket T-MWMRR1ZI).
