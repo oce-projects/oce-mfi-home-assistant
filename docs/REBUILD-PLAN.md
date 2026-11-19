@@ -38,7 +38,7 @@ Network and Wi-Fi rows that build a risky function carry the owner decision of 2
 | Inform and devices | Auto-upgrade flag and any bulk upgrade, needs device test | docs/controller/firmware.md (section 5) | UNVERIFIED, needs device test | EPIC-02 Inform and devices | R-UPDATE |
 | Inform and devices | Restored device comes back in state 0 with ports showing NONE | docs/controller/device-lifecycle.md (section 5) | OBSERVED | EPIC-02 Inform and devices | — |
 | Inform and devices | Restored device returns to state 1 at its next inform with the stored key | docs/controller/device-lifecycle.md (sections 1 and 5) | INFERRED | EPIC-02 Inform and devices | — |
-| Discovery | UDP discovery on port 10001 with TLV announcements and replies, needs device test | docs/PROTOCOL.md (Discovery), docs/controller/network-tools.md | UNVERIFIED, needs device test | EPIC-03 Discovery | R-DISC (not recorded by REG 1) |
+| Discovery | UDP discovery on port 10001 with TLV announcements and replies, needs device test | docs/PROTOCOL.md (Discovery), docs/controller/network-tools.md | UNVERIFIED, needs device test | EPIC-03 Discovery | R-DISC (captured passively by the REG 2 recorder, owner decision 2026-11-19) |
 | Discovery | TLV type 3 (version string) and type 22 (firmware version) in the discovery reply | docs/controller/firmware.md (section 1); docs/PROTOCOL.md (Discovery) | OBSERVED | EPIC-03 Discovery | — |
 | Discovery | Discovery reply of an mPower mini without type 22; firmware derived from type 3 (other models: needs device test) | docs/controller/firmware.md (section 1) | OBSERVED | EPIC-03 Discovery | — |
 | Discovery | Devices managed by another controller are ignored (default flag false) | docs/controller/device-lifecycle.md (section 1) | OBSERVED | EPIC-03 Discovery | — |
@@ -71,8 +71,8 @@ Network and Wi-Fi rows that build a risky function carry the owner decision of 2
 | Sensors and mPort | Power measurement of P1U, P3U and P8U (needs device test) | docs/controller/mpower.md (section 1) | UNVERIFIED, needs device test | EPIC-04 Sensors and mPort | R-MPOWER |
 | Sensors and mPort | In-wall outlet IWO2U: two outlets, measures and mfi-output | docs/controller/in-wall.md (section 1) | OBSERVED | EPIC-04 Sensors and mPort | — |
 | Sensors and mPort | In-wall dimmer IWD1U: dimmer_mode, dimmer_lock_setting, dimmer_level in mfi-output | docs/controller/in-wall.md (sections 2 and 3) | OBSERVED | EPIC-04 Sensors and mPort | — |
-| Sensors and mPort | Dimmer level scale, step, ramp unit, minimum and maximum (needs device test) | docs/controller/in-wall.md (sections 2 and 3) | UNVERIFIED, needs device test | EPIC-04 Sensors and mPort | R-INWALL |
-| Sensors and mPort | In-wall switch IWS1U functions and physical button event (needs device test) | docs/controller/in-wall.md (section 4) | UNVERIFIED, needs device test | EPIC-04 Sensors and mPort | R-INWALL |
+| Sensors and mPort | Dimmer level scale, step, ramp unit, minimum and maximum (needs device test) | docs/controller/in-wall.md (sections 2 and 3) | UNVERIFIED, needs device test | EPIC-04 Sensors and mPort | documents only |
+| Sensors and mPort | In-wall switch IWS1U functions and physical button event (needs device test) | docs/controller/in-wall.md (section 4) | UNVERIFIED, needs device test | EPIC-04 Sensors and mPort | documents only |
 | Sensors and mPort | LED settings and effect of locate on P models (needs device test) | docs/controller/mpower.md (section 5) | UNVERIFIED, needs device test | EPIC-04 Sensors and mPort | R-MPOWER |
 | Sensors and mPort | Sensor and port API: list sensors, add to port, move, edit fields, label | docs/controller/mport.md (section 6) | OBSERVED | EPIC-04 Sensors and mPort | — |
 | Rules and scenes | Ruleset conditions on a sensor: compare, limit, duration in minutes, all or any, edge or level | docs/PROTOCOL.md (Rules and scenes) | OBSERVED | EPIC-05 Rules and scenes | — |
@@ -457,7 +457,7 @@ Recording codes and the rows of section 1 they close:
 | R-MPOWER | mPower outlets: on/off, timer, cycle, lock, energy counter, LED | Timer field, cycle command, manual energy reset, power of P1U, P3U and P8U, LED and locate |
 | R-INWALL | not recorded: the owner has no in-wall device; documents only (owner decision 2026-11-19) | Dimmer scale, IWS1U functions |
 | R-WEB | Controller web UI: login, users, rules and scenes, maps, alarms, events, statistics, backup download and restore, WLAN settings, guest page | Every row marked R-WEB in section 1 (users, events, statistics, alarms, web API routes, maps, system, network) |
-| R-DISC | Not recorded by REG 1: the recorder covers TCP ports 6080 and 6443 only; a separate UDP capture, owner decision 2026-11-19 (ticket to come) | UDP discovery on port 10001 and UPnP |
+| R-DISC | Recorded by REG 2 (owner decision 2026-11-19): the recorder of mfi-controller also captures passively the UDP traffic of port 10001 (discovery) and port 3478 (wake-up), in the same daily file as the TCP lines; TCP ports 6080 and 6443 stay with REG 1. A run with real devices is still needed (see the MANUAL STEP of this section) | UDP discovery on port 10001 and UPnP |
 
 MANUAL STEP (owner): run the controller add-on with real devices and record, one session per item: adoption, power on and off, firmware update, forget, factory reset, mPort sensors, mPort M2S serial, and mPower outlets (timer, cycle, lock). In the same sessions, use the controller web UI for the R-WEB actions. In-wall models only if the owner has them (not verified). The owner copies the recordings out of the add-on share, anonymises them with `tools/decode_recording.py --anonymize`, and reviews them before they are committed to `mfi-server/tests_next/fixtures/compat/`. The agent does not run the recordings.
 

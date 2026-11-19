@@ -4,7 +4,7 @@ configuration:
     description: "Maximum heap memory for the controller's Java process, in megabytes. Default 1024. Increase it only if the controller runs out of memory."
   record_traffic:
     name: "Record device traffic"
-    description: "Turns on the compatibility recorder on ports 6080 (inform) and 6443 (web). Recordings are written to /share/mfi-recordings. Off by default: with the recorder off the add-on behaves exactly as version 0.1.4."
+    description: "Turns on the compatibility recorder on ports 6080 (inform) and 6443 (web), and passively captures the UDP traffic of ports 10001 (discovery) and 3478 (wake-up). Recordings are written to /share/mfi-recordings. Off by default: with the recorder off nothing is recorded, but the add-on still uses the host network."
   record_max_mb:
     name: "Recording size limit (MB)"
     description: "Daily size limit of the recordings, in megabytes (10 to 2000). Default 200. When the limit is reached, the recorder stops writing for that day."
