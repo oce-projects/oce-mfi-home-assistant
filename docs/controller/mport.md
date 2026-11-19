@@ -41,7 +41,7 @@ Detection, the 20 second removal of a detected sensor and the "unconfigured sens
 - OBSERVED: the conversion strings of the models (for example for CS and THS) are fixed in the model table and are not changed by the user. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 4; REA, SystemService (U12).
 - OBSERVED: CustomSensors is a JSON text stored in the setting customSensors. The CustomSensors class itself has no fields. Source: REA, SystemService (U12).
 - OBSERVED: at startup the controller reads the file dl/custom.json, renames it with the date and merges it into the customSensors setting. If the file cannot be read, the controller stops. Source: REA, SystemService (U12).
-- OBSERVED: a custom sensor with the same name as a built-in model takes precedence over the built-in model. Source: REA, SystemService (U12); section 1 of this report.
+- OBSERVED: a custom sensor with the same name as a built-in model takes precedence over the built-in model. Source: REA, SystemService (U12).
 - UNVERIFIED: the keys of a custom sensor definition. The report does not list them. Searched: SystemService (U12) and the CustomSensors class (U12). Source: REA, SystemService (U12).
 - UNVERIFIED: whether a custom sensor definition reaches the port configuration of the device. The report does not say. Searched: the configuration generator (U10). Source: REA, ConfigService (U10).
 - INFERRED: the conversion is applied by the device, not by the controller, because the controller stores the value as it arrives. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 4 (INFERRED).
@@ -53,7 +53,7 @@ Detection, the 20 second removal of a detected sensor and the "unconfigured sens
 - OBSERVED: if the model has the inversion flag, val and volt are swapped. Source: REA, class_33 (U20).
 - INFERRED: the swap does not apply to the four output models, because they have no inversion flag. Source: REA, SystemService (U12); REA, class_33 (U20).
 - OBSERVED: an output with output_lock equal to 1 does not receive the command. Source: REA, class_33 (U20); PROTO "Rules and scenes" (relaySwitch action).
-- OBSERVED: the expected value configed_val is kept until a later inform reports the same value. If a different value is reported, the controller discards it. Source: PROTO "Commands to the device" (configed_val cleared when reported); REA, sensor service (U13).
+- OBSERVED: the expected value configed_val is kept and is cleared when a later inform reports it. Source: PROTO "Commands to the device" (configed_val cleared when reported); REA, sensor service (U13).
 - OBSERVED: the model description of the output models reads "Defaults to last configured state on power reset". Source: REA, SystemService (U12).
 - UNVERIFIED: whether the device applies this default after a power loss. The description is text; no device test exists. Source: REA, SystemService (U12); PROTO "Controller responses" (reboot row).
 - INFERRED: the state sent in the configuration is configed_val when it exists, otherwise output_val, and the lock value is sent with it. This matches the model description. Source: PROTO "Device configuration (setparam)" (power-on state, INFERRED); REA, ConfigService (U10).
@@ -94,7 +94,8 @@ The mfi-server code was not read for this report. The comparison is with PROTO, 
 - OBSERVED: calibration is one string with identity as default, and CustomSensors comes from the customSensors setting and dl/custom.json. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 4; REA, SystemService (U12).
 - UNVERIFIED: the keys of a custom sensor definition, and whether it reaches the device. Source: REA, SystemService (U12); REA, ConfigService (U10).
 - UNVERIFIED: whether volt and off_volt are part of the output command for an mPort. The sources conflict. Source: REA, class_33 (U20); PROTO "mPort and sensors (from ace.jar 2.1.11)", section 5.
-- OBSERVED: an output with output_lock equal to 1 does not get the command, and the inversion swap does not apply to the four output models. Source: REA, class_33 (U20); REA, SystemService (U12).
+- OBSERVED: an output with output_lock equal to 1 does not get the command. Source: REA, class_33 (U20).
+- INFERRED: the inversion swap does not apply to the four output models, because they have no inversion flag. Source: REA, class_33 (U20); REA, SystemService (U12).
 - UNVERIFIED: the power-on behaviour of an output after a power loss, although the model description says it keeps the last configured state. Source: REA, SystemService (U12); PROTO "Device configuration (setparam)".
 - OBSERVED: the temperature unit setting and the rule queue limit of 30. Source: REA, SystemService (U12); REA, class_31 (U19).
 - UNVERIFIED: per-port alarm settings in the port configuration. Source: REA, ConfigService (U10); PROTO "Measurements".
