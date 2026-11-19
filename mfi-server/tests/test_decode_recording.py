@@ -25,7 +25,7 @@ _spec = importlib.util.spec_from_file_location("decode_recording", ROOT / "tools
 decode_recording = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(decode_recording)
 
-MAC_HEX = "020000000001"
+MAC_HEX = "0a1b2c3d4e5f"
 MAC = bytes.fromhex(MAC_HEX)
 FAKE_KEY = bytes(range(1, 17))
 IV = bytes(range(16))
@@ -37,6 +37,7 @@ REQUEST = {
     "fw": "2.1.11.1309",
     "authkey": "0" * 32,
     "contact": EMAIL,
+    "serial": MAC_HEX,
 }
 RESPONSE = {"cmd": "noop", "interval": 10}
 REQUEST_PACKET = packet.encode(MAC, FAKE_KEY, REQUEST, IV)
@@ -81,8 +82,10 @@ class TestDecodeLines(unittest.TestCase):
         self.assertEqual(entry["request"]["fw"], "2.1.11.1309")
         self.assertEqual(entry["request"]["cmd"], "inform")
         self.assertEqual(entry["response"], RESPONSE)
+        self.assertEqual(entry["request"]["serial"], "020000000001")
         text = json.dumps(result)
         self.assertNotIn("203.0.113.7", text)
+        self.assertNotIn(MAC_HEX, text)
         self.assertNotIn(EMAIL, text)
 
     def test_anonymize_is_stable_across_lines(self):
@@ -109,6 +112,14 @@ class TestDecodeLines(unittest.TestCase):
         self.assertTrue(result[1]["error"])
         self.assertIsNone(result[2]["error"])
         self.assertEqual(result[2]["request"], REQUEST)
+
+    def test_response_failure_keeps_the_decoded_request(self):
+        line = inform_line(REQUEST_PACKET, bytes(range(64)))
+        result = decode_recording.decode_lines([line], {MAC_HEX: [FAKE_KEY]}, False)
+        self.assertTrue(result[0]["error"])
+        self.assertEqual(result[0]["mac"], MAC_HEX)
+        self.assertEqual(result[0]["request"], REQUEST)
+        self.assertIsNone(result[0]["response"])
 
     def test_packet_without_a_known_key_gets_an_error(self):
         result = decode_recording.decode_lines([inform_line(REQUEST_PACKET, RESPONSE_PACKET)], {}, False)

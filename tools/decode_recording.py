@@ -32,7 +32,7 @@ WEB_PORT = 6443
 REDACTED = "REDACTED"
 REDACTED_EMAIL = "REDACTED_EMAIL"
 DEFAULT_KEY = bytes.fromhex(packet.DEFAULT_KEY_HEX)
-SENSITIVE_KEY_PARTS = ("authkey", "password", "passphrase", "secret", "token", "cookie")
+SENSITIVE_KEY_PARTS = ("authkey", "password", "passwd", "passphrase", "secret", "token", "psk", "cookie")
 SENSITIVE_HEADER_NAMES = ("cookie", "set-cookie", "authorization")
 RAW_BODY_KEYS = ("req_body_b64", "resp_body_b64")
 HEADER_KEYS = ("req_headers", "resp_headers")
@@ -106,9 +106,10 @@ class _Anonymizer:
 
     def _text(self, text: str, key: str) -> str:
         """Anonymize one string; key is the name of the field that holds it."""
-        if key.lower() == "hostname":
+        lowered = key.lower()
+        if lowered == "hostname":
             return self.host(text)
-        if key.lower() == "mac" and MAC_KEY_RE.fullmatch(text):
+        if ("mac" in lowered or "serial" in lowered) and MAC_KEY_RE.fullmatch(text):
             return self.mac(text)
         text = EMAIL_RE.sub(REDACTED_EMAIL, text)
         text = MAC_RE.sub(lambda m: self.mac(m.group(0)), text)
@@ -162,12 +163,16 @@ def _decode_inform(record: dict, keys: dict[str, list[bytes]]) -> dict:
         mac = packet.parse_header(request_raw).mac.hex()
         candidates = keys.get(mac, []) + [DEFAULT_KEY]
         request = packet.decode(request_raw, candidates)[1]
-        response_raw = _b64(record["resp_body_b64"])
-        response = packet.decode(response_raw, candidates)[1] if response_raw else None
     except (KeyError, TypeError, ValueError, packet.PacketError) as exc:
         entry["error"] = str(exc) or type(exc).__name__
         return entry
-    entry.update(mac=mac, request=request, response=response)
+    entry["mac"] = mac
+    entry["request"] = request
+    try:
+        response_raw = _b64(record["resp_body_b64"])
+        entry["response"] = packet.decode(response_raw, candidates)[1] if response_raw else None
+    except (KeyError, TypeError, ValueError, packet.PacketError) as exc:
+        entry["error"] = str(exc) or type(exc).__name__
     return entry
 
 
