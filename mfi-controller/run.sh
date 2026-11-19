@@ -143,6 +143,7 @@ start_recorder() {
     chmod 0600 "$dir/cert.pem" "$dir/key.pem" || return 1
     chown -R mfi:mfi "$dir" || return 1
     chown mfi:mfi "$out" || return 1
+    chmod 0700 "$out" || return 1
 
     deadline=$(( $(date +%s) + 120 ))
     while ! { port_open 16080 && port_open 16443; } && [ "$(date +%s)" -lt "$deadline" ]; do

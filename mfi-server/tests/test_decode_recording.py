@@ -231,6 +231,30 @@ class TestDecodeLines(unittest.TestCase):
         self.assertIsNone(result[0]["error"])
         self.assertEqual(result[0]["request"], {"name": "a"})
 
+    def test_anonymize_replaces_host_header_and_ip_at_end_of_text(self):
+        web = json.dumps({
+            "t": 7,
+            "port": 6443,
+            "client": "203.0.113.7",
+            "method": "GET",
+            "path": "/api/status",
+            "req_headers": [["Host", "myhome.local"], ["Content-Type", "application/json"]],
+            "req_body_b64": "",
+            "resp_headers": [["Content-Type", "application/json"]],
+            "resp_body_b64": b64(b'{"msg":"reach 203.0.113.9."}'),
+            "body_omitted": False,
+        })
+        result = decode_recording.decode_lines([web], {}, True)
+        entry = result[0]
+        self.assertIsNone(entry["error"])
+        headers = dict((h[0], h[1]) for h in entry["req_headers"])
+        self.assertEqual(headers["Host"], "device-1")
+        self.assertEqual(entry["response"], {"msg": "reach 192.0.2.2."})
+        text = json.dumps(result)
+        self.assertNotIn("myhome.local", text)
+        self.assertNotIn("203.0.113.9", text)
+        self.assertNotIn("203.0.113.7", text)
+
     def test_blank_lines_are_skipped(self):
         self.assertEqual(decode_recording.decode_lines([], {}, False), [])
         self.assertEqual(decode_recording.decode_lines(["", "   \n"], {}, False), [])

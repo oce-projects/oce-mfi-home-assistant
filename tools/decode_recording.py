@@ -38,7 +38,7 @@ RAW_BODY_KEYS = ("req_body_b64", "resp_body_b64")
 HEADER_KEYS = ("req_headers", "resp_headers")
 # \x40 is the '@' sign, written as an escape so no literal e-mail address appears in this source
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+\x40[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
-IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d.])")
+IPV4_RE = re.compile(r"(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?!\d)(?!\.\d)")
 MAC_RE = re.compile(r"(?i)(?<![0-9a-f])(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}(?![0-9a-f])")
 MAC_KEY_RE = re.compile(r"(?i)[0-9a-f]{12}|(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}")
 
@@ -107,7 +107,7 @@ class _Anonymizer:
     def _text(self, text: str, key: str) -> str:
         """Anonymize one string; key is the name of the field that holds it."""
         lowered = key.lower()
-        if lowered == "hostname":
+        if lowered in ("hostname", "host", "fqdn", "alias"):
             return self.host(text)
         if ("mac" in lowered or "serial" in lowered) and MAC_KEY_RE.fullmatch(text):
             return self.mac(text)
@@ -225,10 +225,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", required=True, help="folder for the decoded file")
     parser.add_argument("--anonymize", action="store_true", help="replace MACs, IPs, e-mails, host names and keys")
     args = parser.parse_args(argv)
+    if not args.anonymize:
+        print("warning: without --anonymize the output keeps real MACs, IPs and keys; do not commit it.",
+              file=sys.stderr)
     try:
         with open(args.backup, "rb") as handle:
             devices = unf.import_backup(handle.read())
-        with open(args.recording, encoding="utf-8") as handle:
+        with open(args.recording, encoding="utf-8", errors="replace") as handle:
             lines = handle.readlines()
     except (OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)

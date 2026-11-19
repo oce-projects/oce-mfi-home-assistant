@@ -62,7 +62,7 @@ def redact_headers(headers):
     """Return a new list of (name, value) pairs with sensitive values replaced."""
     out = []
     for name, value in headers:
-        if name.lower() in SENSITIVE_HEADER_NAMES:
+        if name.lower() in SENSITIVE_HEADER_NAMES or _is_sensitive_key(name):
             out.append((name, REDACTED))
         else:
             out.append((name, value))
@@ -104,6 +104,41 @@ def redact_body(body, content_type):
     return body
 
 
+def _redact_path(path):
+    """Return path with the values of sensitive query parameters replaced by REDACTED."""
+    if "?" not in path:
+        return path
+    base, _, query = path.partition("?")
+    pairs = urllib.parse.parse_qsl(query, keep_blank_values=True)
+    if not any(_is_sensitive_key(key) for key, _ in pairs):
+        return path
+    redacted = [(key, REDACTED if _is_sensitive_key(key) else value) for key, value in pairs]
+    return base + "?" + urllib.parse.urlencode(redacted)
+
+
+def _web_body(body, content_type):
+    """Return (stored_bytes, omitted) for a web (6443) body.
+
+    A decodable JSON or x-www-form-urlencoded body is redacted and kept; any other
+    body - multipart, binary, or JSON/form that does not decode - is dropped
+    (b"", True) so a secret in a malformed body is never written to the raw.
+    """
+    lc = (content_type or "").lower()
+    if "json" in lc:
+        try:
+            json.loads(body.decode("utf-8"))
+        except ValueError:
+            return b"", True
+        return redact_body(body, content_type), False
+    if "x-www-form-urlencoded" in lc:
+        try:
+            body.decode("utf-8")
+        except ValueError:
+            return b"", True
+        return redact_body(body, content_type), False
+    return b"", True
+
+
 def _file_size(path):
     try:
         return os.path.getsize(path)
@@ -129,31 +164,22 @@ def record_line(out_dir, port_label, client, method, path, req_headers, req_body
     port = int(port_label)
     limit_bytes = int(max_mb * 1024 * 1024)
     day_file = os.path.join(out_dir, time.strftime("%Y-%m-%d", time.localtime(now)) + ".jsonl")
-    ctype = (resp_content_type or "").lower()
     if port == INFORM_PORT:
         stored = resp_body
         omitted = False
-    elif "json" in ctype or "form" in ctype:
-        stored = redact_body(resp_body, resp_content_type)
-        omitted = False
     else:
-        stored = b""
-        omitted = True
+        stored, omitted = _web_body(resp_body, resp_content_type)
     req_ctype = _header_value(req_headers, "Content-Type")
     if port == INFORM_PORT:
         req_stored = redact_body(req_body, req_ctype)
     else:
-        req_lc = (req_ctype or "").lower()
-        if "json" in req_lc or "x-www-form-urlencoded" in req_lc:
-            req_stored = redact_body(req_body, req_ctype)
-        else:
-            req_stored = b""
+        req_stored = _web_body(req_body, req_ctype)[0]
     entry = {
         "t": int(now * 1000),
         "port": port,
         "client": client,
         "method": method,
-        "path": path,
+        "path": _redact_path(path),
         "req_headers": redact_headers(req_headers),
         "req_body_b64": _b64(req_stored),
         "status": int(status),
@@ -265,6 +291,7 @@ def _upstream_context(target_host):
     if target_host == "127.0.0.1":
         context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
         context.verify_mode = ssl.CERT_NONE
+        context.options |= ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3
         return context
     return ssl.create_default_context()
 
@@ -283,6 +310,7 @@ def build_proxy_server(bind_host, listen_port, target_host, target_port, out_dir
         server.upstream_context = _upstream_context(target_host) if server.proxy_tls else None
         if use_tls:
             context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            context.options |= ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3
             context.load_cert_chain(cert_file, key_file)
             server.socket = context.wrap_socket(server.socket, server_side=True)
     except Exception:
