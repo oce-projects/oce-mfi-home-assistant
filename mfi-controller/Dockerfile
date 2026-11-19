@@ -12,6 +12,7 @@
 #   0.1.2 - 2026-11-15 - BUILD_VERSION default aligned with config.yaml; version line removed from the header.
 #   0.1.3 - 2026-11-15 - BUILD_VERSION 0.1.3 (security notes in DOCS.md).
 #   0.1.4 - 2026-11-16 - store presentation: name "(original)", short description; version 0.1.4. Image content unchanged.
+#   0.2.0 - 2026-11-19 - compatibility recorder: python3 and openssl in the image, recorder.py copied; BUILD_VERSION 0.2.0.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -43,7 +44,7 @@ RUN curl -fsSL --retry 3 -o /tmp/mFi.unix.zip "${MFI_URL}" \
 # -----------------------------------------------------------------------------
 FROM debian/eol:jessie@sha256:81cc60273fcd009665b917085e8edb4a44af01130e42a9349545bcaaf05236a2
 
-ARG BUILD_VERSION="0.1.4"
+ARG BUILD_VERSION="0.2.0"
 ARG BUILD_ARCH="amd64"
 
 RUN apt-get update \
@@ -54,6 +55,8 @@ RUN apt-get update \
         procps \
         curl \
         ca-certificates \
+        python3 \
+        openssl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -72,6 +75,7 @@ RUN groupadd -r -g 500 mfi \
 
 COPY run.sh /run.sh
 RUN chmod 0755 /run.sh
+COPY recorder.py /recorder.py
 
 LABEL \
     io.hass.version="${BUILD_VERSION}" \
