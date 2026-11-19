@@ -1,0 +1,18 @@
+{
+  "code": "R-FORGET",
+  "source": "synthetic",
+  "owner_epic": "EPIC-02",
+  "handler": "mfi_server_next.inform.handle_inform",
+  "request": {
+    "mac": "002722000001",
+    "ip": "192.168.1.20",
+    "state": 1,
+    "action": "delete-ap"
+  },
+  "expected": {
+    "status": 200,
+    "keys": {
+      "_type": "str"
+    }
+  }
+}

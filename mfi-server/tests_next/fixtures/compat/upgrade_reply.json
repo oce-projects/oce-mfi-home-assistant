@@ -1,0 +1,24 @@
+{
+  "code": "R-UPDATE",
+  "source": "synthetic",
+  "owner_epic": "EPIC-02",
+  "handler": "mfi_server_next.firmware.firmware_for_model",
+  "request": {
+    "mac": "002722000001",
+    "ip": "192.168.1.20",
+    "model": "M2M",
+    "firmware": "2.1.1.0",
+    "server": "mfi-server"
+  },
+  "expected": {
+    "keys": {
+      "_type": "str",
+      "url": "str",
+      "version": "str"
+    },
+    "values": {
+      "url": "http://mfi-server:6080/dl/firmware/M2M/2.1.11.1309/firmware.bin",
+      "version": "2.1.11.1309"
+    }
+  }
+}
