@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.26.0 - 2026-11-19
+
+- feat(mfi-server): EPIC-01 shared interfaces of the new server — config, store, crypto (AES-128, PBKDF2) and BSON reader in `mfi_server_next`, with tests in `mfi-server/tests_next` (ticket T-MWNRGL7N).
+
 ## 0.25.0 - 2026-11-19
 
 - feat(mfi-server): EPIC-00 skeleton of the new server package `mfi_server_next` and the `mfi-server/tests_next` suite (ticket T-MWNRGISH).

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.0 - 2026-11-19
+
+- EPIC-01: shared modules of the new server (`mfi_server_next`): `config.load_settings`, `store.Store`, `crypto` (AES-128-CBC and PBKDF2) and `bson.read_bson_stream`, each with tests in `mfi-server/tests_next`. The new package is still not wired in and the Dockerfile keeps copying only `mfi_server`.
+
 ## 0.14.0 - 2026-11-19
 
 - EPIC-00: skeleton of the new server package `mfi_server_next` with one stub module per planned module; every public name raises NotImplementedError and no stub imports the old `mfi_server` package. New tests in `mfi-server/tests_next`. The new package is not wired in and the Dockerfile still copies only `mfi_server`, so the running add-on is unchanged.
