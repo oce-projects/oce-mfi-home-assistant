@@ -6,9 +6,9 @@ This is a clean-room report of the mPower family (codes P1U, P1E, P3U, P3E, P6E,
 
 - OBSERVED: the controller accepts the model codes P1U, P1E, P3U, P3E, P6E and P8U as mFi models. Source: PROTO "Devices" (accepted models list).
 - OBSERVED: ports created at adoption: P1U and P1E 1; P3U and P3E 3; P6E 6; P8U 8. Source: PROTO "Devices" (model code table); INV "Products" (rows mPower mini, mPower and mPower PRO).
-- INFERRED: P1E is the mPower mini EU and P3E is the mPower EU with 3 outlets, from device names in real backups. Source: PROTO "Devices" (commercial names paragraph).
-- INFERRED: P6E is the mPower PRO EU (6 outlets) and P8U is the mPower PRO US (8 outlets), because the outlet counts match the official Quick Start Guides. Source: PROTO "Devices" (family table and commercial names paragraph).
-- UNVERIFIED: the commercial name and region of P1U and P3U. The documents give only the codes. Source: PROTO "Devices"; INV "Products" (mPower mini and mPower rows, commercial name INFERRED).
+- Outlet counts in the official guides: mPower mini 1 (US and EU), mPower 3 (US and EU), mPower PRO US 8, mPower PRO EU 6. Source: specifications of QSG-MINI-US, QSG-MPOWER-US, QSG-PRO-US, QSG-PRO-EU.
+- Commercial mapping: P1U = mPower mini US, P1E = mPower mini EU, P3U = mPower US, P3E = mPower EU, P8U = mPower PRO US, P6E = mPower PRO EU. INFERRED from the outlet count and the U/E suffix, consistent with two sources. Source: PROTO "Devices" (model code table); specifications of QSG-MINI-US, QSG-MPOWER-US, QSG-PRO-US, QSG-PRO-EU.
+- The mPower PRO has a 10/100 Ethernet port; the other models are Wi-Fi only (specifications). The mPower and mPower PRO have a circuit breaker reset button (QSG-PRO-EU p. 4, QSG-MPOWER-US). CONFIRMED (official guide). Source: specifications; QSG-PRO-EU p. 4; QSG-MPOWER-US.
 - OBSERVED: every P model has an entry in the firmware archive table. Source: PROTO "Firmware archive" (10 models list).
 - OBSERVED: every outlet of every P model is the same sensor type, "Outlet", with the same six measured quantities. The documents show no different outlet type per model. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 2 (row Outlet); INV "Products" (measures column).
 - OBSERVED: the P models receive the outlet form of `port_cfg` (`vpower` lines), not the mPort lines. Source: PROTO "mPort and sensors (from ace.jar 2.1.11)", section 3; PROTO "Controller responses" (port_cfg for mPower).
@@ -60,7 +60,7 @@ For each setting the status says whether the value goes to the device (setparam 
 
 - OBSERVED: the outlet label is the field `label` of the sensor record, sent as `port.N.label` in `port_cfg`. The default is "Outlet", the last 6 characters of the MAC without colons, and the port number. Source: PROTO "Device configuration (setparam)" (label bullet).
 - OBSERVED: the device name is the field `name` of the device record. In `system_cfg` it becomes a host name with non-alphanumeric characters removed and at most 31 characters. Source: PROTO "Device configuration (setparam)" (ConfigService bullet).
-- UNVERIFIED: an LED setting for the P models. The documents list no LED field for the outlet type. Searched: PROTO "Device configuration (setparam)", "Measurements", "Controller responses" and INV "Products". The only LED field in the documents is `led_brightness` of the in-wall dimmer IWD1U, which is not a P model. Source: INV "Products" (IWD1U row).
+- The mPower PRO EU has 1 status LED (specifications). A controller LED setting for the P models stays UNVERIFIED: the documents list no LED field for the outlet type (the only LED field is `led_brightness` of the in-wall dimmer IWD1U, not a P model). Source: specifications of QSG-PRO-EU; INV "Products" (IWD1U row).
 - UNVERIFIED: a report interval setting per model. Searched the same sections as above. Source: PROTO "Device configuration (setparam)"; PROTO "Measurements".
 - OBSERVED: `dimmer_mode` is sent in `device_cfg` only for the IWD1U dimmer, not for P models. Source: PROTO "Device configuration (setparam)"; PROTO "mPort and sensors (from ace.jar 2.1.11)", section 3.
 - OBSERVED: the `locate` command exists for every device and carries no fields. Source: PROTO "Commands to the device" (`cmd: locate`).
