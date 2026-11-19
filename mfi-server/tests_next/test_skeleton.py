@@ -39,7 +39,6 @@ FUNCTIONS = {
 
 CLASSES = {
 
-    "udp_discovery": {"UdpDiscovery": []},
     "sensors": {"SensorRegistry": []},
     "rules": {"AutomationEngine": ["tick"], "AutomationStore": []},
     "events": {"EventLog": ["record"]},

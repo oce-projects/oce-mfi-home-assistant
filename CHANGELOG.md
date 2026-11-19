@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.29.0 - 2026-11-19
+
+- EPIC-03 (T-MWNRGMOU): UDP discovery on port 10001 in the new server (`mfi_server_next/udp_discovery.py`), with its tests in `mfi-server/tests_next/test_udp_discovery.py`.
+
 ## 0.28.0 - 2026-11-19
 
 - EPIC-02 (T-MWNRGM6J): inform protocol, device registry, adoption, command queue, firmware and wake-up in the new server (`mfi_server_next`).

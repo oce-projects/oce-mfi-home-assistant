@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.0 - 2026-11-19
+
+- EPIC-03 (T-MWNRGMOU): UDP discovery on port 10001 in the new server (`mfi_server_next/udp_discovery.py`): the 4-byte query, TLV reply parsing with ValueError on truncated data, device fields with the firmware and model fallbacks of the 2.1.11 firmware, and a scan to the broadcast and multicast addresses with a socket timeout. The old `mfi_server` package is unchanged. The discovery fixture of EPIC-01b is not yet enabled (see the note of this change).
+
 ## 0.17.0 - 2026-11-19
 
 - EPIC-02: inform and devices in `mfi_server_next` — `firmware.py` (firmware_for_model, build_upgrade), `devices.py` (DeviceRegistry, SSH set-adopt with administrator-then-factory retry, devices.json at 0600), `tasks.py` (TaskQueue, mfi-output command, 20-byte wake-up on UDP 3478) and `inform.py` (TNBU decrypt with key trial, handle_inform reply noop/setparam/upgrade/cmd, inform HTTP server on port 6080). The EPIC-01b compatibility fixtures owned by EPIC-02 are now checked instead of pending.
