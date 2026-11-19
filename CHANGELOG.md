@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.22.17 - 2026-11-19
+
+- docs: alarms and monitors of the 2.1.11 controller (clean room report) (ticket T-MWMRRA3X).
+
 ## 0.22.16 - 2026-11-19
 
 - docs: web API and Comet of the 2.1.11 controller (clean room report) (ticket T-MWMRR8ZW).
