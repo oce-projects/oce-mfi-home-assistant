@@ -2,7 +2,7 @@
   "code": "R-UPDATE",
   "source": "synthetic",
   "owner_epic": "EPIC-02",
-  "handler": "mfi_server_next.firmware.firmware_for_model",
+  "handler": "mfi_server_next.firmware.build_upgrade",
   "request": {
     "mac": "002722000001",
     "ip": "192.168.1.20",

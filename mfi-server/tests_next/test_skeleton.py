@@ -24,8 +24,7 @@ MODULE_NAMES = [
 
 FUNCTIONS = {
     "__main__": ["main"],
-    "inform": ["handle_inform"],
-    "firmware": ["firmware_for_model"],
+
     "sensors": ["build_port_config"],
     "serial": ["build_ser2net_cfg", "kick_serial"],
     "auth": ["login", "check_session"],
@@ -39,8 +38,7 @@ FUNCTIONS = {
 }
 
 CLASSES = {
-    "devices": {"DeviceRegistry": []},
-    "tasks": {"TaskQueue": ["enqueue", "pop_for_mac"]},
+
     "udp_discovery": {"UdpDiscovery": []},
     "sensors": {"SensorRegistry": []},
     "rules": {"AutomationEngine": ["tick"], "AutomationStore": []},
