@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.23.2 - 2026-11-19
+
+- docs: cross-check of the REA documents against the official Ubiquiti guides (docs/OFFICIAL-SOURCES.md); web shell and script action corrected (serial line of the mPort Serial); adoption credentials and key order resolved; missing official features added to the parity table.
+
 ## 0.23.1 - 2026-11-19
 
 - docs: rebuild plan corrected: separate next package, compatibility test bench, web page, automation editor and import, security option A, controller-compatible API (ticket T-MWN7CLH0).
