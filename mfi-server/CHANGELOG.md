@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.0 - 2026-11-19
+
+- EPIC-00: skeleton of the new server package `mfi_server_next` with one stub module per planned module; every public name raises NotImplementedError and no stub imports the old `mfi_server` package. New tests in `mfi-server/tests_next`. The new package is not wired in and the Dockerfile still copies only `mfi_server`, so the running add-on is unchanged.
+
 ## 0.13.1 - 2026-11-17
 
 - SSH adoption and re-pointing work with OpenSSH 10 (the base image is Debian 13): the default `ssh_extra_options` no longer lists `ssh-dss`, because OpenSSH 10 has no DSA. `HostKeyAlgorithms` keeps `ssh-rsa`, and `KexAlgorithms` and `Ciphers` keep the old algorithms the devices need.
