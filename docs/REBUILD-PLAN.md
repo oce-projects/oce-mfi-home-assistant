@@ -13,8 +13,8 @@ Network and Wi-Fi rows that build a risky function carry the owner decision of 2
 | Area | Function | Source doc | Label | Target epic | Closed by |
 |---|---|---|---|---|---|
 | Inform and devices | Adoption from the UI (adopt command, SSH set-adopt on port 22) | docs/controller/device-lifecycle.md (section 1) | OBSERVED | EPIC-02 Inform and devices | — |
-| Inform and devices | Credentials used for UI adoption (administrator or factory) | docs/controller/device-lifecycle.md (section 1) | UNVERIFIED, needs device test | EPIC-02 Inform and devices | R-ADOPT |
-| Inform and devices | Decryption key order for a device that has a previous key | docs/controller/device-lifecycle.md (section 1) | UNVERIFIED, needs device test | EPIC-02 Inform and devices | R-ADOPT |
+| Inform and devices | Credentials used for UI adoption: factory credentials on a factory-default device, controller administrator after adoption; mfi-server tries the administrator first and retries once with the factory credentials on loginfailed | docs/controller/device-lifecycle.md (section 1); QSG-PRO-EU p. 16; QSG-MPORT-S p. 17; UG-V11 p. 7 | CONFIRMED (official guide) | EPIC-02 Inform and devices | — |
+| Inform and devices | Decryption key order for a device that has a previous key: the controller tries a list of candidate keys one by one (InformServlet), first that decrypts wins; mfi-server tries every known key (x_prev_authkey, x_authkey, factory key) | docs/controller/device-lifecycle.md (section 1) | OBSERVED | EPIC-02 Inform and devices | — |
 | Inform and devices | Device-side handling of a manual set-inform | docs/controller/device-lifecycle.md (section 1) | UNVERIFIED, needs device test | EPIC-02 Inform and devices | R-ADOPT |
 | Inform and devices | Automatic re-adoption of an adopted device that informs with the default flag | docs/controller/device-lifecycle.md (section 2) | OBSERVED | EPIC-02 Inform and devices | — |
 | Inform and devices | Inform URL pushed to a device with setparam (mgmt_cfg) | docs/controller/device-lifecycle.md (section 2) | OBSERVED | EPIC-02 Inform and devices | — |
@@ -81,7 +81,7 @@ Network and Wi-Fi rows that build a risky function carry the owner decision of 2
 | Rules and scenes | Sensor threshold implemented as a ruleset, not as an alarm definition | docs/controller/alarms.md (section 5) | OBSERVED | EPIC-05 Rules and scenes | — |
 | Rules and scenes | Time rules with weekly intervals in the server time zone and calendars | docs/PROTOCOL.md (Rules and scenes) | OBSERVED | EPIC-05 Rules and scenes | — |
 | Rules and scenes | Scenes group relaySwitch, script and url actions and raise EVT_mFi_Action | docs/PROTOCOL.md (Rules and scenes, Events) | OBSERVED | EPIC-05 Rules and scenes | — |
-| Rules and scenes | Script action run on a device over telnet (off by default with a risk warning, see section 3) | docs/controller/INVENTORY.md (Classes, class_27) | OBSERVED | EPIC-05 Rules and scenes | — |
+| Rules and scenes | Script action: a block of text sent to the serial port of the corresponding mPort Serial (off by default with a risk warning, see section 3) | docs/controller/INVENTORY.md (Classes, class_27); UG-V11 p. 23 | CONFIRMED (official guide) | EPIC-05 Rules and scenes | — |
 | Rules and scenes | relaySwitch action skips a port whose output_lock is 1 and records an error | docs/controller/in-wall.md (section 4) | OBSERVED | EPIC-05 Rules and scenes | — |
 | Rules and scenes | URL action: POST with rule, sensor and value fields to the addr list | docs/PROTOCOL.md (Rules and scenes) | OBSERVED | EPIC-05 Rules and scenes | — |
 | Events | Save device events to the event collection with key and message | docs/PROTOCOL.md (Events) | OBSERVED | EPIC-06 Events | — |
@@ -146,6 +146,21 @@ Network and Wi-Fi rows that build a risky function carry the owner decision of 2
 | Network and Wi-Fi | Wi-Fi setup form for devices in setup mode: essid, security, WEP and WPA fields, no channel field | docs/PROTOCOL.md (Wi-Fi setup mode); docs/WIFI-SETUP.md | OBSERVED | Not in mfi-server: stays in mfi-wifi-setup (section 5) | — |
 | Network and Wi-Fi | WLAN settings change the configuration version and are sent with setparam | docs/PROTOCOL.md (Device configuration); docs/controller/network-tools.md (section 4) | OBSERVED | EPIC-13 Network and Wi-Fi | — |
 | Network and Wi-Fi | Wi-Fi block format sent to devices and the vap_table conflict (needs device test) | docs/controller/network-tools.md (section 4) | UNVERIFIED, needs device test | EPIC-13 Network and Wi-Fi | R-WEB |
+| Rules and scenes | Vacation mode; the port is switched off when vacation mode ends | REL-2.1.8 | OFFICIAL GUIDE ONLY | EPIC-05 Rules and scenes | R-WEB |
+| System | NTP client control in the UI; time zone pushed to the devices | REL-2.1.8 | OFFICIAL GUIDE ONLY (time zone push: CONFIRMED, PROTOCOL.md system_cfg) | EPIC-10 System | R-WEB |
+| Network and Wi-Fi | RADIUS (WPA Enterprise) authentication of the device Wi-Fi | REL-2.1.11 | OFFICIAL GUIDE ONLY | EPIC-13 Network and Wi-Fi | R-WEB |
+| Events | Email action with "hold additional email alerts for N minutes" and SMS through a mail-to-SMS gateway address | UG-V11 p. 23 | CONFIRMED (official guide) | EPIC-06 Events | R-WEB |
+| Events | Generate event with "don't create an event again for N minutes"; Create System Alert | UG-V11 p. 23 | OFFICIAL GUIDE ONLY | EPIC-06 Events | R-WEB |
+| Rules and scenes | Copy a rule; enable or disable a rule with an On/Off button | UG-V11 p. 24 | OFFICIAL GUIDE ONLY | EPIC-05 Rules and scenes | R-WEB |
+| Rules and scenes | Condition sets nested with Any/All; a schedule alone fires at its start and switches the output off at its end; a schedule with other conditions is an activity window | UG-V11 p. 22 | CONFIRMED (official guide) | EPIC-05 Rules and scenes | R-WEB |
+| Rules and scenes | Output action with a duration in seconds, minutes or hours | UG-V11 p. 23 | CONFIRMED (official guide) | EPIC-05 Rules and scenes | R-MPOWER |
+| Statistics | Energy price per kWh and currency symbol; monthly power and monthly cost of an outlet over 30 days | UG-V11 p. 10, p. 31 | OFFICIAL GUIDE ONLY | EPIC-07 Statistics | R-WEB |
+| Web page | Auto refresh: manual, 5 s, 15 s, 30 s, 1 min, 2 min (default), 5 min | UG-V11 p. 9 | OFFICIAL GUIDE ONLY | EPIC-16 Web page | - |
+| Web page | Data tab: saved views built by drag and drop, timeline zoom, outlet charts Power, Output, Power Factor, Total Energy, Voltage, Current | UG-V11 p. 16-18 | OFFICIAL GUIDE ONLY | EPIC-16 Web page | R-WEB |
+| Web page | Events tab: filter, date range, temporal distribution (2-hour bars over 24 h) and device distribution (pie) | UG-V11 p. 19-20 | OFFICIAL GUIDE ONLY | EPIC-16 Web page | R-WEB |
+| Maps and dashboard | Map scale in metres or feet; motion sensor field drawn on the map; lock an icon; topology view | UG-V11 p. 11-15 | OFFICIAL GUIDE ONLY | EPIC-12 Maps and dashboard | R-WEB |
+| System | Backup limited to a chosen time period of data; Support Info download | UG-V11 p. 10 | OFFICIAL GUIDE ONLY | EPIC-10 System | R-WEB |
+| Sensors and mPort | Move a machine to another outlet keeping its data and rules ("Move Device") | UG-V11 p. 31 | CONFIRMED (official guide) | EPIC-04 Sensors and mPort | R-MPOWER |
 
 ## Architecture
 
@@ -335,8 +350,10 @@ The owner decided the entries of 2026-11-19 (owner decision 2026-11-19): the fiv
 
 ### Webshell
 
-- Risk: a terminal in the browser on a device or on the controller would give a shell to anyone who reaches the web interface. The 2015 firmware and controller have known weaknesses and an authentication bypass reported in 2015 (AGENTS.md rule 8). The access check of the controller is UNVERIFIED, needs device test (`docs/controller/network-tools.md`, section 1).
-- Decision: implement, off by default, with a risk warning on the page and in DOCS.md (owner decision 2026-11-19).
+- Purpose: the web shell is a command line toward a serial-based device connected to an mPort Serial, not a shell on the controller. UG-V11 p. 13 says the Shell icon is "only available for serial-based devices" and that TCP port 2323 must be open on the controller firewall; UG-V11 p. 28 shows the IP address, port and protocol of the serial device and a "Web Shell" button. CONFIRMED (official guide) for the serial purpose (`docs/controller/network-tools.md`, section 1).
+- Code check (REA, class `com.ubnt.ace.view.WebshellServlet`): the request carries `host`, `port` and `protocol` (`ssh` or `telnet`) and the servlet requires a logged-in admin session (`api.err.LoginRequired` otherwise). OBSERVED.
+- Risk: the host and port come from the request and the code read shows no check that they belong to an adopted device, so the web shell can open a connection to any host and port reachable from the controller. OBSERVED for the parameters, UNVERIFIED for the absence of a check.
+- Decision: implement, off by default, with a risk warning on the page and in DOCS.md (owner decision 2026-11-19). The new server allows the web shell only toward the host and port of an adopted mPort Serial.
 - Built in EPIC-13; abuse tests; owner approval before merge.
 
 ### SSH from the browser
@@ -359,7 +376,8 @@ The owner decided the entries of 2026-11-19 (owner decision 2026-11-19): the fiv
 
 ### Script action over telnet
 
-- Risk: a rule or scene action runs a script on a device over telnet. Telnet sends the commands and any credential without encryption, and the device side of the action is UNVERIFIED, needs device test (`docs/controller/INVENTORY.md`, Classes, class_27).
+- What it is: a rule or scene script action is a block of text sent to the serial port of the corresponding mPort Serial, not a root shell on the device. UG-V11 p. 23: "A script is a block of text that is sent out to the serial port of the corresponding mPort Serial"; QSG-MPORT-S p. 4: the terminal block port is "for automation, such as script execution from the mFi Controller software". CONFIRMED (official guide) (`docs/controller/INVENTORY.md`, Classes, class_27).
+- Risk: the commands are sent in clear text over telnet to the serial line of a device; it is not a root shell on the device, and the device side of the action is UNVERIFIED, needs device test.
 - Decision: implement, off by default, with a risk warning on the page and in DOCS.md (owner decision 2026-11-19).
 - Built in EPIC-05; abuse tests; owner approval before merge.
 
@@ -404,7 +422,7 @@ Rules for every epic: at most 10 subtasks, each with at most 10 files. The numbe
 12. **EPIC-10 System.** Files: `migrate.py` and its tests. Dependencies: EPIC-01, EPIC-07, EPIC-02. Expected version: mfi-server minor.
 13. **EPIC-11 Web API.** Files: `page_api.py`, `comet.py` (buffer) and their tests. The page API exposes the events, alarms and backup-import routes, so it depends on the modules that own them. Dependencies: EPIC-02, EPIC-04, EPIC-05, EPIC-06, EPIC-07, EPIC-08, EPIC-09, EPIC-10. Expected version: mfi-server minor.
 14. **EPIC-12 Maps and dashboard.** Files: `maps.py` and its tests. Dependencies: EPIC-11. Expected version: mfi-server minor.
-15. **EPIC-13 Network and Wi-Fi.** Files: the Wi-Fi block in `sensors.py`; the webshell, SSH from the browser, UPnP and guest page, each off by default with a risk warning on the page and in DOCS.md; with tests, including abuse tests. The Wi-Fi setup form for devices in setup mode stays in mfi-wifi-setup (section 5). Dependencies: EPIC-02, EPIC-09, EPIC-11. Expected version: mfi-server minor. Owner approval before merge.
+15. **EPIC-13 Network and Wi-Fi.** Files: the Wi-Fi block in `sensors.py`; the webshell, SSH from the browser, UPnP and guest page, each off by default with a risk warning on the page and in DOCS.md; with tests, including abuse tests. The web shell is allowed only toward the host and port of an adopted mPort Serial (serial line over telnet, see Security review). The Wi-Fi setup form for devices in setup mode stays in mfi-wifi-setup (section 5). Dependencies: EPIC-02, EPIC-09, EPIC-11. Expected version: mfi-server minor. Owner approval before merge.
 16. **EPIC-14 MQTT.** Files: `mqtt.py`, `mqtt_discovery.py` and their tests. Dependencies: EPIC-02, EPIC-04, EPIC-05, EPIC-07, EPIC-08. Expected version: mfi-server minor.
 17. **EPIC-15 Migration and 1.0.0 switch.** Files: `__main__.py`, the add-on entry point, `config.yaml`, `Dockerfile`, `CHANGELOG.md`, `mfi_server/__init__.py`, and the switch of the package name in the add-on. Dependencies: EPIC-00 to EPIC-14 and EPIC-16 to EPIC-19 (all approved epics). Runs last. Expected version: mfi-server 1.0.0 (major).
 18. **EPIC-16 Web page (style A).** Files: `mfi_server_next/web/` (`index.html`, `style.css`, `app.js`, `i18n/en.json`, `i18n/it.json`) and their tests. Views: devices, ports and outlets, measurements, rules and scenes, alarms and events, users, maps and dashboard, system. Dependencies: EPIC-11. Expected version: mfi-server minor.
@@ -418,7 +436,7 @@ The new server ships as mfi-server 1.0.0, a major version, because everything ch
 
 ## Compatibility test bench
 
-The device tests of section 1 need real traffic. The bench is the recorder of the controller add-on and the offline decoder that already exist; no new tool is needed for the recording.
+The device tests of section 1 need real traffic. The bench is the recorder of the controller add-on and the offline decoder that already exist; no new tool is needed for the recording. The official sources used in this plan are listed in docs/OFFICIAL-SOURCES.md.
 
 - **Recorder**: `mfi-controller/recorder.py` (ticket REG 1, repository 0.23.0). It records the exchanges on the inform port 6080 and on the web port 6443 of the original controller. Files are written to `/share/mfi-recordings/` in the add-on share.
 - **Decoder**: `tools/decode_recording.py --anonymize` (offline, standard library). The anonymised output contains no real MAC address, IP address, host name or authkey. The anonymised files are checked before commit.
@@ -437,18 +455,17 @@ Recording codes and the rows of section 1 they close:
 | R-MPORT | mPort with sensors: assign, calibration, custom sensor, output port | Spelling "Output  5v", custom sensor keys, output command, output power-on state |
 | R-SERIAL | mPort M2S with the Serial sensor | Flow control, serial data channel, M2S measurements |
 | R-MPOWER | mPower outlets: on/off, timer, cycle, lock, energy counter, LED | Timer field, cycle command, manual energy reset, power of P1U, P3U and P8U, LED and locate |
-| R-INWALL | In-wall dimmer and switch, only if the owner has them (not verified) | Dimmer scale, IWS1U functions |
+| R-INWALL | not recorded: the owner has no in-wall device; documents only (owner decision 2026-11-19) | Dimmer scale, IWS1U functions |
 | R-WEB | Controller web UI: login, users, rules and scenes, maps, alarms, events, statistics, backup download and restore, WLAN settings, guest page | Every row marked R-WEB in section 1 (users, events, statistics, alarms, web API routes, maps, system, network) |
-| R-DISC | Not recorded by REG 1: the recorder covers TCP ports 6080 and 6443 only | UDP discovery on port 10001 and UPnP. Open: a separate UDP capture (section 9) |
+| R-DISC | Not recorded by REG 1: the recorder covers TCP ports 6080 and 6443 only; a separate UDP capture, owner decision 2026-11-19 (ticket to come) | UDP discovery on port 10001 and UPnP |
 
 MANUAL STEP (owner): run the controller add-on with real devices and record, one session per item: adoption, power on and off, firmware update, forget, factory reset, mPort sensors, mPort M2S serial, and mPower outlets (timer, cycle, lock). In the same sessions, use the controller web UI for the R-WEB actions. In-wall models only if the owner has them (not verified). The owner copies the recordings out of the add-on share, anonymises them with `tools/decode_recording.py --anonymize`, and reviews them before they are committed to `mfi-server/tests_next/fixtures/compat/`. The agent does not run the recordings.
 
 ## Open questions for the owner
 
-- Device-test gaps that block parts of the plan: the discovery port 10001 (not recorded by REG 1; decide whether a separate UDP capture is added), the decryption key order, the manual set-inform, the upgrade comparison rule and integrity check, the outlet timer and cycle command, the dimmer scale, the mPort port mapping for outputs, the custom sensor keys, and the serial data channel.
+- Device-test gaps that block parts of the plan: the discovery port 10001 (not recorded by REG 1; decide whether a separate UDP capture is added), the manual set-inform, the upgrade comparison rule and integrity check, the outlet timer and cycle command, the dimmer scale, the mPort port mapping for outputs, the custom sensor keys, and the serial data channel.
 - UNVERIFIED routes: the Comet route, the statistics, rule, event and alarm routes, logout, and the map upload. Each needs a route check through R-WEB against a running controller before EPIC-17 starts; the page routes of EPIC-11 are checked the same way.
 - Settings and retention: the unit of `storage.ttl_time`, whether a removal job runs by itself, and the size limit of the live update buffer and of map images.
 - Restore body: whether a failed backup read leaves a partial database in the controller. This must be tested on a copy of a controller before the migration design is final.
 - Firmware fallback table: the measured table (10 models, 2.1.11.1309) against the 13-model table at 2.0.7 that the report mentions. Which one applies is UNVERIFIED, needs device test.
-- Credentials for UI adoption and the decryption order: the sources disagree, so the owner chooses which behaviour mfi-server follows until a device test settles it.
 - Future work after parity (not an open question, not one of the epics above): new firmware for the devices.
