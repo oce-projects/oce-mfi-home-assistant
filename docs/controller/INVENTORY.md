@@ -8,7 +8,7 @@ Counts: the report gives class counts per package that add up to 141 (com.ubnt.d
 
 | Area | What it does | Classes | MongoDB collections | In mfi-server | Detail doc | Status |
 |---|---|---|---|---|---|---|
-| Inform and devices | Receives inform packets, chooses the response, keeps device state and the command queue | InformServlet, DeviceManager, ConfigService, Device record, Task, class_6, class_39, net.class_3/5/63/69 | device (OBSERVED from the PROTOCOL device collection); task (UNVERIFIED name) | partial | device-lifecycle.md | OBSERVED |
+| Inform and devices | Receives inform packets, chooses the response, keeps device state and the command queue | InformServlet, DeviceManager, ConfigService, Device record, Task, class_6, class_39, net.class_3/5/63/69 | device (OBSERVED from the PROTOCOL device collection); task (name confirmed by REA, see device-lifecycle.md §3) | partial | device-lifecycle.md | OBSERVED |
 | Discovery | UDP discovery on port 10001: TLV announcements and replies | com.ubiquiti.discovery.* (18), UbntDiscoveryServer, DatagramQueryServer, LiteStationQueryServer, class_4 | none found | yes | network-tools.md | OBSERVED |
 | Sensors and mPort | Reads measurements and new sensors from the inform, sensor model table | sensor service (ooOO.class_13), class_46, Sensor, CustomSensors, M2mgeneric, TagMapping, SensorTagMapping | sensor, m2mgeneric | no | mport.md | INFERRED |
 | Rules and scenes | Rules engine: triggers, conditions, actions, time rules, scenes, scripts | service.D class_31, class_32, class_33, class_34, class_35, class_30, class_27, class_15, Ruleset, Scene, Script | rule, ruleset, ruleaction, rulestate, rulestatecalendar, ruleschedule, rulecondition, scene, sceneaction, script | partial | ../PROTOCOL.md | OBSERVED |
