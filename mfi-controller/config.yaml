@@ -5,7 +5,7 @@
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "Ubiquiti mFi Controller (original)"
-version: "0.2.0"
+version: "0.3.0"
 slug: "mfi_controller"
 description: "The original Ubiquiti controller 2.1.11, unchanged. Legacy: use mFi Server (new) instead."
 url: "https://github.com/oce-projects/oce-mfi-home-assistant"
@@ -14,6 +14,10 @@ arch:
 startup: application
 boot: auto
 stage: experimental
+# Passive UDP capture of the recorder (option record_traffic) listens on the host network; raw sockets need NET_RAW
+host_network: true
+privileged:
+  - NET_RAW
 webui: "https://[HOST]:[PORT:6443]/"
 watchdog: "tcp://[HOST]:[PORT:6443]"
 # The controller needs time to shut MongoDB down cleanly (measured: 1.5 s to 26 s)

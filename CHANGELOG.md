@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.24.0 - 2026-11-19
+
+- feat(mfi-controller): passive UDP capture (discovery 10001 and wake-up 3478) in the recorder, host_network and NET_RAW, TLV decoding in tools/decode_recording.py (ticket T-MWNRGIIJ).
+
 ## 0.23.2 - 2026-11-19
 
 - docs: cross-check of the REA documents against the official Ubiquiti guides (docs/OFFICIAL-SOURCES.md); web shell and script action corrected (serial line of the mPort Serial); adoption credentials and key order resolved; missing official features added to the parity table.
