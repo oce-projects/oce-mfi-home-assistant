@@ -57,6 +57,19 @@ class RecordRegistry:
         return dict(self._record) if mac == self._record["mac"] else None
 
 
+class _CorruptRegistry:
+    """A registry whose stored record has a malformed key, as a corrupt devices.json would."""
+
+    def get(self, mac):
+        return {
+            "mac": mac,
+            "adopted": True,
+            "x_authkey": "zz",
+            "x_prev_authkey": None,
+            "cfgversion": CFGVERSION,
+        }
+
+
 class TestDecode(unittest.TestCase):
     def test_first_key_that_decrypts_wins(self):
         packet = build_packet(bytes.fromhex(AUTHKEY), {"mac": MAC, "model": "M2M"})
@@ -157,6 +170,20 @@ class TestBuildInformResponse(unittest.TestCase):
         self.assertEqual(status, 200)
         _, reply, _ = inform.decode(body, [bytes.fromhex(PREV_AUTHKEY)])
         self.assertEqual(reply["_type"], "noop")
+
+    def test_corrupt_stored_key_gives_400_and_no_crash(self):
+        raw = build_packet(bytes.fromhex(AUTHKEY), {"mac": MAC, "cfgversion": CFGVERSION})
+        self.assertEqual(inform.build_inform_response(raw, _CorruptRegistry()), (400, b""))
+
+    def test_factory_key_does_not_drain_an_adopted_queue(self):
+        registry = adopted_registry()
+        queue = tasks.TaskQueue()
+        queue.enqueue(tasks.build_output_command(MAC, 1, 1))
+        forged = build_packet(inform.FACTORY_KEY, {"mac": MAC, "cfgversion": CFGVERSION})
+        status, _ = inform.build_inform_response(forged, registry, queue)
+        self.assertEqual(status, 200)
+        reply = inform.handle_inform({"mac": MAC, "cfgversion": CFGVERSION}, registry, queue)
+        self.assertEqual(reply["_type"], "cmd")
 
 
 class TestHandleInform(unittest.TestCase):

@@ -160,7 +160,7 @@ def _noop() -> dict:
     return {"_type": "noop", "interval": NOOP_INTERVAL_S}
 
 
-def handle_inform(payload=None, registry=None, tasks: task_queue.TaskQueue | None = None) -> dict:
+def handle_inform(payload=None, registry=None, tasks: task_queue.TaskQueue | None = None, *, authenticated: bool = True) -> dict:
     """Choose the answer to one inform payload. Always returns a dict whose "_type" is a str.
 
     Rules in the order of docs/PROTOCOL.md, "Controller responses": a payload that is not an
@@ -182,7 +182,8 @@ def handle_inform(payload=None, registry=None, tasks: task_queue.TaskQueue | Non
             return upgrade
     if adopted and payload.get("cfgversion") != device.get("cfgversion"):
         return {"_type": "setparam", "cfgversion": device.get("cfgversion")}
-    if adopted and tasks is not None:
+    # A forged inform decrypted only with the public factory key must not drain the command queue.
+    if adopted and authenticated and tasks is not None:
         task = tasks.pop_for_mac(mac)
         if task is not None:
             # A queued task is delivered once; it is a cmd unless it says otherwise.
@@ -204,7 +205,11 @@ def build_inform_response(raw: bytes, registry, tasks: task_queue.TaskQueue | No
     except InformError as exc:
         logger.warning("inform rejected: %s", exc.reason)
         return exc.status, b""
-    reply = handle_inform(payload, registry, tasks)
+    except ValueError as exc:
+        logger.warning("inform rejected: stored key is not valid: %s", exc)
+        return 400, b""
+    # Only an inform decrypted with the device key is authenticated; the public factory key is not.
+    reply = handle_inform(payload, registry, tasks, authenticated=key != FACTORY_KEY)
     if reply.get("_type") == "upgrade":
         upgrade = firmware.build_upgrade(payload.get("model"), host=host, port=port)
         if upgrade is not None:
@@ -219,13 +224,14 @@ def make_server(registry, tasks: task_queue.TaskQueue | None = None, host="127.0
     class InformHandler(http.server.BaseHTTPRequestHandler):
         server_version = "mfi-server"
         sys_version = ""
+        timeout = 10
 
         def do_POST(self) -> None:
             if self.path != INFORM_PATH:
                 self.send_error(404)
                 return
             length_text = self.headers.get("Content-Length", "")
-            if not length_text.isdigit():
+            if not (length_text.isascii() and length_text.isdigit()):
                 self.send_error(400)
                 return
             length = int(length_text)

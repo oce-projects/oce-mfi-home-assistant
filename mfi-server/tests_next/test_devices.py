@@ -142,6 +142,12 @@ class TestSetAdopt(unittest.TestCase):
             self.adopt(runner, admin_password="")
         self.assertEqual(runner.calls, [])
 
+    def test_nul_byte_in_password_is_rejected(self):
+        runner = FakeRunner()
+        with self.assertRaises(devices.AdoptionError):
+            self.adopt(runner, admin_password="a\x00b")
+        self.assertEqual(runner.calls, [])
+
     def test_base_options_and_timeout_are_set(self):
         runner = FakeRunner(FakeResult(0))
         self.adopt(runner)
@@ -237,6 +243,20 @@ class TestDeviceRegistry(unittest.TestCase):
         self.assertEqual(registry.state(MAC), "connected")
         clock.now = 1000.0 + 121
         self.assertEqual(registry.state(MAC), "lost")
+
+    def test_add_preserves_model_and_ip_on_repeat(self):
+        registry = devices.DeviceRegistry()
+        registry.add(MAC, model="P1E", ip=IP)
+        registry.add(MAC)
+        record = registry.get(MAC)
+        self.assertEqual(record["model"], "P1E")
+        self.assertEqual(record["ip"], IP)
+
+    def test_forget_clears_the_last_seen_state(self):
+        registry = devices.DeviceRegistry()
+        registry.seen(MAC)
+        registry.forget(MAC)
+        self.assertEqual(registry.state(MAC), "unknown")
 
 
 class TestSave(unittest.TestCase):
