@@ -15,6 +15,7 @@ import unittest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from compat_replay import load_fixtures, validate_fixture, resolve_handler, is_pending, KNOWN_EPICS
+from mfi_server_next import devices, firmware, inform
 
 REQUIRED_CODES = frozenset({"R-ADOPT", "R-POWER", "R-FORGET", "R-RESET", "R-UPDATE", "R-MPORT", "R-SERIAL", "R-MPOWER", "R-DISC"})
 ALLOWED_IP = "192.168.1.20"
@@ -139,6 +140,39 @@ class TestCoverage(unittest.TestCase):
     def test_codes_cover_the_required_routes(self):
         codes = {data["code"] for _, data in load_fixtures()}
         self.assertEqual(REQUIRED_CODES - codes, set())
+
+
+class TestEpic02Replay(unittest.TestCase):
+    """CA7: the EPIC-01b fixtures owned by EPIC-02 are implemented and replay with the expected answer."""
+
+    TYPES = {"str": str, "dict": dict, "int": int}
+
+    @staticmethod
+    def _replay(data):
+        handler = data["handler"]
+        request = data["request"]
+        if handler.endswith(".build_upgrade"):
+            return firmware.build_upgrade(request.get("model"))
+        if handler.endswith(".handle_inform"):
+            return inform.handle_inform(request, devices.DeviceRegistry())
+        raise AssertionError(f"no replay for handler {handler!r}")
+
+    def test_epic02_fixtures_are_not_pending_and_replay(self):
+        replayed = 0
+        for path, data in load_fixtures():
+            if data["owner_epic"] != "EPIC-02":
+                continue
+            replayed += 1
+            with self.subTest(file=path.name):
+                self.assertFalse(is_pending(resolve_handler(data["handler"])))
+                result = self._replay(data)
+                self.assertIsInstance(result, dict)
+                for name, kind in data["expected"].get("keys", {}).items():
+                    self.assertIn(name, result)
+                    self.assertIsInstance(result[name], self.TYPES[kind])
+                for name, value in data["expected"].get("values", {}).items():
+                    self.assertEqual(result[name], value)
+        self.assertGreater(replayed, 0)
 
 
 if __name__ == "__main__":
