@@ -2,7 +2,7 @@
 
 ## 0.18.0 - 2026-11-19
 
-- EPIC-03 (T-MWNRGMOU): UDP discovery on port 10001 in the new server (`mfi_server_next/udp_discovery.py`): the 4-byte query, TLV reply parsing with ValueError on truncated data, device fields with the firmware and model fallbacks of the 2.1.11 firmware, and a scan to the broadcast and multicast addresses with a socket timeout. The old `mfi_server` package is unchanged. The discovery fixture of EPIC-01b is not yet enabled (see the note of this change).
+- EPIC-03 (T-MWNRGMOU): UDP discovery on port 10001 in the new server (`mfi_server_next/udp_discovery.py`): the 4-byte query, TLV reply parsing with ValueError on truncated data, device fields with the firmware and model fallbacks of the 2.1.11 firmware, and a scan to the broadcast and multicast addresses with a socket timeout. The old `mfi_server` package is unchanged. The EPIC-01b discovery fixture (R-DISC) owned by EPIC-03 now resolves to an implemented handler instead of pending.
 
 ## 0.17.0 - 2026-11-19
 
