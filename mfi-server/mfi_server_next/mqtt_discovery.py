@@ -144,6 +144,7 @@ def _sensor_entities(device, sensors, discovery_prefix, topic_prefix):
     """Entities of the sensors plugged into the ports of an mPort; invalid or unknown items are skipped."""
     mac = device["mac"]
     entities = []
+    seen = set()
     for sensor in sensors or ():
         if not isinstance(sensor, dict):
             continue
@@ -151,9 +152,14 @@ def _sensor_entities(device, sensors, discovery_prefix, topic_prefix):
         model = sensor.get("model")
         if isinstance(port, bool) or not isinstance(port, int) or not isinstance(model, str):
             continue
+        if not 1 <= port <= 255:
+            continue
         plan = MPORT_ENTITIES.get(model)
         if plan is None:
             continue
+        if port in seen:
+            continue
+        seen.add(port)
         label = sensor.get("label") or f"Port {port}"
         for tag, component, fields, title in plan:
             extra = _switch_fields(_command_topic(topic_prefix, mac, port)) if component == "switch" else {}
@@ -203,6 +209,8 @@ def state_messages(device, values, *, topic_prefix="mfi"):
         for tag, value in tagmap.items():
             if tag == "output" or tag in BINARY_TAGS:
                 payload = b"ON" if value else b"OFF"
+            elif value is None:
+                continue
             else:
                 payload = str(value).encode("utf-8")
             messages.append((f"{topic_prefix}/{mac}/{port}/{tag}", payload))

@@ -477,6 +477,12 @@ class MqttBridge:
         if self.settings.get("mqtt_tls"):
             logger.warning("MQTT over TLS is not supported; the bridge does not start")
             return
+        if self._broker_port() is None:
+            logger.error(
+                "MQTT bridge off: mqtt_port %r is not a valid port (1-65535)",
+                self.settings.get("mqtt_port"),
+            )
+            return
         self._client = self.client_factory()
         self._client.loop_forever(
             stop_event,
@@ -561,11 +567,22 @@ class MqttBridge:
         """The topic prefix from the settings, or the default."""
         return self.settings.get("mqtt_topic_prefix", DEFAULT_TOPIC_PREFIX)
 
+    def _broker_port(self) -> int | None:
+        """Return the configured broker port (1-65535), or None when it is invalid."""
+        raw = self.settings.get("mqtt_port", DEFAULT_PORT)
+        try:
+            port = int(raw)
+        except (TypeError, ValueError):
+            return None
+        if not 1 <= port <= 65535:
+            return None
+        return port
+
     def _make_client(self) -> MqttClient:
         """Build the real MqttClient from the settings."""
         return MqttClient(
             self.settings["mqtt_host"],
-            int(self.settings.get("mqtt_port", DEFAULT_PORT)),
+            self._broker_port(),
             self.settings.get("mqtt_user", ""),
             self.settings.get("mqtt_password", ""),
             self.settings.get("mqtt_client_id", DEFAULT_CLIENT_ID),
