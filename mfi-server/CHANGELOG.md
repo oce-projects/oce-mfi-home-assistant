@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.0 - 2026-11-20
+
+- EPIC-04 (T-MWNRGN3M): sensors and mPort in the new server — `mfi_server_next/sensors.py` (mPower/in-wall/mPort model tables, `build_port_config`, `parse_measurements`, `SensorRegistry` with Move Device) and `serial.py` (`build_ser2net_cfg`, `kick_serial`). The EPIC-01b compatibility fixtures owned by EPIC-04 (R-MPORT, R-SERIAL) are now checked instead of pending.
+
 ## 0.18.0 - 2026-11-19
 
 - EPIC-03 (T-MWNRGMOU): UDP discovery on port 10001 in the new server (`mfi_server_next/udp_discovery.py`): the 4-byte query, TLV reply parsing with ValueError on truncated data, device fields with the firmware and model fallbacks of the 2.1.11 firmware, and a scan to the broadcast and multicast addresses with a socket timeout. The old `mfi_server` package is unchanged. The EPIC-01b discovery fixture (R-DISC) owned by EPIC-03 now resolves to an implemented handler instead of pending.
