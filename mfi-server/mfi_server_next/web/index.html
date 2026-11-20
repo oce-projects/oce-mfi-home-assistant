@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title data-i18n="app_title"></title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="editor.css">
     <script src="app.js" defer></script>
+    <script src="editor.js" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -55,6 +57,22 @@
       <section id="view-rules" class="tab-section" hidden>
         <h2 data-i18n="rules_heading"></h2>
         <div id="rules-list"></div>
+        <div id="editor" class="panel editor">
+          <h3 data-i18n="editor_heading"></h3>
+          <div id="editor-list" class="editor__list"></div>
+          <button id="editor-open" type="button" class="button button--primary" data-i18n="editor_new"></button>
+          <form id="editor-form" hidden>
+            <label class="editor__field"><span data-i18n="editor_alias"></span><input id="editor-alias" type="text"></label>
+            <section class="editor__section"><h4 data-i18n="editor_when"></h4><div id="editor-when"></div><button id="editor-add-trigger" type="button" class="button" data-i18n="editor_add"></button></section>
+            <section class="editor__section"><h4 data-i18n="editor_and_if"></h4><div id="editor-and-if"></div><button id="editor-add-condition" type="button" class="button" data-i18n="editor_add"></button></section>
+            <section class="editor__section"><h4 data-i18n="editor_then"></h4><div id="editor-then"></div><button id="editor-add-action" type="button" class="button" data-i18n="editor_add"></button></section>
+            <textarea id="editor-yaml" hidden></textarea>
+            <p id="editor-message" class="message" hidden></p>
+            <div class="editor__buttons"><button id="editor-toggle-yaml" type="button" class="button" data-i18n="editor_switch_yaml"></button><button id="editor-save" type="button" class="button button--primary" data-i18n="editor_save"></button><button id="editor-cancel" type="button" class="button" data-i18n="editor_cancel"></button></div>
+            <h4 data-i18n="editor_traces"></h4>
+            <div id="editor-traces"></div>
+          </form>
+        </div>
       </section>
       <section id="view-events" class="tab-section" hidden>
         <h2 data-i18n="events_heading"></h2>

@@ -34,7 +34,7 @@ Home Assistant OS.
 - JSON web API on port 8099, and measurement history in `history.sqlite3` (30 days by default).
 - Controller-compatible API under `api/v1.0/` on the same host and port, for the routes observed in the 2.1.11 controller (`cmd/devmgr` with `mfi-output` and `kick-serial`, `upd/sensor`). Sign in with the page login; the API requires an admin session.
 - Web page on port 8099, served by the same server: hand-written HTML, CSS and JavaScript, English and Italian, no build tools. The colours follow the light or dark theme of the operating system.
-- Automations in the Home Assistant format, run by our own engine (optional, see DOCS.md).
+- Automations in the Home Assistant format, run by our own engine (optional, see DOCS.md). The web page has a visual editor for them, with a YAML view that can be switched back to the form. The script action is shown only when it is enabled.
 
 ### Home Assistant entities
 
