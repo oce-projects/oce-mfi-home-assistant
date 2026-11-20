@@ -37,7 +37,6 @@ FUNCTIONS = {
 
 CLASSES = {
 
-    "events": {"EventLog": ["record"]},
     "alarms": {"AlarmStore": ["raise_alarm"]},
     "stats": {"Aggregator": ["add", "read"]},
     "comet": {"CometBuffer": []},
