@@ -229,6 +229,17 @@ class TestSystemCfg(unittest.TestCase):
     def test_extra_fields_are_added(self):
         self.assertEqual(tasks.build_setparam(port_cfg="x")["port_cfg"], "x")
 
+    def test_hostile_cfg_values_are_rejected(self):
+        for bad in ("pool;rm -rf /", "$(reboot)", "back`tick`", "has space", "x" * 300):
+            with self.subTest(value=bad):
+                self.assertEqual(tasks.build_system_cfg(ntp_server=bad), "")
+                self.assertEqual(tasks.build_system_cfg(timezone=bad), "")
+
+    def test_extra_cannot_override_reserved_type(self):
+        message = tasks.build_setparam(_type="evil", system_cfg="ntpclient.1.server=pool.ntp.org")
+        self.assertEqual(message["_type"], "setparam")
+        self.assertEqual(message["system_cfg"], "ntpclient.1.server=pool.ntp.org")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,10 +27,12 @@ RAW_INDEX_DDL = "CREATE INDEX IF NOT EXISTS raw_series ON raw(mac, sensor_id, ta
 SECRET_WORDS = ("password", "authkey", "key", "secret", "token")
 LOG_TAIL_LINES = 200
 SCRUB_RE = re.compile(
-    r"(?i)(?:password|passwd|secret|token|authkey)\s*[:=]\s*\S+"
-    r"|[0-9a-fA-F]{32}"
-    r"|(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}"
-    r"|(?<![0-9a-fA-F])[0-9a-fA-F]{12}(?![0-9a-fA-F])"
+    r"(?:password|passwd|secret|token|authkey|authorization)[\"']?\s*[:=]\s*.+?$"
+    r"|bearer\s+\S+"
+    r"|[0-9a-f]{32}"
+    r"|(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}"
+    r"|(?<![0-9a-f])[0-9a-f]{12}(?![0-9a-f])",
+    re.IGNORECASE | re.MULTILINE,
 )
 MAC_HEX_RE = re.compile(r"[0-9a-f]{12}")
 AUTHKEY_RE = re.compile(r"[0-9a-f]{32}")
@@ -59,6 +61,7 @@ def _timestamp(clock=time.time):
 
 def _prune_copies(path, keep):
     """Delete the oldest backup copies of path, keeping the newest `keep`."""
+    keep = max(int(keep), 1)
     copies = sorted(
         (p for p in path.parent.glob(f"{path.name}.*{BACKUP_SUFFIX}") if p.is_file()),
         key=lambda p: p.name,
@@ -129,26 +132,39 @@ def _migrate_devices(db, folder, keep, clock):
 
 
 def _migrate_history(folder, existed, keep, clock):
-    """Ensure the raw table of history.sqlite3; copy the file first only when it existed before this run."""
+    """Ensure the raw table and its index in history.sqlite3; copy the file first only when it existed before this run."""
     path = folder / store.HISTORY_DB
-    conn = sqlite3.connect(path)
+    backup = None
+    conn = None
     try:
-        table = conn.execute(
+        conn = sqlite3.connect(path)
+        have_table = conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='raw'"
-        ).fetchone()
-        if table is not None:
+        ).fetchone() is not None
+        have_index = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='raw_series'"
+        ).fetchone() is not None
+        if have_table and have_index:
             return []
         created = []
         if existed:
-            copy = backup_copy(path, keep, stamp=_timestamp(clock))
-            if copy.exists():
-                created.append(copy.name)
+            backup = backup_copy(path, keep, stamp=_timestamp(clock))
+            if backup.exists():
+                created.append(backup.name)
         conn.execute(RAW_TABLE_DDL)
         conn.execute(RAW_INDEX_DDL)
         conn.commit()
         return created
+    except sqlite3.Error as exc:
+        if conn is not None:
+            conn.close()
+            conn = None
+        if backup is not None and backup.exists():
+            shutil.copyfile(backup, path)
+        raise MigrateError(f"migration failed for {path}", path=str(path)) from exc
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
 def _migrate_automations(db, folder, keep, clock):
@@ -323,17 +339,20 @@ def _store_devices(data_dir, imported):
                 kept.append(record)
         for record in imported:
             mac = record["mac"]
-            existing = by_mac.get(mac)
-            if not isinstance(existing, dict):
+            current = by_mac.get(mac)
+            if not isinstance(current, dict):
                 by_mac[mac] = record
                 continue
-            merged_record = dict(existing)
+            merged_record = dict(current)
             for key in ("model", "name"):
                 if record[key]:
                     merged_record[key] = record[key]
             if record["ports"]:
                 merged_record["ports"] = record["ports"]
             if record["x_authkey"]:
+                old_authkey = current.get("x_authkey")
+                if isinstance(old_authkey, str) and old_authkey and old_authkey != record["x_authkey"]:
+                    merged_record["x_prev_authkey"] = old_authkey
                 merged_record["x_authkey"] = record["x_authkey"]
             for key, default in DEVICE_DEFAULTS.items():
                 merged_record.setdefault(key, default)
@@ -351,10 +370,10 @@ def _store_devices(data_dir, imported):
 def import_backup(path, data_dir=None):
     """Read a .unf backup (never written) and return its devices sorted by MAC; store them when data_dir is given."""
     path = Path(path)
-    with open(path, "rb") as handle:
-        data = handle.read()
-    usable = len(data) - len(data) % 16
     try:
+        with open(path, "rb") as handle:
+            data = handle.read()
+        usable = len(data) - len(data) % 16
         if usable == 0:
             raise ValueError("backup is too short")
         plain = crypto.aes128_decrypt(UNF_KEY, UNF_IV, data[:usable], unpad=False)
