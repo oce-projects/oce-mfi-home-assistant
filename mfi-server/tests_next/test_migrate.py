@@ -160,5 +160,81 @@ class TestSupportInfo(unittest.TestCase):
         self.assertIn("***", info)
 
 
+class TestImportBackupErrors(unittest.TestCase):
+    def test_empty_backup_raises_and_leaves_no_devices(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            backup = Path(tmp) / "empty.unf"
+            backup.write_bytes(b"")
+            with self.assertRaises(migrate.MigrateError):
+                migrate.import_backup(backup, data_dir=tmp)
+            self.assertFalse((Path(tmp) / "devices.json").exists())
+
+    def test_wrong_key_raises_and_leaves_no_devices(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            backup = Path(tmp) / "garbage.unf"
+            backup.write_bytes(b"\x11" * 48)
+            with self.assertRaises(migrate.MigrateError) as ctx:
+                migrate.import_backup(backup, data_dir=tmp)
+            self.assertEqual(ctx.exception.path, str(backup))
+            self.assertFalse((Path(tmp) / "devices.json").exists())
+
+    def test_zip_without_db_gz_raises(self):
+        import io as _io
+        buffer = _io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_STORED) as archive:
+            archive.writestr("other.txt", b"hello")
+        payload = crypto.aes128_encrypt(migrate.UNF_KEY, migrate.UNF_IV, buffer.getvalue())
+        with tempfile.TemporaryDirectory() as tmp:
+            backup = Path(tmp) / "nodb.unf"
+            backup.write_bytes(payload)
+            with self.assertRaises(migrate.MigrateError):
+                migrate.import_backup(backup, data_dir=tmp)
+            self.assertFalse((Path(tmp) / "devices.json").exists())
+
+
+class TestImportBackupMerge(unittest.TestCase):
+    def test_import_keeps_existing_runtime_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            devices_file = Path(tmp) / "devices.json"
+            devices_file.write_text(json.dumps([
+                {"mac": "002722aabbcc", "model": "mPower", "name": "old",
+                 "x_authkey": "ab" * 16, "ports": [], "state": "online",
+                 "cfgversion": 7}
+            ]), encoding="utf-8")
+            backup = Path(tmp) / "backup.unf"
+            backup.write_bytes(build_unf_bytes())
+            migrate.import_backup(backup, data_dir=tmp)
+            saved = json.loads(devices_file.read_text(encoding="utf-8"))
+            self.assertEqual(len(saved), 1)
+            device = saved[0]
+            self.assertEqual(device["state"], "online")
+            self.assertEqual(device["cfgversion"], 7)
+            self.assertEqual(device["x_authkey"], "ab" * 16)
+            self.assertEqual(len(device["ports"]), 1)
+            copies = list(Path(tmp).glob("devices.json.*.bak"))
+            self.assertTrue(copies)
+
+
+class TestSupportInfoScrub(unittest.TestCase):
+    def test_passwords_and_dash_or_upper_macs_are_removed(self):
+        colon_mac = ":".join(["00", "27", "22", "AA", "BB", "CC"])
+        info = migrate.build_support_info(
+            version="0.25.0",
+            settings={"timezone": "Europe/Rome"},
+            log_lines=[
+                "password=hunter2",
+                "token: abc123def456",
+                "mac 00-27-22-aa-bb-cc seen",
+                "mac " + colon_mac + " seen",
+            ],
+        )
+        self.assertNotIn("hunter2", info)
+        self.assertNotIn("abc123def456", info)
+        self.assertNotIn("00-27-22-aa-bb-cc", info)
+        self.assertNotIn(colon_mac, info)
+        self.assertIn("Europe/Rome", info)
+        self.assertIn("***", info)
+
+
 if __name__ == "__main__":
     unittest.main()
