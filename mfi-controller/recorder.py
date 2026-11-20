@@ -33,11 +33,12 @@ import urllib.parse
 REDACTED = "REDACTED"
 SENSITIVE_HEADER_NAMES = ("cookie", "set-cookie", "authorization")  # compared in lower case
 SENSITIVE_KEY_PARTS = ("password", "passphrase", "token", "authkey", "x_password", "secret")  # case-insensitive substring
+# "host" is not hop-by-hop: the request keeps the Host of the client, so the controller builds its redirects with it.
 HOP_BY_HOP_HEADERS = (
     "connection", "keep-alive", "proxy-connection", "te", "trailer",
-    "transfer-encoding", "upgrade", "content-length", "host",
+    "transfer-encoding", "upgrade", "content-length",
 )
-SKIPPED_RESPONSE_HEADERS = HOP_BY_HOP_HEADERS + ("server", "date")
+SKIPPED_RESPONSE_HEADERS = HOP_BY_HOP_HEADERS + ("server", "date", "host")
 TIMEOUT_SECONDS = 130
 LISTEN_HOST = "0.0.0.0"
 INFORM_PORT = 6080

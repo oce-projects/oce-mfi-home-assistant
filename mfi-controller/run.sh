@@ -17,6 +17,7 @@
 #   0.2.0 - 2026-11-19 - compatibility recorder: options record_traffic and record_max_mb.
 #   0.3.0 - 2026-11-19 - passive UDP capture (10001/3478): --udp-capture to the recorder.
 #   0.3.1 - 2026-11-20 - recorder opens the raw socket as root, then runs as mfi (--user): UDP capture did not start in 0.3.0.
+#   0.3.2 - 2026-11-21 - Host header forwarded by the recorder; java and the recorder start without SUPERVISOR_TOKEN and HASSIO_TOKEN.
 # =============================================================================
 set -u
 
@@ -96,7 +97,7 @@ write_recorder_properties || { log "cannot write the recorder settings to $DATA_
 # so $! is the subshell, which ends when java ends.
 # A non-existent --pidfile keeps "stop" from being refused as a duplicate.
 as_mfi() {
-    start-stop-daemon --start --quiet --chuid mfi:mfi --chdir "$MFI_HOME" \
+    env -u SUPERVISOR_TOKEN -u HASSIO_TOKEN start-stop-daemon --start --quiet --chuid mfi:mfi --chdir "$MFI_HOME" \
         --pidfile /nonexistent-mfi.pid --startas /usr/bin/java -- "$@"
 }
 
@@ -165,7 +166,7 @@ start_recorder() {
     fi
     while :; do
         # no --chuid: the recorder starts as root and drops to user mfi itself, after the raw socket is open
-        start-stop-daemon --start --quiet --chdir / \
+        env -u SUPERVISOR_TOKEN -u HASSIO_TOKEN start-stop-daemon --start --quiet --chdir / \
             --pidfile /nonexistent-recorder.pid --startas /usr/bin/python3 -- /recorder.py "${args[@]}"
         rc=$?
         log "recorder.py exited (exit code $rc): restarting in 5 seconds"

@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.45.2 - 2026-11-21
+
+- mfi-controller 0.3.2: the recorder forwards the Host header of the client (the web UI redirect pointed to 127.0.0.1:16443), and java and the recorder start without SUPERVISOR_TOKEN and HASSIO_TOKEN in the log.
+
 ## 0.45.1 - 2026-11-20
 
 - mfi-controller 0.3.1: the recorder opens the raw capture socket as root and then runs as user mfi (`--user`), so passive UDP capture starts; it did not start in 0.3.0 because `--chuid` dropped NET_RAW.

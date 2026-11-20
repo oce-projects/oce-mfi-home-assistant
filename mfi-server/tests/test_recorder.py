@@ -52,6 +52,31 @@ class FakeController(http.server.BaseHTTPRequestHandler):
         pass
 
 
+class HostEchoController(http.server.BaseHTTPRequestHandler):
+    """Stands in for the controller: records the Host headers it gets; /redirect answers 302 with a Location."""
+
+    seen_hosts = []
+
+    def do_POST(self):
+        self.seen_hosts.extend(self.headers.get_all("Host") or [])
+        length = int(self.headers.get("Content-Length", "0"))
+        self.rfile.read(length)
+        if self.path == "/redirect":
+            self.send_response(302)
+            self.send_header("Location", "https://ha.example:6443/manage")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        self.send_response(CONTROLLER_STATUS)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Length", str(len(CONTROLLER_BODY)))
+        self.end_headers()
+        self.wfile.write(CONTROLLER_BODY)
+
+    def log_message(self, fmt, *args):
+        pass
+
+
 def serve(server):
     thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05})
     thread.daemon = True
@@ -321,6 +346,40 @@ class TestInformProxy(RecordedProxyTest):
         self.assertNotIn("cookie-secret", json.dumps(entry))
 
 
+class TestHostHeader(RecordedProxyTest):
+    def setUp(self):
+        super().setUp()
+        HostEchoController.seen_hosts[:] = []
+
+    def start_echo(self):
+        echo = http.server.HTTPServer(("127.0.0.1", 0), HostEchoController)
+        self.addCleanup(stop, echo, serve(echo))
+        return echo.server_address[1]
+
+    def test_host_header_is_forwarded_unchanged(self):
+        port = self.start_proxy(self.start_echo())
+        status, body = self.inform(port, {"Host": "ha.example:6080",
+                                          "Content-Type": "application/octet-stream"})
+        self.assertEqual(status, CONTROLLER_STATUS)
+        self.assertEqual(body, CONTROLLER_BODY)
+        self.assertEqual(HostEchoController.seen_hosts, ["ha.example:6080"])
+
+    def test_redirect_location_is_passed_unchanged(self):
+        port = self.start_proxy(self.start_echo())
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+        try:
+            conn.request("POST", "/redirect", body=b"", headers={"Host": "ha.example:6443"})
+            resp = conn.getresponse()
+            resp.read()
+            status, location = resp.status, resp.getheader("Location")
+        finally:
+            conn.close()
+        self.assertTrue(self.recorded.acquire(timeout=5), "record_line was not called")
+        self.assertEqual(status, 302)
+        self.assertEqual(location, "https://ha.example:6443/manage")
+        self.assertEqual(HostEchoController.seen_hosts, ["ha.example:6443"])
+
+
 class TestControllerDown(RecordedProxyTest):
     def test_502_then_the_proxy_still_serves(self):
         target = free_port()
@@ -371,6 +430,10 @@ class TestApi(unittest.TestCase):
         for name in ("redact_headers", "redact_json_obj", "redact_body", "record_line", "build_proxy_server", "main"):
             with self.subTest(name=name):
                 self.assertTrue(callable(getattr(recorder, name)))
+        self.assertNotIn("host", recorder.HOP_BY_HOP_HEADERS)
+        for name in ("host", "server", "date"):
+            with self.subTest(name=name):
+                self.assertIn(name, recorder.SKIPPED_RESPONSE_HEADERS)
         self.assertTrue(issubclass(recorder.ThreadingHTTPServer, http.server.HTTPServer))
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2 - 2026-11-21
+
+- Fix: the recorder forwarded the request with its own address as Host (`127.0.0.1:16443`), so the controller built its redirect to `https://127.0.0.1:16443/manage` and the browser could not open the web UI. The Host of the client is now forwarded unchanged; the `Location` header of responses is passed unchanged.
+- Security: `run.sh` starts java and the recorder without `SUPERVISOR_TOKEN` and `HASSIO_TOKEN`, so the controller log no longer contains them. Versions up to 0.3.1 wrote them in the log. The token changes at each start: restart the app after the update.
+- `DOCS.md`: the web UI is opened on port 6443 with the recorder on; setup wizard before Adopt; note on the Supervisor tokens in the log.
+- Version 0.3.2 in `config.yaml`, `CHANGELOG.md` and `Dockerfile`.
+
 ## 0.3.1 - 2026-11-20
 
 - Fix: passive UDP capture never started in 0.3.0. `run.sh` started the recorder with `--chuid mfi:mfi`, which drops the NET_RAW capability, so the raw socket could not be opened and the log said `udp capture unavailable`. Now the recorder starts as root, opens the raw socket, and drops to user `mfi` itself (`--user mfi`). The controller still runs as `mfi`.
