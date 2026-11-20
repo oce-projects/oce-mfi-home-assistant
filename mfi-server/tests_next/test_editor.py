@@ -183,6 +183,15 @@ class TestYamlErrors(unittest.TestCase):
                     editor.from_yaml(text)
                 self.assertEqual(caught.exception.line, line)
 
+    def test_number_too_large_is_a_yaml_error(self):
+        with self.assertRaises(editor.YamlError):
+            editor.from_yaml("value: " + "9" * 5000)
+
+    def test_deep_nesting_is_a_yaml_error(self):
+        deep = "".join("  " * i + "k:\n" for i in range(editor.MAX_DEPTH + 5))
+        with self.assertRaises(editor.YamlError):
+            editor.from_yaml(deep)
+
 
 class TestEditorScript(unittest.TestCase):
     """CA5: editor.js builds the DOM by hand, with relative addresses only."""
@@ -295,6 +304,14 @@ class TestEditorRoutes(unittest.TestCase):
     def test_traces_without_session_is_401(self):
         status, _, _ = self.call("GET", "/api/v1/editor/traces/valid_rule")
         self.assertEqual(status, 401)
+
+    def test_from_yaml_route_rejects_a_huge_number_without_crashing(self):
+        token = self.login("boss", ADMIN_PASSWORD)
+        status, _, data = self.call(
+            "POST", "/api/v1/editor/from_yaml", {"yaml": "value: " + "9" * 5000}, cookie=token
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(data["error"], "invalid_yaml")
 
     def test_from_yaml_route_returns_the_automation(self):
         token = self.login("boss", ADMIN_PASSWORD)

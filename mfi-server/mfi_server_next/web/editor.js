@@ -342,7 +342,15 @@
       if (!branch || typeof branch !== "object") return;
       const branchPath = itemPath + ".choose[" + index + "]";
       const card = el("div", "editor__item");
-      card.appendChild(el("span", "tag tag--other editor__type", "#" + (index + 1)));
+      const head = el("div", "editor__head");
+      const remove = el("button", "button button--danger", t("editor_remove"));
+      remove.type = "button";
+      remove.addEventListener("click", () => {
+        branches.splice(index, 1);
+        renderForm();
+      });
+      head.append(el("span", "tag tag--other editor__type", "#" + (index + 1)), remove);
+      card.appendChild(head);
       card.append(
         nestedBlock(branch, "conditions", branchPath, "condition"),
         nestedBlock(branch, "sequence", branchPath, "action")
@@ -580,6 +588,7 @@
   async function copyAutomation(automation) {
     const copy = clone(automation);
     copy.id = newId(automation.id);
+    copy.enabled = false;
     await saveFromList(copy);
   }
 
