@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.38.0 - 2026-11-20
+
+- mfi-server 0.27.0: EPIC-12 maps and dashboard (`mfi_server_next/maps.py`, `MapStore`) with the `/api/v1/maps` GET/POST routes: create/read/update/delete floor-plan maps, PNG and JPEG image upload stored under the data folder's maps/ subfolder with server-generated file names and a size limit, map scale in metres or feet, lockable icons, and location/geofence/liveview/widget/template hypotheses marked as needing a device test; abuse handling for non-images, oversized images, path-traversal names and read_only writes.
+
 ## 0.37.0 - 2026-11-20
 
 - mfi-server 0.26.0: EPIC-11 page API (`mfi_server_next/page_api.py`) and comet buffer for live updates (`mfi_server_next/comet.py`): the Page route family (login/logout, port output, backup import, comet long poll, statistics, rules, events, alarms, map placeholders, firmware download allowlist, device actions and user management) with session and admin-role checks, add-on ingress trust, JSON body limits and abuse handling (401/403/404/405/413), and an in-memory comet ring buffer with a cursor.
