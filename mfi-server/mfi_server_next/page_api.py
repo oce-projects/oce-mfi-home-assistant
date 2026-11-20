@@ -15,7 +15,7 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from mfi_server_next import auth, rules
+from mfi_server_next import auth, network_tools, rules
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,10 @@ def _match_route(parts):
     if count == 7 and parts[2] == "devices" and parts[4] == "ports" and parts[6] in ("output", "settings"):
         name = "output" if parts[6] == "output" else "port_settings"
         return name, {"POST"}, (parts[3], parts[5])
+    if count == 4 and parts[2] == "net" and parts[3] in ("upnp", "guest"):
+        return "net_" + parts[3], {"POST"}, ()
+    if count == 5 and parts[2] == "net" and parts[3] in ("webshell", "ssh"):
+        return "net_" + parts[3], {"POST"}, (parts[4],)
     return None
 
 
@@ -168,6 +172,18 @@ def make_handler(context):
                 self._user_password(params[0], body)
             elif name == "backup":
                 self._backup(body)
+            elif name == "net_webshell":
+                self._net_webshell(params[0], body)
+            elif name == "net_ssh":
+                self._net_ssh(params[0], body)
+            elif name == "net_upnp":
+                self._run_net(lambda: network_tools.upnp_announce(context.settings))
+            elif name == "net_guest":
+                self._run_net(lambda: network_tools.guest_portal(
+                    context.settings,
+                    getattr(context, "net_guest_limiter", None),
+                    self.client_address[0],
+                ))
             else:
                 self._device_action(name, params, body)
 
@@ -332,6 +348,46 @@ def make_handler(context):
                 self._error(500, "internal_error")
             else:
                 self._send_json(202, {"result": "accepted"})
+
+        def _net_target_ok(self, body: bytes) -> bool:
+            """Reject a body that tries to set its own host or port; the address is server-side only."""
+            data = self._json_object(body) if body else {}
+            if data is None:
+                return False
+            if "host" in data or "port" in data:
+                self._error(400, "bad_request")
+                return False
+            return True
+
+        def _net_webshell(self, mac: str, body: bytes) -> None:
+            if not self._net_target_ok(body):
+                return
+            self._run_net(lambda: network_tools.open_webshell(
+                context.settings, context.devices, mac,
+                connect=getattr(context, "net_connect", None)))
+
+        def _net_ssh(self, mac: str, body: bytes) -> None:
+            if not self._net_target_ok(body):
+                return
+            self._run_net(lambda: network_tools.start_browser_ssh(
+                context.settings, context.devices, mac,
+                connect=getattr(context, "net_connect", None)))
+
+        def _run_net(self, action) -> None:
+            """Run one network tool and map its result or its refusal to the API answer."""
+            try:
+                result = action()
+            except network_tools.NetworkToolError as exc:
+                self._error(exc.status, exc.code)
+            except ValueError:
+                self._error(400, "bad_request")
+            except OSError:
+                self._error(502, "connect_failed")
+            except Exception:  # noqa: BLE001 - never leak the connection on an unexpected failure
+                logger.exception("page api: network tool failed")
+                self._error(500, "internal_error")
+            else:
+                self._send_json(200, {"result": "ok", **result})
 
         def _firmware(self, rel: str) -> None:
             """Send one firmware file; only the exact names of context.firmware_paths are ever read."""
