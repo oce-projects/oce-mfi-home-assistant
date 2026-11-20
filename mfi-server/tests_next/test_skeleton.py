@@ -37,7 +37,6 @@ FUNCTIONS = {
 
 CLASSES = {
 
-    "rules": {"AutomationEngine": ["tick"], "AutomationStore": []},
     "events": {"EventLog": ["record"]},
     "alarms": {"AlarmStore": ["raise_alarm"]},
     "stats": {"Aggregator": ["add", "read"]},
