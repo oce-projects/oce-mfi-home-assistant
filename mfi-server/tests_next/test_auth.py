@@ -61,6 +61,10 @@ class TestPasswordRules(AuthTestCase):
             ["too_short", "no_upper", "no_lower", "no_digit", "no_special"],
         )
 
+    def test_verify_unknown_user_returns_false(self):
+        manager = auth.AuthManager(self.store)
+        self.assertIs(manager.verify("nobody", FAKE_PASSWORD), False)
+
     def test_unknown_role_is_rejected(self):
         manager = auth.AuthManager(self.store)
         with self.assertRaises(ValueError):
@@ -74,6 +78,12 @@ class TestUsersFile(AuthTestCase):
         manager = auth.AuthManager(self.store)
         manager.add_user("admin", FAKE_PASSWORD, auth.ROLE_ADMIN)
         manager.add_user("viewer", FAKE_VIEWER_PASSWORD, auth.ROLE_READ_ONLY)
+
+    def test_duplicate_username_is_rejected(self):
+        manager = auth.AuthManager(self.store)
+        with self.assertRaises(ValueError):
+            manager.add_user("admin", FAKE_VIEWER_PASSWORD, auth.ROLE_READ_ONLY)
+        self.assertEqual(manager.role("admin"), auth.ROLE_ADMIN)
 
     def test_users_file_holds_only_pbkdf2_hashes_with_salt(self):
         users = self.read_users_file()["users"]
@@ -151,6 +161,12 @@ class TestMigrationWithoutLegacyHash(AuthTestCase):
 
     def test_legacy_file_without_string_hash_returns_false(self):
         self.store.write_json(auth.LEGACY_AUTH_FILE, {"password_hash": 12345}, private=True)
+        manager = auth.AuthManager(self.store)
+        self.assertIs(manager.migrate_from_legacy(), False)
+        self.assertFalse(self.users_path.exists())
+
+    def test_legacy_file_with_non_hash_string_returns_false(self):
+        self.store.write_json(auth.LEGACY_AUTH_FILE, {"password_hash": "not-a-hash"}, private=True)
         manager = auth.AuthManager(self.store)
         self.assertIs(manager.migrate_from_legacy(), False)
         self.assertFalse(self.users_path.exists())
