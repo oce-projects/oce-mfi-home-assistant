@@ -202,6 +202,37 @@ class RunawayTest(unittest.TestCase):
         self.assertEqual(device.outputs, [(MAC, 1, 1)])
         self.assertEqual(engine.traces("chain")[0]["result"], "finished")
 
+    def test_indirect_loop_between_two_automations_stops(self):
+        engine, _ = build(FakeTelnet(), max_depth=4)
+        engine.load(
+            [
+                {"id": "a", "actions": [{"action": "automation.trigger", "target": {"entity_id": "automation.b"}}]},
+                {"id": "b", "actions": [{"action": "automation.trigger", "target": {"entity_id": "automation.a"}}]},
+            ]
+        )
+        engine.trigger("a")
+        traces = engine.traces("a")
+        self.assertEqual(traces[0]["result"], "error")
+        self.assertEqual(traces[0]["message"], "max automation depth reached")
+
+
+class DurationLimitTest(unittest.TestCase):
+    def test_huge_duration_string_is_refused_without_raising(self):
+        automation = {
+            "id": "huge",
+            "triggers": [
+                {
+                    "trigger": "state",
+                    "entity_id": SWITCH_ENTITY,
+                    "to": "on",
+                    "for": "9" * 400 + ":00:00",
+                }
+            ],
+            "actions": [{"action": "switch.turn_on", "target": {"entity_id": SWITCH_ENTITY}}],
+        }
+        errors = validate(automation)
+        self.assertTrue(any("invalid duration" in e for e in errors), errors)
+
 
 if __name__ == "__main__":
     unittest.main()
