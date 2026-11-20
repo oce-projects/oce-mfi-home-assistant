@@ -54,6 +54,8 @@ SCENE_SERVICE = "scene.turn_on"
 AUTOMATION_SERVICES = ("automation.trigger", "automation.turn_on", "automation.turn_off")
 HTTP_SERVICE = "http_post"
 SCRIPT_SERVICE = "script"
+NOTIFY_EMAIL_SERVICE = "notify.email"
+EVENT_SERVICE = "mfi.event"
 CALENDAR_EVENTS = ("start", "end")
 TIME_KINDS = ("time", "time_pattern")
 TOP_KEYS = frozenset(
@@ -85,6 +87,8 @@ SERVICE_KEYS = {
     "automation.turn_off": frozenset({"action", "target"}),
     HTTP_SERVICE: frozenset({"action", "data"}),
     SCRIPT_SERVICE: frozenset({"action", "data"}),
+    NOTIFY_EMAIL_SERVICE: frozenset({"action", "data"}),
+    EVENT_SERVICE: frozenset({"action", "data"}),
 }
 
 
@@ -496,6 +500,10 @@ def _validate_service(item: dict, path: str, limits: _Limits, errors: list[str])
         _check_http(item, path, errors)
     elif service == SCRIPT_SERVICE:
         _check_script(item, path, limits, errors)
+    elif service == NOTIFY_EMAIL_SERVICE:
+        _check_notify(item, path, errors)
+    elif service == EVENT_SERVICE:
+        _check_event(item, path, errors)
     else:
         _check_target(item, path, errors, automation=service in AUTOMATION_SERVICES)
         if service in SWITCH_SERVICES:
@@ -595,6 +603,55 @@ def _check_script(item: dict, path: str, limits: _Limits, errors: list[str]) -> 
         return
     if len(text) > limits.script_max_length:
         errors.append(_err(path, "script text too long"))
+
+
+def _check_notify(item: dict, path: str, errors: list[str]) -> None:
+    if not _required(item, "data", path, errors):
+        return
+    data = item["data"]
+    data_path = _join(path, "data")
+    if _is_template(data):
+        return
+    if not isinstance(data, dict):
+        errors.append(_err(data_path, "must be a mapping"))
+        return
+    _check_keys(data, {"addr", "subject", "body", "key", "hold_minutes"}, data_path, errors)
+    if _required(data, "addr", data_path, errors):
+        addr = data["addr"]
+        addr_path = _join(data_path, "addr")
+        if not _is_template(addr) and (
+            not isinstance(addr, list)
+            or not addr
+            or not all(_is_template(name) or (isinstance(name, str) and name) for name in addr)
+        ):
+            errors.append(_err(addr_path, "must be a non-empty list of non-empty strings"))
+    _check_text(data, "body", data_path, errors)
+    _check_text(data, "subject", data_path, errors, required=False)
+    _check_text(data, "key", data_path, errors, required=False)
+    if "hold_minutes" in data and not _is_template(data["hold_minutes"]):
+        if not _is_int(data["hold_minutes"], 0, 10 ** 9):
+            errors.append(_err(_join(data_path, "hold_minutes"), "must be an integer from 0 to 1000000000"))
+
+
+def _check_event(item: dict, path: str, errors: list[str]) -> None:
+    if not _required(item, "data", path, errors):
+        return
+    data = item["data"]
+    data_path = _join(path, "data")
+    if _is_template(data):
+        return
+    if not isinstance(data, dict):
+        errors.append(_err(data_path, "must be a mapping"))
+        return
+    _check_keys(data, {"key", "msg", "device", "level", "dedup_minutes"}, data_path, errors)
+    _check_text(data, "key", data_path, errors)
+    _check_text(data, "msg", data_path, errors)
+    if "dedup_minutes" in data and not _is_template(data["dedup_minutes"]):
+        if not _is_int(data["dedup_minutes"], 0, 10 ** 9):
+            errors.append(_err(_join(data_path, "dedup_minutes"), "must be an integer from 0 to 1000000000"))
+    if "level" in data and not _is_template(data["level"]):
+        if not _is_int(data["level"], 0, 10):
+            errors.append(_err(_join(data_path, "level"), "must be an integer from 0 to 10"))
 
 
 def _validate_if(item: dict, path: str, limits: _Limits, errors: list[str]) -> None:
@@ -727,6 +784,8 @@ class AutomationEngine:
         http_post: Callable[[str, object], None] | None = None,
         serial_send: Callable[[str, int, str], None] | None = None,
         serial_target: Callable[[str], tuple[str, int] | None] | None = None,
+        notify_email: Callable[[dict], None] | None = None,
+        record_event: Callable[[dict], None] | None = None,
         allow_script_action: bool = False,
         script_max_length: int = DEFAULT_SCRIPT_MAX_LENGTH,
         max_depth: int = DEFAULT_MAX_DEPTH,
@@ -741,6 +800,8 @@ class AutomationEngine:
         self._http_post = http_post
         self._serial_send = serial_send
         self._serial_target = serial_target
+        self._notify_email = notify_email
+        self._record_event = record_event
         self._allow_script = allow_script_action is True
         self._script_max_length = script_max_length
         self._max_depth = max_depth
@@ -1088,7 +1149,7 @@ class AutomationEngine:
         return "ok"
 
     def _plain(self, item: dict, path: str, trace: dict) -> str:
-        """Run a service action that does not wait: light, scene, automation flags, http_post and script."""
+        """Run a service action that does not wait: light, scene, automation flags, http_post, script, e-mail and event recording."""
         service = item["action"]
         if service == LIGHT_SERVICE:
             return self._light(item, path, trace)
@@ -1100,6 +1161,10 @@ class AutomationEngine:
             return self._http(item, path, trace)
         if service == SCRIPT_SERVICE:
             return self._script(item, path, trace)
+        if service == NOTIFY_EMAIL_SERVICE:
+            return self._notify(item, path, trace)
+        if service == EVENT_SERVICE:
+            return self._event(item, path, trace)
         return _fail(trace, path, f"unknown service {service}")
 
     # ---- outputs and devices
@@ -1190,6 +1255,28 @@ class AutomationEngine:
                 return _fail(trace, path, "device is not an adopted mPort Serial")
             host, port = target
             self._serial_send(host, port, text)
+        except Exception as exc:
+            return _fail(trace, path, str(exc) or type(exc).__name__)
+        _step(trace, path, "ok")
+        return "ok"
+
+    def _notify(self, item: dict, path: str, trace: dict) -> str:
+        """Hand the e-mail data to the injected sender. Off until a sender is configured."""
+        if self._notify_email is None:
+            return _fail(trace, path, "email notification not configured")
+        try:
+            self._notify_email(item["data"])
+        except Exception as exc:
+            return _fail(trace, path, str(exc) or type(exc).__name__)
+        _step(trace, path, "ok")
+        return "ok"
+
+    def _event(self, item: dict, path: str, trace: dict) -> str:
+        """Hand the event data to the injected recorder. Off until a recorder is configured."""
+        if self._record_event is None:
+            return _fail(trace, path, "event recording not configured")
+        try:
+            self._record_event(item["data"])
         except Exception as exc:
             return _fail(trace, path, str(exc) or type(exc).__name__)
         _step(trace, path, "ok")
