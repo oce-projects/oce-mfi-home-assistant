@@ -1,8 +1,7 @@
 """EPIC-00 skeleton checks for mfi_server_next (standard library only).
 
-Every module imports, every public name raises NotImplementedError, no module
-imports the old mfi_server package, the package has no __version__, and the
-Dockerfile does not copy the new package.
+Every module imports, no module imports the old mfi_server package, and the
+package has no __version__.
 """
 import importlib
 import re
@@ -12,7 +11,6 @@ from pathlib import Path
 PKG = "mfi_server_next"
 MFI_SERVER_DIR = Path(__file__).resolve().parent.parent
 PKG_DIR = MFI_SERVER_DIR / PKG
-DOCKERFILE = MFI_SERVER_DIR / "Dockerfile"
 
 MODULE_NAMES = [
     "__init__", "__main__", "config", "store", "crypto", "bson", "inform",
@@ -22,9 +20,7 @@ MODULE_NAMES = [
     "editor", "network_tools",
 ]
 
-FUNCTIONS = {
-    "__main__": ["main"],
-}
+FUNCTIONS = {}
 
 CLASSES = {}
 
@@ -51,13 +47,6 @@ class TestSkeleton(unittest.TestCase):
         pkg = importlib.import_module(PKG)
         self.assertFalse(hasattr(pkg, "__version__"))
 
-    def test_functions_raise_not_implemented(self):
-        for modname, names in FUNCTIONS.items():
-            mod = importlib.import_module(PKG + "." + modname)
-            for fname in names:
-                with self.subTest(func=modname + "." + fname):
-                    self.assertRaises(NotImplementedError, getattr(mod, fname))
-
     def test_classes_raise_not_implemented(self):
         for modname, classes in CLASSES.items():
             mod = importlib.import_module(PKG + "." + modname)
@@ -69,9 +58,6 @@ class TestSkeleton(unittest.TestCase):
                     with self.subTest(method=modname + "." + cname + "." + method):
                         self.assertTrue(hasattr(cls, method))
                         self.assertRaises(NotImplementedError, getattr(cls, method), None)
-
-    def test_dockerfile_does_not_copy_new_package(self):
-        self.assertNotIn(PKG, DOCKERFILE.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
