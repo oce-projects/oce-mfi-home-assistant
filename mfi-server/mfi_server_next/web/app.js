@@ -778,7 +778,94 @@ function renderSystem() {
     row.appendChild(el("span", "info__label", t(key)));
     rows.push(row);
   }
+  rows.push(renderRulesImport());
   host.replaceChildren(...rows);
+}
+
+// The import card is built once and kept, so a comet re-render keeps the chosen file and the busy button.
+let rulesImport = null;
+let rulesImportResult = null;
+let rulesImportBusy = false;
+
+function buildRulesImport() {
+  const card = el("section", "panel info import-rules");
+  const title = el("h3", "");
+  title.dataset.i18n = "import_rules_action";
+  const file = el("input");
+  file.type = "file";
+  file.accept = ".unf";
+  const picker = el("label");
+  const pickerText = el("span", "info__label");
+  picker.append(pickerText, file);
+  const send = el("button", "button button--primary");
+  send.type = "button";
+  const message = el("p", "message");
+  message.setAttribute("role", "status");
+  message.setAttribute("aria-live", "polite");
+  const result = el("div");
+  card.append(title, picker, send, message, result);
+  file.addEventListener("change", () => renderSystem());
+  send.addEventListener("click", () => {
+    if (file.files.length > 0) sendRulesImport(file.files[0]).catch(reportError);
+  });
+  return { card, title, pickerText, file, send, message, result };
+}
+
+function renderSkippedRow(item) {
+  const row = el("tr");
+  row.append(el("td", "mono", String(item.id || "")), el("td", "", String(item.reason || "")));
+  return row;
+}
+
+function renderRulesImport() {
+  if (rulesImport === null) rulesImport = buildRulesImport();
+  const view = rulesImport;
+  view.title.textContent = t("import_rules_action");
+  view.pickerText.textContent = t("backup_import");
+  view.send.textContent = t("import_rules_action");
+  view.send.disabled = rulesImportBusy || view.file.files.length === 0;
+  view.message.className = "message";
+  view.message.textContent = "";
+  view.result.replaceChildren();
+  if (rulesImportResult === null) return view.card;
+  if (!rulesImportResult.ok) {
+    view.message.className = "message message--error";
+    view.message.textContent = t("import_rules_error");
+    return view.card;
+  }
+  const skipped = arrayOf(rulesImportResult.report.skipped);
+  view.message.className = "message message--ok";
+  view.message.textContent = t("import_rules_report", {
+    converted: rulesImportResult.report.converted,
+    skipped: skipped.length,
+  });
+  if (skipped.length > 0) view.result.appendChild(tableWrap([], skipped.map(renderSkippedRow)));
+  return view.card;
+}
+
+async function sendRulesImport(chosen) {
+  rulesImportBusy = true;
+  renderSystem();
+  try {
+    const response = await fetch("api/v1/upload/rules", {
+      method: "POST",
+      body: await chosen.arrayBuffer(),
+    });
+    if (response.status === 401) {
+      showLogin();
+      return;
+    }
+    if (!response.ok) throw new Error("import failed: " + response.status);
+    const body = await response.json();
+    if (!isObject(body) || !isObject(body.report)) throw new Error("import report missing");
+    rulesImportResult = { ok: true, report: body.report };
+  } catch (err) {
+    rulesImportResult = { ok: false };
+    reportError(err);
+  } finally {
+    rulesImportBusy = false;
+    renderSystem();
+  }
 }
 
 function renderRisky() {
