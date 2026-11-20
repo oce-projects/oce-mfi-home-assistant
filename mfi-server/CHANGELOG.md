@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.31.1 - 2026-11-20
+
+- EPIC-17 (T-MWNRGTE3): hardening of the controller-compatible API - `cmd/devmgr` now requires `Content-Type: application/json` (a cross-site HTML form can no longer switch an outlet), validates the MAC (12 lowercase hex) and the output value (0 or 1), and wraps the output enqueue in the same `ValueError` guard as kick-serial; new abuse tests for a wrong content type, a bad MAC and an out-of-range value.
+
 ## 0.31.0 - 2026-11-20
 
 - EPIC-17 (T-MWNRGTE3): controller-compatible HTTP API (`mfi_server_next/compat_api.py`, `make_compat_handler`) under `api/v1.0/<verb>/<object>` with its own route marker, OBSERVED routes only - `/api/v1.0/cmd/devmgr` (mfi-output, kick-serial) and `/api/v1.0/upd/sensor` - so the Home Assistant mfi integration (mficlient) can point at mfi-server; controller envelope {"data":[...],"meta":{"rc":"ok"}} / {"meta":{"rc":"error","msg":"api.err...."}}, admin session reused from auth.py (read_only refused), UNVERIFIED routes kept PENDING in the replay fixtures; abuse tests. Owner approval required before merge.
