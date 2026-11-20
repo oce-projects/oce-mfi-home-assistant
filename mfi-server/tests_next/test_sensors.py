@@ -235,6 +235,33 @@ class TestSensorRegistry(unittest.TestCase):
         reg.remove(999999)
         self.assertEqual(reg.list(), [])
 
+    def test_add_rejects_malformed_mac(self):
+        reg = sensors.SensorRegistry()
+        for mac in ("", "zz", "00272200000A", "0027220000", "002722-00001"):
+            with self.subTest(mac=mac):
+                with self.assertRaises(ValueError):
+                    reg.add(mac, 1, "MSW")
+
+    def test_add_rejects_non_positive_port(self):
+        reg = sensors.SensorRegistry()
+        for port in (0, -5):
+            with self.subTest(port=port):
+                with self.assertRaises(ValueError):
+                    reg.add("002722000001", port, "MSW")
+
+    def test_add_rejects_model_with_line_break(self):
+        reg = sensors.SensorRegistry()
+        with self.assertRaises(ValueError):
+            reg.add("002722000001", 1, "X\nport.1.mode=off")
+
+    def test_move_rejects_malformed_mac_and_bad_port(self):
+        reg = sensors.SensorRegistry()
+        s = reg.add("002722000001", 1, "MSW")
+        with self.assertRaises(ValueError):
+            reg.move(s["sId"], "00272200000A", 2)
+        with self.assertRaises(ValueError):
+            reg.move(s["sId"], "002722000002", 0)
+
 
 if __name__ == "__main__":
     unittest.main()
