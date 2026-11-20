@@ -170,6 +170,21 @@ class TestAdminHttp(MapsTestCase):
         self.assertEqual(status, 413)
         self.assertEqual(json.loads(data), {"error": "image_too_large"})
 
+    def test_invalid_base64_image_gives_400(self):
+        token = self.session("boss", ADMIN_PASSWORD)
+        body = json.dumps({"name": "Bad", "image_base64": "not base64!!"}).encode("utf-8")
+        status, _, data = self.call("POST", "/api/v1/maps", body=body, cookie=token)
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(data), {"error": "bad_request"})
+
+    def test_non_image_base64_gives_400(self):
+        token = self.session("boss", ADMIN_PASSWORD)
+        payload = base64.b64encode(b"this is not an image").decode()
+        body = json.dumps({"name": "Bad", "image_base64": payload}).encode("utf-8")
+        status, _, data = self.call("POST", "/api/v1/maps", body=body, cookie=token)
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(data), {"error": "unsupported_image"})
+
 
 if __name__ == "__main__":
     unittest.main()
