@@ -25,14 +25,11 @@ MODULE_NAMES = [
 FUNCTIONS = {
     "__main__": ["main"],
     "compat_api": ["make_compat_handler"],
-    "mqtt_discovery": ["discovery_messages", "state_messages"],
     "rules_import": ["convert_rules"],
     "editor": ["to_yaml", "from_yaml"],
 }
 
-CLASSES = {
-    "mqtt": {"MqttBridge": []},
-}
+CLASSES = {}
 
 IMPORT_OLD = re.compile(r"(?m)^\s*(?:from|import)\s+mfi_server\b")
 
