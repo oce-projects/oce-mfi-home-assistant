@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.45.1 - 2026-11-20
+
+- mfi-controller 0.3.1: the recorder opens the raw capture socket as root and then runs as user mfi (`--user`), so passive UDP capture starts; it did not start in 0.3.0 because `--chuid` dropped NET_RAW.
+
 ## 0.45.0 - 2026-11-20
 
 - mfi-server 1.0.0: EPIC-15 switches the add-on to the new server package `mfi_server_next` (same slug, so the add-on updates in place). It starts with `python3 -m mfi_server_next`, migrates the data at start, and shuts down cleanly on SIGTERM. Risky network functions are off by default.

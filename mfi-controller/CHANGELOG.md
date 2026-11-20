@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 - 2026-11-20
+
+- Fix: passive UDP capture never started in 0.3.0. `run.sh` started the recorder with `--chuid mfi:mfi`, which drops the NET_RAW capability, so the raw socket could not be opened and the log said `udp capture unavailable`. Now the recorder starts as root, opens the raw socket, and drops to user `mfi` itself (`--user mfi`). The controller still runs as `mfi`.
+- The recorder skips copies of its own outgoing packets on `lo` and frames that are neither Ethernet nor loopback (filter UNVERIFIED on a device).
+- `DOCS.md`: host network notes for MongoDB and the internal ports, and the start as root for the socket only.
+- Version 0.3.1 in `config.yaml`, `CHANGELOG.md` and `Dockerfile`.
+
 ## 0.3.0 - 2026-11-19
 
 - Passive UDP capture of the discovery port 10001 and the wake-up port 3478 in the recorder, when `record_traffic` is on. The recorder only listens: it never answers or injects packets. Captured packets go to the same daily file as the TCP lines, under the same size limit.

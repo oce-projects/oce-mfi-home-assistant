@@ -152,6 +152,16 @@ class TestUdpCapture(unittest.TestCase):
         self.assertEqual(len(arg_lines), 1)
         self.assertIn("--udp-capture", arg_lines[0])
 
+    def test_recorder_runs_as_user_mfi_after_dropping_from_root(self):
+        arg_lines = [line for line in self.run_sh.splitlines() if line.strip().startswith("args=(")]
+        self.assertIn("--user mfi", arg_lines[0])
+
+    def test_recorder_is_not_started_with_chuid(self):
+        start = self.run_sh.find("--startas /usr/bin/python3 -- /recorder.py")
+        self.assertNotEqual(start, -1, "the recorder start command is missing")
+        command = self.run_sh[self.run_sh.rfind("start-stop-daemon", 0, start):start]
+        self.assertNotIn("--chuid", command)
+
 
 if __name__ == "__main__":
     unittest.main()

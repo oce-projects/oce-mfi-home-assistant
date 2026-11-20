@@ -16,6 +16,7 @@
 #   0.1.2 - 2026-11-15 - version line removed from the header.
 #   0.2.0 - 2026-11-19 - compatibility recorder: options record_traffic and record_max_mb.
 #   0.3.0 - 2026-11-19 - passive UDP capture (10001/3478): --udp-capture to the recorder.
+#   0.3.1 - 2026-11-20 - recorder opens the raw socket as root, then runs as mfi (--user): UDP capture did not start in 0.3.0.
 # =============================================================================
 set -u
 
@@ -129,7 +130,8 @@ port_open() {
 
 # Runs in the background, started after java. Creates the self-signed
 # certificate once, waits up to 120 seconds for the controller ports, then
-# keeps recorder.py running as user mfi (restarted 5 seconds after an exit).
+# keeps recorder.py running: it opens the capture socket as root and then
+# drops to user mfi itself (restarted 5 seconds after an exit).
 start_recorder() {
     local dir=/data/recorder
     local out=/share/mfi-recordings
@@ -157,12 +159,13 @@ start_recorder() {
         https=0
     fi
 
-    args=(--inform-listen 6080 --inform-target 16080 --out "$out" --max-mb "$RECORD_MAX_MB" --udp-capture)
+    args=(--inform-listen 6080 --inform-target 16080 --out "$out" --max-mb "$RECORD_MAX_MB" --udp-capture --user mfi)
     if [ "$https" = 1 ]; then
         args+=(--https-listen 6443 --https-target 16443 --cert "$dir/cert.pem" --key "$dir/key.pem")
     fi
     while :; do
-        start-stop-daemon --start --quiet --chuid mfi:mfi --chdir / \
+        # no --chuid: the recorder starts as root and drops to user mfi itself, after the raw socket is open
+        start-stop-daemon --start --quiet --chdir / \
             --pidfile /nonexistent-recorder.pid --startas /usr/bin/python3 -- /recorder.py "${args[@]}"
         rc=$?
         log "recorder.py exited (exit code $rc): restarting in 5 seconds"

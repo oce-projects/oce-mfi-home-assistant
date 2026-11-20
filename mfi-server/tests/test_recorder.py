@@ -418,6 +418,8 @@ class TestPython34Subset(unittest.TestCase):
 
 UDP_SRC = "203.0.113.5"
 UDP_DST = "198.51.100.7"
+# address tuple of recvfrom on AF_PACKET: (ifname, protocol, packet type, hardware type, hardware address)
+UDP_ADDR = ("eth0", 3, 0, 1, b"")
 
 
 def ipv4_udp_frame(src_ip, dst_ip, src_port, dst_port, payload=b"", protocol=17,
@@ -499,9 +501,9 @@ class TestUdpCapture(unittest.TestCase):
 
     def test_capture_drops_udp_53_and_keeps_discovery(self):
         sock = mock.Mock()
-        sock.recv.side_effect = [
-            ipv4_udp_frame(UDP_SRC, UDP_DST, 53, 53, b"dns"),
-            ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x01\x00\x00\x00"),
+        sock.recvfrom.side_effect = [
+            (ipv4_udp_frame(UDP_SRC, UDP_DST, 53, 53, b"dns"), UDP_ADDR),
+            (ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x01\x00\x00\x00"), UDP_ADDR),
             OSError("capture stopped by the test"),
         ]
         with self.assertLogs("mfi-recorder", level="ERROR"):
@@ -537,9 +539,9 @@ class TestUdpCapture(unittest.TestCase):
 
     def test_write_error_is_logged_once(self):
         sock = mock.Mock()
-        sock.recv.side_effect = [
-            ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x01\x00\x00\x00"),
-            ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 3478, b"\x88\x88"),
+        sock.recvfrom.side_effect = [
+            (ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x01\x00\x00\x00"), UDP_ADDR),
+            (ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 3478, b"\x88\x88"), UDP_ADDR),
             OSError("capture stopped by the test"),
         ]
         with mock.patch.object(recorder, "record_udp_line", side_effect=OSError("disk full")):
@@ -547,6 +549,195 @@ class TestUdpCapture(unittest.TestCase):
                 recorder.capture_udp(self.tmp, 200, open_socket=lambda: sock)
         failed = [r for r in logs.records if "udp recording failed" in r.getMessage()]
         self.assertEqual(len(failed), 1)
+
+
+class TestFrameFilter(unittest.TestCase):
+    def test_outgoing_copy_on_lo_is_skipped(self):
+        self.assertFalse(recorder.frame_usable(("lo", 3, recorder.PACKET_OUTGOING, 772, b"")))
+
+    def test_outgoing_frame_on_another_interface_is_kept(self):
+        self.assertTrue(recorder.frame_usable(("eth0", 3, recorder.PACKET_OUTGOING, 1, b"")))
+
+    def test_incoming_frame_on_lo_is_kept(self):
+        self.assertTrue(recorder.frame_usable(("lo", 3, 0, 772, b"")))
+
+    def test_ethernet_and_loopback_hardware_types_are_kept(self):
+        self.assertTrue(recorder.frame_usable(("eth0", 3, 0, 1, b"")))
+        self.assertTrue(recorder.frame_usable(("eth0", 3, 0, 772, b"")))
+
+    def test_other_hardware_types_are_skipped(self):
+        for hatype in (0, 2, 65534):
+            with self.subTest(hatype=hatype):
+                self.assertFalse(recorder.frame_usable(("eth0", 3, 0, hatype, b"")))
+
+    def test_capture_writes_neither_outgoing_copies_nor_foreign_link_types(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        sock = mock.Mock()
+        sock.recvfrom.side_effect = [
+            (ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x01\x00\x00\x00"),
+             ("lo", 3, recorder.PACKET_OUTGOING, 772, b"")),
+            (ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x02\x00\x00\x00"),
+             ("eth0", 3, 0, 65534, b"")),
+            (ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x03\x00\x00\x00"), UDP_ADDR),
+            OSError("capture stopped by the test"),
+        ]
+        with self.assertLogs("mfi-recorder", level="ERROR"):
+            recorder.capture_udp(tmp, 200, open_socket=lambda: sock)
+        lines = read_lines(tmp)
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(base64.b64decode(lines[0]["payload_b64"]), b"\x03\x00\x00\x00")
+
+
+class FakeServer(object):
+    def __init__(self, port_label, calls):
+        self.port_label = port_label
+        self.calls = calls
+
+    def serve_forever(self, poll_interval=0.5):
+        if self.port_label == recorder.WEB_PORT:
+            raise KeyboardInterrupt
+
+    def server_close(self):
+        self.calls.append("close")
+
+
+class FakePasswd(object):
+    def __init__(self, uid, gid):
+        self.pw_uid = uid
+        self.pw_gid = gid
+
+
+class TestMainOrder(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.calls = []
+        self.given = []
+        self.capture_done = threading.Event()
+        self.sock = mock.Mock()
+        self.open_error = None
+        self.drop_error = None
+
+        def open_socket():
+            self.calls.append("open")
+            if self.open_error is not None:
+                raise self.open_error
+            return self.sock
+
+        def build(*args, **kwargs):
+            self.calls.append("build")
+            return FakeServer(args[5], self.calls)
+
+        def drop(name):
+            self.calls.append("drop:" + name)
+            if self.drop_error is not None:
+                raise self.drop_error
+
+        def capture(out_dir, max_mb, open_socket=None):
+            self.given.append(open_socket())
+            self.calls.append("capture")
+            self.capture_done.set()
+
+        for target, name, new in (
+            (recorder, "open_capture_socket", open_socket),
+            (recorder, "build_proxy_server", build),
+            (recorder, "drop_privileges", drop),
+            (recorder, "capture_udp", capture),
+            (recorder.logging, "basicConfig", mock.Mock()),
+        ):
+            patcher = mock.patch.object(target, name, new)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def run_main(self, udp=True):
+        argv = ["--cert", "cert.pem", "--key", "key.pem", "--out", self.tmp]
+        if udp:
+            argv.append("--udp-capture")
+        return recorder.main(argv)
+
+    def test_socket_opens_before_the_drop_and_capture_starts_after_it(self):
+        self.assertEqual(self.run_main(), 0)
+        self.assertTrue(self.capture_done.wait(5))
+        self.assertEqual(self.calls, ["open", "build", "build", "drop:mfi", "capture"])
+        self.assertEqual(self.given, [self.sock])
+
+    def test_without_udp_capture_no_socket_is_opened(self):
+        self.assertEqual(self.run_main(udp=False), 0)
+        self.assertEqual(self.calls, ["build", "build", "drop:mfi"])
+
+    def test_unavailable_socket_logs_one_warning_and_tcp_goes_on(self):
+        self.open_error = PermissionError("operation not permitted")
+        with self.assertLogs("mfi-recorder", level="WARNING") as logs:
+            rc = self.run_main()
+        self.assertEqual(rc, 0)
+        messages = [r.getMessage() for r in logs.records if r.levelname == "WARNING"]
+        self.assertEqual(messages, ["udp capture unavailable: operation not permitted"])
+        self.assertEqual(self.calls, ["open", "build", "build", "drop:mfi"])
+
+    def test_failed_drop_exits_with_1_and_starts_nothing(self):
+        self.drop_error = RuntimeError("not root and not user mfi")
+        with self.assertLogs("mfi-recorder", level="ERROR"):
+            rc = self.run_main()
+        self.assertEqual(rc, 1)
+        self.assertEqual(self.calls, ["open", "build", "build", "drop:mfi", "close", "close"])
+
+
+class TestDropPrivileges(unittest.TestCase):
+    def test_root_drops_groups_group_and_user_in_order(self):
+        state = {"uid": 0}
+        calls = []
+        names = []
+
+        def getpwnam(name):
+            names.append(name)
+            return FakePasswd(500, 501)
+
+        def setuid(uid):
+            calls.append(("setuid", uid))
+            state["uid"] = uid
+
+        recorder.drop_privileges("mfi", getuid=lambda: state["uid"], getpwnam=getpwnam,
+                                 setgroups=lambda groups: calls.append(("setgroups", list(groups))),
+                                 setgid=lambda gid: calls.append(("setgid", gid)), setuid=setuid)
+        self.assertEqual(names, ["mfi"])
+        self.assertEqual(calls, [("setgroups", []), ("setgid", 501), ("setuid", 500)])
+
+    def test_root_that_stays_root_raises(self):
+        def nothing(*args):
+            return None
+
+        with self.assertRaises(RuntimeError):
+            recorder.drop_privileges("mfi", getuid=lambda: 0, getpwnam=lambda name: FakePasswd(500, 500),
+                                     setgroups=nothing, setgid=nothing, setuid=nothing)
+
+    def test_already_the_user_does_nothing(self):
+        def refuse(*args):
+            raise AssertionError("must not change user")
+
+        recorder.drop_privileges("mfi", getuid=lambda: 500, getpwnam=lambda name: FakePasswd(500, 500),
+                                 setgroups=refuse, setgid=refuse, setuid=refuse)
+
+    def test_another_user_raises_and_names_the_user(self):
+        calls = []
+        with self.assertRaises(RuntimeError) as ctx:
+            recorder.drop_privileges("mfi", getuid=lambda: 1000, getpwnam=lambda name: FakePasswd(500, 500),
+                                     setgroups=lambda groups: calls.append("setgroups"),
+                                     setgid=lambda gid: calls.append("setgid"),
+                                     setuid=lambda uid: calls.append("setuid"))
+        self.assertIn("mfi", str(ctx.exception))
+        self.assertEqual(calls, [])
+
+    def test_unknown_user_raises_runtime_error(self):
+        def missing(name):
+            raise KeyError(name)
+
+        def nothing(*args):
+            return None
+
+        with self.assertRaises(RuntimeError):
+            recorder.drop_privileges("no-such-user", getuid=lambda: 0, getpwnam=missing,
+                                     setgroups=nothing, setgid=nothing, setuid=nothing)
 
 
 if __name__ == "__main__":
