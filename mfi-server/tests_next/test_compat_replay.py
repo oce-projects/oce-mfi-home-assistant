@@ -15,7 +15,7 @@ import unittest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from compat_replay import load_fixtures, validate_fixture, resolve_handler, is_pending, KNOWN_EPICS
-from mfi_server_next import devices, firmware, inform
+from mfi_server_next import devices, firmware, inform, sensors, serial
 
 REQUIRED_CODES = frozenset({"R-ADOPT", "R-POWER", "R-FORGET", "R-RESET", "R-UPDATE", "R-MPORT", "R-SERIAL", "R-MPOWER", "R-DISC"})
 ALLOWED_IP = "192.168.1.20"
@@ -161,6 +161,39 @@ class TestEpic02Replay(unittest.TestCase):
         replayed = 0
         for path, data in load_fixtures():
             if data["owner_epic"] != "EPIC-02":
+                continue
+            replayed += 1
+            with self.subTest(file=path.name):
+                self.assertFalse(is_pending(resolve_handler(data["handler"])))
+                result = self._replay(data)
+                self.assertIsInstance(result, dict)
+                for name, kind in data["expected"].get("keys", {}).items():
+                    self.assertIn(name, result)
+                    self.assertIsInstance(result[name], self.TYPES[kind])
+                for name, value in data["expected"].get("values", {}).items():
+                    self.assertEqual(result[name], value)
+        self.assertGreater(replayed, 0)
+
+
+class TestEpic04Replay(unittest.TestCase):
+    """CA6: the EPIC-01b fixtures owned by EPIC-04 are implemented and replay with the expected answer."""
+
+    TYPES = {"str": str, "dict": dict, "int": int}
+
+    @staticmethod
+    def _replay(data):
+        handler = data["handler"]
+        request = data["request"]
+        if handler.endswith(".build_ser2net_cfg"):
+            return serial.build_ser2net_cfg(request)
+        if handler.endswith(".build_port_config"):
+            return sensors.build_port_config(request)
+        raise AssertionError(f"no replay for handler {handler!r}")
+
+    def test_epic04_fixtures_are_not_pending_and_replay(self):
+        replayed = 0
+        for path, data in load_fixtures():
+            if data["owner_epic"] != "EPIC-04":
                 continue
             replayed += 1
             with self.subTest(file=path.name):
