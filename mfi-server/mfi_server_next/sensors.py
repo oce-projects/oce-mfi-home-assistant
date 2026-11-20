@@ -5,6 +5,8 @@ Standard library only, clean room. Facts that are not verified on a device
 behaviour of IWS1U) are comments only and are not used by the code.
 """
 
+import re
+
 # Outlets of the mPower family, by model. UNVERIFIED: the power of P1U, P3U and
 # P8U (the controller treats them like the E models, docs/controller/mpower.md).
 MPOWER_OUTLETS = {"P1U": 1, "P1E": 1, "P3U": 3, "P3E": 3, "P8U": 8, "P6E": 6}
@@ -26,6 +28,9 @@ VPOWER_MODELS = frozenset(MPOWER_OUTLETS) | {"IWO2U", "IWD1U", "IWS1U"}
 MPORT_MODELS = frozenset(MPORT_PORTS)
 
 OUTLET_TAGS = ("output", "pf", "energy_sum", "v_rms", "i_rms", "active_pwr")
+
+# A device MAC as the controller writes it: 12 lowercase hex digits, no colons.
+MAC_PATTERN = re.compile(r"[0-9a-f]{12}")
 
 
 def outlet_count(model):
@@ -158,10 +163,10 @@ def build_port_config(request=None):
 
 
 def _check_placement(mac, port):
-    """Reject a mac that is not a string or a port that is not an integer."""
-    if not isinstance(mac, str):
+    """Reject a mac that is not 12 lowercase hex digits or a port that is not a positive integer."""
+    if not isinstance(mac, str) or not MAC_PATTERN.fullmatch(mac):
         raise ValueError("mac")
-    if isinstance(port, bool) or not isinstance(port, int):
+    if isinstance(port, bool) or not isinstance(port, int) or port < 1:
         raise ValueError("port")
 
 
@@ -183,6 +188,7 @@ class SensorRegistry:
         _check_placement(mac, port)
         if not isinstance(model, str):
             raise ValueError("model")
+        _reject_line_break(model, "model")
         if not isinstance(label, str):
             raise ValueError("label")
         _reject_line_break(label, "label")
