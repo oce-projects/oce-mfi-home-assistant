@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.42.1 - 2026-11-20
+
+- mfi-server 0.31.1: EPIC-17 hardening of the controller-compatible API - require `Content-Type: application/json` on commands (CSRF guard), validate the MAC format and the outlet value (0 or 1) of `cmd/devmgr` mfi-output, and wrap the output enqueue in the same ValueError guard as kick-serial; extra abuse tests.
+
 ## 0.42.0 - 2026-11-20
 
 - mfi-server 0.31.0: EPIC-17 controller-compatible API (`mfi_server_next/compat_api.py`) under `api/v1.0/`, OBSERVED routes only (cmd/devmgr with mfi-output and kick-serial, upd/sensor), controller meta/data envelope, admin session reused from the page API, UNVERIFIED routes kept PENDING; abuse tests.

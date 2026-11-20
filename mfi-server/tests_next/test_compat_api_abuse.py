@@ -157,5 +157,44 @@ class TestDeeplyNestedJson(unittest.TestCase):
         self.assertEqual(json.loads(data)["meta"]["msg"], "api.err.InvalidPayload")
 
 
+class TestCommandValidation(AbuseTestCase):
+    """cmd/devmgr validates the content type (CSRF), the MAC and the output value."""
+
+    def _post(self, body, cookie, content_type="application/json"):
+        headers = {"Cookie": f"{compat_api.SESSION_COOKIE}={cookie}"}
+        if content_type is not None:
+            headers["Content-Type"] = content_type
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            conn.request("POST", "/api/v1.0/cmd/devmgr", body=body, headers=headers)
+            response = conn.getresponse()
+            return response.status, response.read()
+        finally:
+            conn.close()
+
+    def test_non_json_content_type_is_rejected(self):
+        token = self.session("boss", ADMIN_PASSWORD)
+        status, data = self._post(OUTPUT_COMMAND, token, content_type="text/plain")
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(data)["meta"]["msg"], "api.err.InvalidPayload")
+        self.assertIsNone(self.context.tasks.pop_for_mac(MAC))
+
+    def test_bad_mac_is_rejected(self):
+        token = self.session("boss", ADMIN_PASSWORD)
+        body = json.dumps({"cmd": "mfi-output", "mac": "nothex", "port": 1, "val": 1}).encode("utf-8")
+        status, data = self._post(body, token)
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(data)["meta"]["msg"], "api.err.InvalidPayload")
+        self.assertIsNone(self.context.tasks.pop_for_mac("nothex"))
+
+    def test_out_of_range_value_is_rejected(self):
+        token = self.session("boss", ADMIN_PASSWORD)
+        body = json.dumps({"cmd": "mfi-output", "mac": MAC, "port": 1, "val": 2}).encode("utf-8")
+        status, data = self._post(body, token)
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(data)["meta"]["msg"], "api.err.InvalidPayload")
+        self.assertIsNone(self.context.tasks.pop_for_mac(MAC))
+
+
 if __name__ == "__main__":
     unittest.main()

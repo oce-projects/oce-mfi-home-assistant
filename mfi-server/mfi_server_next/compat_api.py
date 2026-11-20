@@ -67,8 +67,9 @@ def make_compat_handler(context):
     class CompatHandler(BaseHTTPRequestHandler):
         """Answers the controller-compatible API."""
 
-        # Bound a slow client that opens a connection and sends the body in a trickle:
-        # BaseHTTPRequestHandler applies this to the socket in setup().
+        # Socket timeout for a single read or write, not a deadline for the whole
+        # request: BaseHTTPRequestHandler applies it to the socket in setup(). It
+        # bounds an idle connection, not a client that trickles bytes just under it.
         timeout = 10
 
         def log_message(self, format, *args):
@@ -101,6 +102,8 @@ def make_compat_handler(context):
                 self._send_error(405, ERR_WRONG_METHOD)
                 return
             if not self._authorized():
+                return
+            if not self._json_content_type():
                 return
             data = self._json_object(body)
             if data is None:
@@ -142,10 +145,20 @@ def make_compat_handler(context):
                 mac = data.get("mac")
                 port = data.get("port")
                 val = data.get("val")
-                if not _is_text(mac) or not _is_int(port) or not _is_int(val):
+                if (
+                    not (isinstance(mac, str) and serial.MAC_PATTERN.fullmatch(mac))
+                    or not _is_int(port)
+                    or port < 1
+                    or not _is_int(val)
+                    or val not in (0, 1)
+                ):
                     self._send_error(400, ERR_INVALID_PAYLOAD)
                     return
-                context.tasks.enqueue(tasks.build_output_command(mac, port, val))
+                try:
+                    context.tasks.enqueue(tasks.build_output_command(mac, port, val))
+                except ValueError:
+                    self._send_error(400, ERR_INVALID_PAYLOAD)
+                    return
                 self._send_json(200, ok_envelope())
             elif cmd == "kick-serial":
                 mac = data.get("mac")
@@ -192,6 +205,14 @@ def make_compat_handler(context):
                 self.rfile.read(min(length, MAX_DRAIN))
                 return None
             return self.rfile.read(length)
+
+        def _json_content_type(self):
+            """Require Content-Type application/json so a cross-site HTML form cannot send a command (CSRF). Send 400 and return False otherwise."""
+            media = self.headers.get("Content-Type", "").split(";")[0].strip().lower()
+            if media != "application/json":
+                self._send_error(400, ERR_INVALID_PAYLOAD)
+                return False
+            return True
 
         def _json_object(self, body):
             """Parse a JSON object; answer 400 and return None when the body is not one."""

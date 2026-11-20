@@ -184,7 +184,7 @@ Only the routes marked OBSERVED in `docs/controller/web-api.md` are implemented:
 - `/api/v1.0/cmd/devmgr`: commands `mfi-output` (switch an outlet) and `kick-serial` (for an mPort Serial).
 - `/api/v1.0/upd/sensor`: sensor calibration.
 
-All these routes are POST and need an admin session: the session of the page API login (`api/v1/login`). A `read_only` user is refused. There is no login route under `api/v1.0/`.
+All these routes are POST, take a JSON body with the header `Content-Type: application/json` (any other content type is refused with 400, so a cross-site HTML form cannot send a command), and need an admin session. In standalone mode the session is the one from the page API login (`api/v1/login`); in add-on mode the request is accepted only from the ingress peer, with no cookie, as in the page API. A `read_only` user is refused. There is no login route under `api/v1.0/`.
 
 The answer envelope is `{"data":[...],"meta":{"rc":"ok"}}` on success and `{"meta":{"rc":"error","msg":"api.err.<Name>"}}` on error, with these names:
 
