@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.27.0 - 2026-11-20
+
+- EPIC-12 (T-MWNRGRHA): maps and dashboard in the new server - `mfi_server_next/maps.py` (`MapStore`: maps.json plus server-named PNG/JPEG image files in the data folder's maps/ subfolder, checked by magic bytes with a size limit; map scale in metres or feet; per-icon lock flag; location, geofence, liveview, widget, template, configtemplate and motion fields kept as documented hypotheses needing a device test) and the `/api/v1/maps` GET/POST routes wired in `page_api.py`, with tests in mfi-server/tests_next/test_maps.py and test_maps_abuse.py.
+
 ## 0.26.0 - 2026-11-20
 
 - EPIC-11 (T-MWNRGQWY): web page API in the new server - `mfi_server_next/page_api.py` (`make_handler` builds the http.server handler of the Page family: login and logout with a session cookie, output command of one port, backup import, comet long poll, statistics by interval, rules GET and POST, events, alarms, map placeholders answering 404, firmware download `/dl/firmware/<path>` only from the allowlist, adopt/forget/reboot/locate/upgrade/port-settings actions and user management; session required except login and firmware download, admin role for every write, trusted Home Assistant ingress peer in add-on mode, JSON in and out with a 413 body limit, 400 for malformed JSON, 404 for unknown routes, 405 for a wrong method, path traversal refused) and the `mfi_server_next/comet.py` buffer (`CometBuffer`, in-memory ring buffer with a size limit and cursor-based long poll), with tests in mfi-server/tests_next/test_page_api.py, test_page_api_abuse.py and test_comet.py.
