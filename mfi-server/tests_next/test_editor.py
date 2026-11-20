@@ -167,6 +167,11 @@ class TestRoundTrip(unittest.TestCase):
         with self.assertRaises(TypeError):
             editor.to_yaml({"value": object()})
 
+    def test_multiline_string_round_trips(self):
+        value = {"data": {"text": "line one\nline two\n  indented"}}
+        text = editor.to_yaml(value)
+        self.assertEqual(editor.from_yaml(text), value)
+
 
 class TestYamlErrors(unittest.TestCase):
     """CA2: text outside the subset raises YamlError on the line of the problem."""
@@ -266,6 +271,9 @@ class TestEditorRoutes(unittest.TestCase):
         status, _, data = self.call("POST", "/api/v1/editor/save", {"automation": automation}, cookie=token)
         self.assertEqual(status, 200)
         self.assertEqual(data["automation"]["id"], "valid_rule")
+        status, _, listing = self.call("GET", "/api/v1/rules", cookie=token)
+        self.assertEqual(status, 200)
+        self.assertTrue(any(item["id"] == "valid_rule" for item in listing["automations"]))
 
     def test_traces_route_needs_only_a_session(self):
         token = self.login("viewer", READ_ONLY_PASSWORD)
@@ -279,6 +287,20 @@ class TestEditorRoutes(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertEqual(data["error"], "invalid_yaml")
         self.assertEqual(data["line"], 2)
+
+    def test_save_without_session_is_401(self):
+        status, _, _ = self.call("POST", "/api/v1/editor/save", {"automation": {"id": "x"}})
+        self.assertEqual(status, 401)
+
+    def test_traces_without_session_is_401(self):
+        status, _, _ = self.call("GET", "/api/v1/editor/traces/valid_rule")
+        self.assertEqual(status, 401)
+
+    def test_from_yaml_route_returns_the_automation(self):
+        token = self.login("boss", ADMIN_PASSWORD)
+        status, _, data = self.call("POST", "/api/v1/editor/from_yaml", {"yaml": "id: 'ex'\nalias: 'Test'\n"}, cookie=token)
+        self.assertEqual(status, 200)
+        self.assertEqual(data["automation"], {"id": "ex", "alias": "Test"})
 
 
 if __name__ == "__main__":

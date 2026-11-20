@@ -13,6 +13,10 @@ QUOTES = ("'", '"')
 INT_RE = re.compile(r"[+-]?[0-9]+")
 FLOAT_RE = re.compile(r"[+-]?(?:[0-9]+\.[0-9]*|\.[0-9]+|[0-9]+)(?:[eE][+-]?[0-9]+)?")
 DOUBLE_ESCAPES = {'"': '"', "\\": "\\", "n": "\n", "t": "\t", "/": "/"}
+# Escapes used when writing a string that contains a line break in double quotes (the reader reverses them).
+DOUBLE_WRITE = {"\\": "\\\\", '"': '\\"', "\n": "\\n", "\t": "\\t"}
+# Line separators that splitlines() breaks on but the reader cannot decode.
+_OTHER_BREAKS = "\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029"
 UNSUPPORTED_START = {
     "&": "anchors are not supported",
     "*": "aliases are not supported",
@@ -97,7 +101,10 @@ def _scalar_text(value: object) -> str:
 
 def _quoted_text(text: str) -> str:
     if text and text.splitlines() != [text]:
-        raise ValueError("line breaks are not supported in strings")
+        # A newline cannot sit in a single-quoted scalar; write the double-quoted form the reader decodes.
+        if any(ch in text for ch in _OTHER_BREAKS):
+            raise ValueError("only '\\n' line breaks are supported in strings")
+        return '"' + "".join(DOUBLE_WRITE.get(ch, ch) for ch in text) + '"'
     return "'" + text.replace("'", "''") + "'"
 
 

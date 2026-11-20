@@ -352,8 +352,8 @@ def make_handler(context):
                 return
             try:
                 text = editor.to_yaml(automation)
-            except (TypeError, ValueError):
-                self._send_json(400, {"error": "invalid"})
+            except (TypeError, ValueError) as exc:
+                self._send_json(400, {"error": "invalid", "detail": str(exc)})
                 return
             self._send_json(200, {"yaml": text})
 
