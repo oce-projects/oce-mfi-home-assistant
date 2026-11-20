@@ -648,7 +648,7 @@ function renderRuleRow(rule) {
 }
 
 async function copyRule(rule, button) {
-  const copy = Object.assign({}, rule, { name: String(rule.name || "") + " (" + t("copy") + ")" });
+  const copy = Object.assign({}, rule, { name: String(rule.name || "") + " (" + t("copy") + ")", enabled: false });
   delete copy.id;
   button.disabled = true;
   try {
