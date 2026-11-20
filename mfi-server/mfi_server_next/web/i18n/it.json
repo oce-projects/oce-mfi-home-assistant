@@ -115,5 +115,9 @@
   "editor_port": "Porta",
   "editor_type": "Tipo",
   "editor_select_type": "Scegli un tipo",
-  "editor_script_warning": "L'azione script è disattivata di default; abilitala solo su una rete isolata"
+  "editor_script_warning": "L'azione script è disattivata di default; abilitala solo su una rete isolata",
+  "editor_remove": "Rimuovi",
+  "trace_time": "Ora",
+  "trace_trigger": "Attivatore",
+  "trace_result": "Esito"
 }

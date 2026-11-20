@@ -3,9 +3,8 @@
 // Automation editor of the Rules tab: list, form (When / And if / Then), YAML switch, save and traces.
 // Hand-written, no libraries. Every address is relative. The DOM is built with createElement and textContent only.
 // The file is one closure, so its names do not clash with app.js, which provides t(key) for the translations.
-// Two hooks come from the page, not from this file: window.mfiDevices (a list of {mac, name, ports}) fills the
-// device and port selects, and the element #editor with data-script-enabled="true" offers the script action.
-// The keys trace_time, trace_trigger, trace_result and editor_remove are not in the editor contract yet.
+// The device and port selects read api/v1/devices when the form opens. The element #editor with
+// data-script-enabled="true" offers the script action.
 
 (function () {
   const TRIGGER_TYPES = ["state", "numeric_state", "time", "time_pattern", "calendar"];
@@ -51,6 +50,7 @@
   let yamlMode = false;
   let listItems = [];
   let listNotice = "";
+  let deviceList = [];
   let errorNotes = [];
   const fieldNodes = new Map();
 
@@ -96,7 +96,28 @@
   }
 
   function knownDevices() {
-    return Array.isArray(window.mfiDevices) ? window.mfiDevices : [];
+    return deviceList;
+  }
+
+  function deviceEntry(device) {
+    const ports = Array.isArray(device.ports) ? device.ports : [];
+    return {
+      mac: String(device.mac),
+      name: device.name,
+      ports: ports.map((port) => port.port).filter((number) => number !== undefined),
+    };
+  }
+
+  // Devices of api/v1/devices as {mac, name, ports}, ports being the port numbers. Not logged in gives an empty list.
+  async function loadDevices() {
+    const response = await fetch("api/v1/devices");
+    if (response.status === 401) {
+      deviceList = [];
+      return;
+    }
+    if (!response.ok) throw new Error("devices request failed: " + response.status);
+    const body = await response.json();
+    deviceList = (Array.isArray(body) ? body : []).map(deviceEntry);
   }
 
   function newId(base) {
@@ -447,7 +468,8 @@
     $("editor-toggle-yaml").textContent = t(on ? "editor_switch_form" : "editor_switch_yaml");
   }
 
-  function openEditor(automation) {
+  async function openEditor(automation) {
+    await loadDevices();
     draft = automation ? clone(automation) : emptyDraft();
     clearMessage();
     setYamlMode(false);
@@ -536,7 +558,9 @@
     });
     const edit = el("button", "button", t("editor_edit"));
     edit.type = "button";
-    edit.addEventListener("click", () => openEditor(automation));
+    edit.addEventListener("click", () => {
+      openEditor(automation).catch(reportError);
+    });
     const copy = el("button", "button", t("editor_copy"));
     copy.type = "button";
     copy.addEventListener("click", () => {
@@ -650,7 +674,9 @@
   }
 
   function bindEvents() {
-    $("editor-open").addEventListener("click", () => openEditor(null));
+    $("editor-open").addEventListener("click", () => {
+      openEditor(null).catch(reportError);
+    });
     $("editor-cancel").addEventListener("click", closeEditor);
     $("editor-form").addEventListener("submit", (event) => event.preventDefault());
     $("editor-save").addEventListener("click", () => {

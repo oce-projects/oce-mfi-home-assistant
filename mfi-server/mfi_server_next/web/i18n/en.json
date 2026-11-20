@@ -115,5 +115,9 @@
   "editor_port": "Port",
   "editor_type": "Type",
   "editor_select_type": "Choose a type",
-  "editor_script_warning": "The script action is off by default; enable it only on an isolated network"
+  "editor_script_warning": "The script action is off by default; enable it only on an isolated network",
+  "editor_remove": "Remove",
+  "trace_time": "Time",
+  "trace_trigger": "Trigger",
+  "trace_result": "Result"
 }
