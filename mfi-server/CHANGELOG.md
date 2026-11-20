@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.22.0 - 2026-11-20
+
+- EPIC-07 (T-MWNRGP5G): statistics in the new server - mfi_server_next/stats.py (`Aggregator` with `add`, `read` by interval minute/quarterhour/hour/day over a `raw` table in history.sqlite3, energy as a counter with reset handling, `monthly_cost`, `cost` and 30-day `purge`), tested in mfi-server/tests_next/test_stats.py.
+
 ## 0.21.0 - 2026-11-20
 
 - EPIC-06 (T-MWNRGNZJ): event log and e-mail alerts in the new server - `mfi_server_next/events.py` (`EventLog` with `record`, `list_events`, age-based `prune`, and `notify_email` over smtplib with a timeout), the `event` and `actionevent` tables in state.sqlite3, the "hold additional e-mail alerts for N minutes" and "don't create an event again for N minutes" throttles, and the `notify.email` and `mfi.event` rule actions in `rules.py`. A failed send is recorded as an event and logged without the password.
