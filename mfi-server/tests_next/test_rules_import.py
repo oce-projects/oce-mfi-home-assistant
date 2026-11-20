@@ -299,6 +299,25 @@ class StoreTwiceTest(unittest.TestCase):
         self.assertEqual(len(loaded), 2)
         self.assertEqual(len(merged), 2)
 
+    def test_store_keeps_existing_automation_without_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Store.open(tmp)
+            try:
+                rules.AutomationStore(db).save(
+                    [{"alias": "legacy", "triggers": [], "conditions": [], "actions": []}]
+                )
+            finally:
+                db.close()
+            result = rules_import.convert_rules(rule_backup([action(20)]))
+            rules_import.store_automations(result["automations"], tmp, clock=lambda: 1700000000.0)
+            db = Store.open(tmp)
+            try:
+                loaded = rules.AutomationStore(db).load()
+            finally:
+                db.close()
+        aliases = [item.get("alias") for item in loaded]
+        self.assertIn("legacy", aliases)
+
 
 class ScriptOffTest(ConvertCase):
     """CA4: with allow_script_action False a script automation is imported switched off, with a note."""

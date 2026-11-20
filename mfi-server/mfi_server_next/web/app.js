@@ -857,7 +857,9 @@ async function sendRulesImport(chosen) {
     }
     if (!response.ok) throw new Error("import failed: " + response.status);
     const body = await response.json();
-    if (!isObject(body) || !isObject(body.report)) throw new Error("import report missing");
+    if (!isObject(body) || !isObject(body.report) || !Number.isInteger(body.report.converted)) {
+      throw new Error("import report missing");
+    }
     rulesImportResult = { ok: true, report: body.report };
   } catch (err) {
     rulesImportResult = { ok: false };
