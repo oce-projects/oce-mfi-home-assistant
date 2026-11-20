@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.28.0 - 2026-11-20
+
+- EPIC-13 (T-MWNRGRZS): network and Wi-Fi tools, all off by default - `mfi_server_next/network_tools.py` (web shell to the serial line of an adopted mPort Serial, SSH from the browser, UPnP announcements and the guest page, each gated by its own setting `allow_webshell`/`allow_browser_ssh`/`allow_upnp`/`allow_guest_page`; the web shell and browser SSH take host and port only from the stored device record, never from the request; admin only; `NetworkToolError` carries the API error key and HTTP status), the matching POST routes `/api/v1/net/webshell`, `/net/ssh`, `/net/upnp`, `/net/guest` in `page_api.py` (403 `disabled` when off), the Wi-Fi configuration builder `sensors.build_wifi_config` including RADIUS (Wi-Fi Enterprise) with the secret kept out of the logs, the `Risky functions` section in DOCS.md, and abuse tests in tests_next/test_network_tools.py and test_network_tools_abuse.py. Owner approval required before merge.
+
 ## 0.27.0 - 2026-11-20
 
 - EPIC-12 (T-MWNRGRHA): maps and dashboard in the new server - `mfi_server_next/maps.py` (`MapStore`: maps.json plus server-named PNG/JPEG image files in the data folder's maps/ subfolder, checked by magic bytes with a size limit; map scale in metres or feet; per-icon lock flag; location, geofence, liveview, widget, template, configtemplate and motion fields kept as documented hypotheses needing a device test) and the `/api/v1/maps` GET/POST routes wired in `page_api.py`, with tests in mfi-server/tests_next/test_maps.py and test_maps_abuse.py.
