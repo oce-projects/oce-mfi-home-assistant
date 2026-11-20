@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.33.0 - 2026-11-20
+
+- EPIC-19 (T-MWNRGUB6): import of the old controller rules from a `.unf` backup. `mfi_server_next/rules_import.py` (`convert_rules`, `collect_rule_docs`, `read_backup_documents`, `store_automations`, `import_backup_rules`) converts the rule, ruleset, ruleaction, rulecondition, ruleschedule, rulestatecalendar, scene, sceneaction and script collections into automations in the Home Assistant format, with a converted/skipped report, one automation or one skipped entry per input document, idempotent replacement by id, a backup copy of `automations.json`, script actions imported disabled when `allow_script_action` is off, and the admin route `POST api/v1/upload/rules` with the "Import old rules" action in the System view; English and Italian strings.
+
 ## 0.32.0 - 2026-11-20
 
 - EPIC-18 (T-MWNRGTVX): visual automation editor like Home Assistant under mfi_server_next/web/ (editor.js, editor.css and the editor view in index.html) with "When / And if / Then do" sections and a "+ Add" type list; YAML round trip in mfi_server_next/editor.py (to_yaml/from_yaml, own standard-library YAML subset, invalid YAML raises a ValueError with the line number); page API routes api/v1/editor/save|validate|to_yaml|from_yaml and api/v1/editor/traces/<id> (session, admin for writes); the script action appears only when enabled, with its warning; English and Italian strings.
