@@ -1,4 +1,4 @@
-"""Serial port configuration of mPort Serial devices and the serial line reset. Implemented in EPIC-04.
+"""Serial port configuration of mPort Serial devices and the serial line reset.
 
 Standard library only, clean room. Only the M2S receives ser2net_cfg
 (docs/controller/mport-serial.md, section 1).

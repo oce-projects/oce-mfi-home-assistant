@@ -63,6 +63,36 @@ class TestBuildPortConfig(unittest.TestCase):
                 {"mac": "002722000001", "model": "M2M", "sensor": {"port": 0, "model": "MSW", "label": "x"}}
             )
 
+    def test_mport_label_with_line_break_is_rejected(self):
+        with self.assertRaises(ValueError):
+            sensors.build_port_config(
+                {"mac": "002722000001", "model": "M2M",
+                 "sensor": {"port": 1, "model": "MSW", "label": "x\nport.2.mode=on"}}
+            )
+
+    def test_mport_model_with_line_break_is_rejected(self):
+        with self.assertRaises(ValueError):
+            sensors.build_port_config(
+                {"mac": "002722000001", "model": "M2M",
+                 "sensor": {"port": 1, "model": "MS\nW", "label": "ok"}}
+            )
+
+    def test_mport_non_integer_port_is_rejected(self):
+        for port in ("1", None, True):
+            with self.subTest(port=port):
+                with self.assertRaises(ValueError):
+                    sensors.build_port_config(
+                        {"mac": "002722000001", "model": "M2M",
+                         "sensor": {"port": port, "model": "MSW", "label": "x"}}
+                    )
+
+    def test_mport_non_string_sensor_model_is_rejected(self):
+        with self.assertRaises(ValueError):
+            sensors.build_port_config(
+                {"mac": "002722000001", "model": "M2M",
+                 "sensor": {"port": 1, "model": 5, "label": "x"}}
+            )
+
     def test_unknown_model_raises(self):
         with self.assertRaises(ValueError):
             sensors.build_port_config({"model": "NOPE"})
@@ -180,6 +210,29 @@ class TestSensorRegistry(unittest.TestCase):
         s = reg.add("002722000001", 1, "MSW", "Motion")
         reg.remove(s["sId"])
         self.assertIsNone(reg.get(s["sId"]))
+        self.assertEqual(reg.list(), [])
+
+    def test_add_rejects_non_integer_port_and_non_string_mac(self):
+        reg = sensors.SensorRegistry()
+        with self.assertRaises(ValueError):
+            reg.add("002722000001", "1", "MSW")
+        with self.assertRaises(ValueError):
+            reg.add(123, 1, "MSW")
+
+    def test_add_rejects_label_with_line_break(self):
+        reg = sensors.SensorRegistry()
+        with self.assertRaises(ValueError):
+            reg.add("002722000001", 1, "MSW", "a\nb")
+
+    def test_set_calibration_rejects_line_break(self):
+        reg = sensors.SensorRegistry()
+        s = reg.add("002722000001", 1, "CS", "Current")
+        with self.assertRaises(ValueError):
+            reg.set_calibration(s["sId"], "x\ny")
+
+    def test_remove_unknown_sid_is_ignored(self):
+        reg = sensors.SensorRegistry()
+        reg.remove(999999)
         self.assertEqual(reg.list(), [])
 
 

@@ -94,6 +94,12 @@ def _assigned_sensors(request):
     return found
 
 
+def _reject_line_break(value, field):
+    """Reject a value with a line break: it could inject a config line into the device."""
+    if "\n" in value or "\r" in value:
+        raise ValueError(field)
+
+
 def _mport_port_lines(model, request):
     """port.N lines of an mPort: one block per port, empty ports marked off."""
     count = MPORT_PORTS[model]
@@ -106,6 +112,8 @@ def _mport_port_lines(model, request):
         label = sensor.get("label", "")
         if not isinstance(sensor_model, str) or not isinstance(label, str):
             raise ValueError("sensor")
+        _reject_line_break(sensor_model, "sensor")
+        _reject_line_break(label, "label")
         assigned[port] = (sensor_model, label)
     lines = []
     for port in range(1, count + 1):
@@ -177,6 +185,7 @@ class SensorRegistry:
             raise ValueError("model")
         if not isinstance(label, str):
             raise ValueError("label")
+        _reject_line_break(label, "label")
         self._unlink(mac, port)
         s_id = self._next_id
         self._next_id += 1
@@ -225,5 +234,6 @@ class SensorRegistry:
             raise ValueError("sId")
         if not isinstance(calibration, str):
             raise ValueError("calibration")
+        _reject_line_break(calibration, "calibration")
         sensor["calibration"] = calibration
         return dict(sensor)
