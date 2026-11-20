@@ -18,6 +18,22 @@ place but not yet tested on a real device (see [Adopting and re-pointing devices
 wake-up packet is sent to a device when its address is known (from its inform
 connect_request), UNVERIFIED on a real device.
 
+## Server and upgrade
+
+This version runs the new server, package `mfi_server_next`, instead of the previous `mfi_server`. The add-on keeps its slug (`mfi_server`), so updating it replaces the server in place, with the same data folder and no reinstall.
+
+Every start migrates the data of the previous version before any service starts:
+
+- missing fields are added to the records of `devices.json`, the `raw` table is created in `history.sqlite3` when it is missing, and the key `enabled` (default `true`) is added to the automations in `automations.json`;
+- before a file is changed, a copy is saved next to it, named `<file>.<UTC time>.bak`, with mode 0600. The newest `backup_copies` copies are kept (default 5, a key of `settings.json`); older copies are deleted. If a change fails, the file is restored from its copy;
+- if the migration fails, the server stops with exit code 2 before any service starts. The log shows one line that names the file, for example `migration failed for <path>`. Fix or restore that file, then start the add-on again.
+
+The risky network functions are off by default, see [Risky functions](#risky-functions).
+
+### Going back to the previous server
+
+The switch is the `CMD` line of the `Dockerfile`. To go back, the maintainers change it to `["python3", "-m", "mfi_server"]` and release a patch version. Users cannot do this themselves. Keep the `.bak` copies until the new version has run for a while. Whether the previous server reads the migrated files without errors is UNVERIFIED on a device.
+
 ## Install on Home Assistant OS
 
 Add the repository `https://github.com/oce-projects/oce-mfi-home-assistant` in
@@ -41,6 +57,11 @@ the Advanced SSH & Web Terminal app. Reload the store, then install the app.
 | `device_ssh_username` | Administrator name of the old controller, used to re-point devices. |
 | `device_ssh_password` | Administrator password of the old controller, used to re-point devices. Never shown in the API or in the logs. |
 | `ssh_extra_options` | Extra SSH algorithm options. The default is UNVERIFIED, see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices). |
+| `allow_webshell` | Risky function, **off by default**: web shell to an adopted mPort Serial. See [Risky functions](#risky-functions). |
+| `allow_browser_ssh` | Risky function, **off by default**: SSH from the browser. See [Risky functions](#risky-functions). |
+| `allow_upnp` | Risky function, **off by default**: UPnP announcements. See [Risky functions](#risky-functions). |
+| `allow_guest_page` | Risky function, **off by default**: guest access page. See [Risky functions](#risky-functions). |
+| `allow_script_action` | Risky function, **off by default**: script action in rules. See [Risky functions](#risky-functions). |
 
 ## Import the keys from a controller backup
 
@@ -56,6 +77,8 @@ The command prints only how many devices and ports were imported. The keys end u
 in `devices.json` inside the data folder: protect that folder and never publish it.
 
 ## Run as a standalone program
+
+Note: this version switches only the add-on to the new package `mfi_server_next`. The commands in this section still start the previous package `mfi_server`.
 
 The ways to start it, the password, backups, MQTT and the data folder are in the [Run without Home Assistant](README.md#run-without-home-assistant) section of the README.
 
@@ -388,14 +411,14 @@ Risks:
 
 Rules:
 
-- Off by default: `allow_script_action` is `False`. It is not an add-on option yet, only a parameter of the engine, so a script action is refused with `script action is disabled` until the owner enables it.
+- Off by default: `allow_script_action` is `False`. The add-on configuration shows the switch, off, but this version does not read it: the server keeps the action off, so a script action is refused with `script action is disabled` until the owner approves it and the switch is wired in.
 - Only the host and port of an adopted mPort Serial are allowed. Any other target is refused with `device is not an adopted mPort Serial`.
 - The length of the text is limited (`script_max_length`, default 1024 characters). Longer text is refused with `script text too long`.
 - The owner must approve this action before it is enabled.
 
 ## Risky functions
 
-Four extra network functions from the original 2.1.11 controller are implemented but **off by default**. Each one stays disabled until its setting is set to `true` in the server settings (`settings.json` in the data folder). These settings are not add-on options yet. The owner must approve these functions before the add-on is published. Keep the devices on an isolated network and never expose ports 6080/tcp, 6443/tcp or 8099/tcp to the internet (AGENTS.md rule 8).
+Five risky functions are implemented but **off by default**: the four network functions of the original 2.1.11 controller, and the script action of the rules. This version keeps every risky function off whatever the add-on options or the server settings say. The five `allow_*` switches are declared in the add-on configuration, all off, but the server does not read them yet: wiring them is the next release. The owner must approve these functions before the add-on is published. Keep the devices on an isolated network and never expose ports 6080/tcp, 6443/tcp or 8099/tcp to the internet (AGENTS.md rule 8).
 
 | Function | Setting (default `false`) | Who | What it does |
 |---|---|---|---|
@@ -403,5 +426,6 @@ Four extra network functions from the original 2.1.11 controller are implemented
 | SSH from the browser | `allow_browser_ssh` | admin only | Checks that an adopted device is reachable over SSH (port 22). It is separate from the adoption SSH call. The interactive session is not built yet (UI work, EPIC-16). The host and port are taken only from the stored device record. |
 | UPnP announcements | `allow_upnp` | admin only | Builds the UPnP announcement content: only the product name, no version string. The network send is not built yet (transport and UI work, EPIC-16). Their use by mFi devices is UNVERIFIED and needs a device test. |
 | Guest access page | `allow_guest_page` | admin only | Builds the guest access page content. It is rate limited only when a rate limiter is configured in the context. Its use with mFi devices is UNVERIFIED (most likely a UniFi remnant) and needs a device test. |
+| Script action in rules | `allow_script_action` | rules | Lets a rule send a block of text over telnet to an adopted mPort Serial. See [Script action over telnet](#script-action-over-telnet-off-by-default). |
 
 Risks: a web shell or an SSH session gives access to a device over weak, old ciphers with no host-key check; UPnP announcements can reveal the product on the local network; a guest page can open network access to clients that were never authorised. When any of these is off, its route answers `403` with the error key `disabled` and opens no connection. The RADIUS secret of the Wi-Fi Enterprise settings is never written to a log.

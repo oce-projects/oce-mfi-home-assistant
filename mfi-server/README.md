@@ -2,6 +2,8 @@
 
 mFi Server (new) is our own controller for Ubiquiti mFi devices, written from scratch in pure Python with no Ubiquiti code. The devices report directly to this server, without the 2015 mFi Controller from Ubiquiti.
 
+The add-on now runs the new server package `mfi_server_next`, in place of the previous one, under the same add-on slug. At start it migrates the data of the previous version, and every risky network function is off by default. See [DOCS.md](DOCS.md#server-and-upgrade).
+
 ## Which one should I install?
 
 Install **mFi Server (new)**: it is the recommended one. **Ubiquiti mFi Controller (original)** is kept only for comparison and for capturing the traffic of the devices.
@@ -30,6 +32,7 @@ Home Assistant OS.
 - UDP discovery of the devices on the local network (port 10001, UNVERIFIED on a device), shown on the web page.
 - Adoption and re-pointing of devices over SSH, with the system `ssh` program (see DOCS.md; not tested on a real device).
 - Never sends a factory reset to a device.
+- Risky functions (web shell, SSH from the browser, UPnP announcements, guest page and the script action of the rules) are off by default, see DOCS.md.
 - MQTT discovery for Home Assistant (optional in standalone mode).
 - JSON web API on port 8099, and measurement history in `history.sqlite3` (30 days by default).
 - Controller-compatible API under `api/v1.0/` on the same host and port, for the routes observed in the 2.1.11 controller (`cmd/devmgr` with `mfi-output` and `kick-serial`, `upd/sensor`). Sign in with the page login; the API requires an admin session.
@@ -46,6 +49,16 @@ With MQTT, each outlet gets:
 
 Entity names use the port label, for example `Port 1 Power`.
 
+## Upgrading from 0.x
+
+Updating the add-on replaces the server in place and keeps all data. The new version:
+
+- migrates `devices.json`, the history and the automations, with a backup copy of each file made first (see [DOCS.md](DOCS.md#server-and-upgrade));
+- stops with a log line that names the file if the migration fails, and starts no service;
+- keeps the risky network functions off.
+
+After the update, check the add-on log and that the devices still report to the server.
+
 ## Requirements
 
 Python 3.11 or later. No extra packages.
@@ -53,6 +66,8 @@ Python 3.11 or later. No extra packages.
 ## Run without Home Assistant
 
 mFi Server also runs as a standalone program, without Home Assistant. Choose one of the three ways below. The Python way needs Python 3.11 or later. Docker and systemd run the same code.
+
+Note: only the add-on switches to the new package `mfi_server_next`. The standalone examples below still start the previous package `mfi_server`, until they are migrated in a later release.
 
 ### Python
 
@@ -143,7 +158,7 @@ Each setting can come from an environment variable, from `settings.json` in the 
 
 The data folder is `./data` (Python), `./data` next to the compose file, mounted as `/data` in Docker, and `/var/lib/mfi-server` with systemd. It holds `devices.json`, `automations.json`, `auth.json` and `history.sqlite3`. `devices.json` contains the device keys and `auth.json` contains the password hash: protect the folder and never publish it.
 
-To update, stop the server, replace the code, and start it again: the data folder is kept. To back up, stop the server, copy the whole folder to a private place, and start the server again.
+To update, stop the server, replace the code, and start it again: the data folder is kept. The server migrates the data at start and makes a backup copy of each file before changing it (see [DOCS.md](DOCS.md#server-and-upgrade)). To back up, stop the server, copy the whole folder to a private place, and start the server again.
 
 ## Documentation
 
