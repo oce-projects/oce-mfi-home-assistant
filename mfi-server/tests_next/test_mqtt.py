@@ -8,7 +8,7 @@ import unittest
 from mfi_server_next import mqtt
 from mfi_server_next import tasks
 
-FAKE_MAC = "002722000001"
+FAKE_MAC = "000000000001"
 PREFIX = "mfi"
 COMMAND_TOPIC = f"{PREFIX}/{FAKE_MAC}/1/output/set"
 REMAINING_CASES = [
@@ -63,12 +63,19 @@ class ConnectPacketTest(unittest.TestCase):
         self.assertEqual(body[7], 0x02 | 0x40 | 0x80)
         self.assertEqual(body[8:10], b"\x00\x3c")
         self.assertEqual(body[10:20], b"\x00\x08mfi-test")
+        self.assertEqual(body[20:], b"\x00\x09user-test\x00\x07pw-test")
         self.assertEqual(consumed, len(packet))
 
     def test_connect_without_credentials_has_only_clean_session(self):
         packet = mqtt.build_connect("c", "", "", 0, "", b"")
         _, _, body, _ = mqtt.parse_packet(packet)
         self.assertEqual(body[7], 0x02)
+
+    def test_password_without_username_is_dropped(self):
+        packet = mqtt.build_connect("c", "", "pw-only", 0, "", b"")
+        _, _, body, _ = mqtt.parse_packet(packet)
+        self.assertEqual(body[7], 0x02)
+        self.assertNotIn(b"pw-only", body)
 
     def test_partial_packet_is_not_parsed(self):
         packet = mqtt.build_connect("mfi-test", "user-test", "pw-test", 60, "", b"")
@@ -179,8 +186,11 @@ class CommandTest(unittest.TestCase):
 
     def test_bad_device_id_or_port_queues_nothing(self):
         topics = [
-            f"{PREFIX}/00272200000g/1/output/set",
-            f"{PREFIX}/0027220000012/1/output/set",
+            f"{PREFIX}/00000000000g/1/output/set",
+            f"{PREFIX}/0000000000012/1/output/set",
+            f"{PREFIX}/00000000000A/1/output/set",
+            f"{PREFIX}/00000000001/1/output/set",
+            f"{PREFIX}//1/output/set",
             f"{PREFIX}/{FAKE_MAC}/x/output/set",
             f"{PREFIX}/{FAKE_MAC}/0/output/set",
             f"{PREFIX}/{FAKE_MAC}/256/output/set",
@@ -211,6 +221,17 @@ class CommandTest(unittest.TestCase):
         self.assertIsNone(bridge.on_message(COMMAND_TOPIC, None))
         self.assertIsNone(bridge.on_message(COMMAND_TOPIC, ["ON"]))
         self.assertIsNone(bridge.queue.pop_for_mac(FAKE_MAC))
+
+    def test_retained_inbound_command_is_dropped(self):
+        received = []
+        client = mqtt.MqttClient("h", 1883, "", "", "cid", on_message=lambda t, p: received.append((t, p)))
+        body = len(COMMAND_TOPIC).to_bytes(2, "big") + COMMAND_TOPIC.encode("utf-8") + b"ON"
+        client._dispatch(mqtt.PUBLISH, 0x01, body)
+        client._deliver_inbox()
+        self.assertEqual(received, [])
+        client._dispatch(mqtt.PUBLISH, 0x00, body)
+        client._deliver_inbox()
+        self.assertEqual(received, [(COMMAND_TOPIC, b"ON")])
 
 
 class ConnectedBridgeTest(unittest.TestCase):
@@ -247,6 +268,18 @@ class ConnectedBridgeTest(unittest.TestCase):
         on_tick()
         self.assertGreater(len(fake.published), before)
         self.assertIn((f"{PREFIX}/{FAKE_MAC}/1/output", b"OFF", True), fake.published)
+
+    def test_one_bad_device_record_does_not_block_the_others(self):
+        fake = FakeClient()
+        bridge = make_bridge(
+            {"mqtt_host": "broker.test", "mqtt_topic_prefix": PREFIX},
+            devices=[{"model": "P1E"}, {"mac": FAKE_MAC, "model": "P1E"}],
+            latest=lambda mac: {1: {"output": True}},
+            client_factory=lambda: fake,
+        )
+        bridge.run(threading.Event())
+        topics = [topic for topic, _, _ in fake.published]
+        self.assertIn(f"{PREFIX}/{FAKE_MAC}/availability", topics)
 
 
 if __name__ == "__main__":

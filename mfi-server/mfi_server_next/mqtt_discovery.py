@@ -19,6 +19,7 @@ from mfi_server_next.sensors import (
 )
 
 OUTLET_MODELS = frozenset(MPOWER_OUTLETS) | frozenset(INWALL_OUTLETS)
+BINARY_TAGS = frozenset({"motion", "tamper", "door", "input"})
 
 # Measure sensor of every outlet: tag -> (name, config fields). The output tag is a switch.
 OUTLET_MEASURES = {
@@ -200,7 +201,7 @@ def state_messages(device, values, *, topic_prefix="mfi"):
     messages = []
     for port, tagmap in values.items():
         for tag, value in tagmap.items():
-            if tag == "output":
+            if tag == "output" or tag in BINARY_TAGS:
                 payload = b"ON" if value else b"OFF"
             else:
                 payload = str(value).encode("utf-8")
