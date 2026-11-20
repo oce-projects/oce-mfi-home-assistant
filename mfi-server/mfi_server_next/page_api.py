@@ -427,6 +427,9 @@ def make_handler(context):
             except ValueError:
                 self._send_json(400, {"error": "invalid"})
                 return
+            except OSError:
+                self._send_json(500, {"error": "io_error"})
+                return
             self._send_json(200, {"report": report})
 
         def _device_action(self, name: str, params, body: bytes) -> None:

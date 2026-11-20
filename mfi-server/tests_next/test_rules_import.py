@@ -3,6 +3,7 @@
 Documents are synthetic dictionaries: no backup file and no BSON is read. The route runs on 127.0.0.1 only.
 Run from the repository root: python3 -m unittest discover -s mfi-server/tests_next -v
 """
+import gzip
 import http.client
 import http.server
 import json
@@ -141,6 +142,20 @@ class RulesTableTest(ConvertCase):
         self.assertEqual(auto["conditions"], [{"condition": "time", "after": "08:00", "before": "17:00", "weekday": ["mon"]}])
         self.assertEqual(rules.validate(auto), [])
 
+    def test_several_weekly_intervals_each_become_a_trigger(self):
+        monday = {"_id": oid(50), "trigger": "time", "stateId": RULE, "start": 1920, "end": 2460}
+        tuesday = {"_id": oid(52), "trigger": "time", "stateId": RULE, "start": 3420, "end": 3960}
+        auto = self.only(rule_backup([action(20)], rulesets=[], rulestatecalendar=[monday, tuesday]))
+        self.assertEqual(auto["triggers"], [
+            {"trigger": "time", "at": "08:00", "weekday": ["mon"]},
+            {"trigger": "time", "at": "09:00", "weekday": ["tue"]},
+        ])
+        self.assertEqual(auto["conditions"], [{"condition": "or", "conditions": [
+            {"condition": "time", "after": "08:00", "before": "17:00", "weekday": ["mon"]},
+            {"condition": "time", "after": "09:00", "before": "18:00", "weekday": ["tue"]},
+        ]}])
+        self.assertEqual(rules.validate(auto), [])
+
     def test_calendar_is_calendar_trigger(self):
         schedule = {"_id": oid(51), "rulesetId": RULE, "trigger": "calendar", "sId": CALENDAR}
         auto = self.only(rule_backup([action(20)], rulesets=[], ruleschedule=[schedule]))
@@ -211,6 +226,18 @@ class RulesTableTest(ConvertCase):
         ])
         self.assertTrue(auto["enabled"])
         self.assertEqual(rules.validate(auto, allow_script_action=True), [])
+
+
+class GunzipLimitTest(unittest.TestCase):
+    """The decompression of db.gz is bounded, so a gzip bomb cannot exhaust memory."""
+
+    def test_small_data_round_trips(self):
+        self.assertEqual(rules_import._gunzip_limited(gzip.compress(b"hello")), b"hello")
+
+    def test_output_past_the_limit_is_rejected(self):
+        payload = gzip.compress(b"A" * 100000)
+        with self.assertRaises(ValueError):
+            rules_import._gunzip_limited(payload, limit=1000)
 
 
 class UnknownTypeTest(ConvertCase):
@@ -310,6 +337,7 @@ class ImportRouteTest(unittest.TestCase):
         self.report = {"converted": 1, "skipped": []}
         self.calls = []
         self.refuse = False
+        self.fail_io = False
         context = SimpleNamespace(
             auth=self.auth,
             settings={"mode": "standalone", "comet_timeout_s": 0.05, "max_body": 65536},
@@ -327,6 +355,8 @@ class ImportRouteTest(unittest.TestCase):
         self.calls.append(body)
         if self.refuse:
             raise ValueError("not a backup")
+        if self.fail_io:
+            raise OSError("disk full")
         return self.report
 
     def call(self, method, path, *, body=None, cookie=None):
@@ -371,6 +401,13 @@ class ImportRouteTest(unittest.TestCase):
         status, data = self.call("POST", "/api/v1/upload/rules", body=b"x", cookie=token)
         self.assertEqual(status, 400)
         self.assertEqual(json.loads(data), {"error": "invalid"})
+
+    def test_io_error_during_import_is_500_json(self):
+        token = self.login("boss", ADMIN_PASSWORD)
+        self.fail_io = True
+        status, data = self.call("POST", "/api/v1/upload/rules", body=b"x", cookie=token)
+        self.assertEqual(status, 500)
+        self.assertEqual(json.loads(data), {"error": "io_error"})
 
     def test_without_session_is_401(self):
         status, _ = self.call("POST", "/api/v1/upload/rules", body=b"x")
