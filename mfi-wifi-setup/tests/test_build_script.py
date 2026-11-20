@@ -66,6 +66,13 @@ class TestBuildScript(unittest.TestCase):
         self.assertIn("from mfi_wifi_setup.window import run", self.script)
         self.assertIn("--paths", self.script)
 
+    def test_icon_is_passed_to_pyinstaller(self):
+        self.assertIn('--icon "%~dp0icon.ico"', self.script)
+        self.assertIn('--add-data "%~dp0icon.ico;."', self.script)
+        check = self.script.index('if not exist "%~dp0icon.ico" (')
+        pyinstaller = self.script.index("pyinstaller.exe")
+        self.assertLess(check, pyinstaller)
+
 
 class TestBuildRequirements(unittest.TestCase):
     def test_pyinstaller_is_pinned(self):

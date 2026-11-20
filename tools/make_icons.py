@@ -1,4 +1,4 @@
-"""Generates the icons and logos of the add-ons as PNG files.
+"""Generates the icons and logos of the add-ons as PNG files, and the program icon as an ICO file.
 
 Standard library only (zlib, struct, pathlib). No network. The output is
 deterministic: the same code always writes the same bytes.
@@ -26,6 +26,11 @@ ICONS = [
     ("mfi-server/logo.png", 250, 100, (30, 136, 229), (255, 255, 255), (75, 0, 100)),
     ("mfi-controller/icon.png", 128, 128, (120, 144, 156), (255, 255, 255), (0, 0, 128)),
     ("mfi-controller/logo.png", 250, 100, (120, 144, 156), (255, 255, 255), (75, 0, 100)),
+]
+
+# (path, sizes, background, drawing colour). Kept apart from ICONS, which the server tests parse.
+ICO_FILES = [
+    ("mfi-wifi-setup/icon.ico", (16, 32, 48, 256), (67, 160, 71), (255, 255, 255)),
 ]
 
 
@@ -93,10 +98,28 @@ def render_png(
     )
 
 
+def render_ico(sizes: tuple[int, ...], bg: tuple[int, int, int], fg: tuple[int, int, int]) -> bytes:
+    """ICO file with one PNG image per size: 6-byte header, one 16-byte entry per image, then the PNGs."""
+    for size in sizes:
+        if not 1 <= size <= 256:
+            raise ValueError(f"icon size {size} is outside 1..256")
+    pngs = [render_png(size, size, bg, fg, (0, 0, size)) for size in sizes]
+    header = struct.pack("<HHH", 0, 1, len(sizes))
+    entries = bytearray()
+    offset = 6 + 16 * len(sizes)
+    for size, png in zip(sizes, pngs):
+        dim = 0 if size == 256 else size  # 0 stands for 256 in the ICO format
+        entries += struct.pack("<BBBBHHII", dim, dim, 0, 0, 1, 32, len(png), offset)
+        offset += len(png)
+    return header + bytes(entries) + b"".join(pngs)
+
+
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
     for relpath, width, height, bg, fg, icon_box in ICONS:
         (root / relpath).write_bytes(render_png(width, height, bg, fg, icon_box))
+    for relpath, sizes, bg, fg in ICO_FILES:
+        (root / relpath).write_bytes(render_ico(sizes, bg, fg))
 
 
 if __name__ == "__main__":
