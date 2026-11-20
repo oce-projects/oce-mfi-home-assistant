@@ -3,7 +3,7 @@ import unittest
 
 from mfi_server_next import mqtt_discovery
 
-FAKE_MAC = "002722000001"
+FAKE_MAC = "000000000001"
 DISCOVERY = "homeassistant"
 PREFIX = "mfi"
 MAC_TOPIC = f"{PREFIX}/{FAKE_MAC}"
@@ -229,6 +229,18 @@ class TestState(unittest.TestCase):
         state = mqtt_discovery.state_messages(device("P1E"), {1: {"output": True}})
         config = config_of(discovery("P1E"), "switch", "1_output")
         self.assertEqual(state, [(config["state_topic"], b"ON")])
+
+    def test_binary_tags_are_on_or_off(self):
+        values = {1: {"motion": True, "tamper": 0}, 2: {"door": False, "input": 1}}
+        self.assertEqual(
+            mqtt_discovery.state_messages(device("M2M"), values),
+            [
+                (f"{MAC_TOPIC}/1/motion", b"ON"),
+                (f"{MAC_TOPIC}/1/tamper", b"OFF"),
+                (f"{MAC_TOPIC}/2/door", b"OFF"),
+                (f"{MAC_TOPIC}/2/input", b"ON"),
+            ],
+        )
 
 
 if __name__ == "__main__":

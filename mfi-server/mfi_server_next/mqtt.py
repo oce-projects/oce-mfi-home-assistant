@@ -145,7 +145,7 @@ def build_connect(
     if username:
         flags |= FLAG_USERNAME
         payload += _string(username)
-    if password:
+    if username and password:
         flags |= FLAG_PASSWORD
         payload += _string(password)
     variable = PROTOCOL_NAME + bytes([PROTOCOL_LEVEL, flags]) + keepalive.to_bytes(2, "big")
@@ -408,6 +408,9 @@ class MqttClient:
         """Queue an inbound QoS 0 PUBLISH; other packets need no action here."""
         if ptype != PUBLISH:
             return
+        if flags & 0x01:
+            logger.warning("ignored a retained inbound message")
+            return
         qos = (flags >> 1) & 0x03
         if qos != 0:
             logger.debug("ignored an inbound message with QoS %d", qos)
@@ -487,21 +490,27 @@ class MqttBridge:
         discovery_prefix = self.settings.get("mqtt_discovery_prefix", DEFAULT_DISCOVERY_PREFIX)
         topic_prefix = self._topic_prefix()
         for device in self.list_devices():
-            sensors = self.list_sensors(device["mac"])
-            for topic, config in discovery_messages(
-                device, sensors, discovery_prefix=discovery_prefix, topic_prefix=topic_prefix
-            ):
-                payload = json.dumps(config, sort_keys=True).encode("utf-8")
-                self._client.publish(topic, payload, retain=True)
+            try:
+                sensors = self.list_sensors(device["mac"])
+                for topic, config in discovery_messages(
+                    device, sensors, discovery_prefix=discovery_prefix, topic_prefix=topic_prefix
+                ):
+                    payload = json.dumps(config, sort_keys=True).encode("utf-8")
+                    self._client.publish(topic, payload, retain=True)
+            except Exception as exc:
+                logger.warning("discovery for %r skipped: %s", device.get("mac"), type(exc).__name__)
 
     def publish_states(self) -> None:
         """Publish the retained availability and the last value of every port of every device."""
         topic_prefix = self._topic_prefix()
         for device in self.list_devices():
-            mac = device["mac"]
-            self._client.publish(f"{topic_prefix}/{mac}/availability", STATUS_ONLINE, retain=True)
-            for topic, payload in state_messages(device, self.latest(mac), topic_prefix=topic_prefix):
-                self._client.publish(topic, payload, retain=True)
+            try:
+                mac = device["mac"]
+                self._client.publish(f"{topic_prefix}/{mac}/availability", STATUS_ONLINE, retain=True)
+                for topic, payload in state_messages(device, self.latest(mac), topic_prefix=topic_prefix):
+                    self._client.publish(topic, payload, retain=True)
+            except Exception as exc:
+                logger.warning("state for %r skipped: %s", device.get("mac"), type(exc).__name__)
 
     def on_message(self, topic: str, payload: bytes) -> None:
         """Queue an ON or OFF command for one output port. Never raises: bad input is logged and dropped."""
@@ -514,7 +523,7 @@ class MqttBridge:
         """Parse the topic and the payload, then queue the output command."""
         parsed = self._parse_command_topic(topic)
         if parsed is None:
-            logger.warning("command topic not recognised: %s", topic)
+            logger.warning("command topic not recognised: %r", topic)
             return
         mac, port = parsed
         value = COMMAND_VALUES.get(payload) if isinstance(payload, bytes) else None
