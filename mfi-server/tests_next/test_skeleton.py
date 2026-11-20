@@ -24,7 +24,6 @@ MODULE_NAMES = [
 
 FUNCTIONS = {
     "__main__": ["main"],
-    "page_api": ["make_handler"],
     "compat_api": ["make_compat_handler"],
     "mqtt_discovery": ["discovery_messages", "state_messages"],
     "rules_import": ["convert_rules"],
@@ -34,7 +33,6 @@ FUNCTIONS = {
 
 CLASSES = {
 
-    "comet": {"CometBuffer": []},
     "maps": {"MapStore": []},
     "mqtt": {"MqttBridge": []},
 }
