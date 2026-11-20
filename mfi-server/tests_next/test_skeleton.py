@@ -32,8 +32,6 @@ FUNCTIONS = {
 }
 
 CLASSES = {
-
-    "maps": {"MapStore": []},
     "mqtt": {"MqttBridge": []},
 }
 
