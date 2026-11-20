@@ -111,5 +111,6 @@ def guest_portal(settings, limiter=None, client_ip="") -> dict:
     if limiter is not None:
         if limiter.blocked(client_ip):
             raise NetworkToolError("rate_limited", 429)
+        # Count every request against the public-page rate budget (not only auth failures).
         limiter.failure(client_ip)
     return {"product": UPNP_PRODUCT, "page": "guest"}
