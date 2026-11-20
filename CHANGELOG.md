@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.43.0 - 2026-11-20
+
+- mfi-server 0.32.0: EPIC-18 visual automation editor (When / And if / Then do) in the new web page, YAML round trip (mfi_server_next/editor.py) with line-numbered errors, page API routes under api/v1/editor/ (save, validate, to_yaml, from_yaml, traces), script action off by default with a warning, English and Italian.
+
 ## 0.42.1 - 2026-11-20
 
 - mfi-server 0.31.1: EPIC-17 hardening of the controller-compatible API - require `Content-Type: application/json` on commands (CSRF guard), validate the MAC format and the outlet value (0 or 1) of `cmd/devmgr` mfi-output, and wrap the output enqueue in the same ValueError guard as kick-serial; extra abuse tests.

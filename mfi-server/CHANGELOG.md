@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.32.0 - 2026-11-20
+
+- EPIC-18 (T-MWNRGTVX): visual automation editor like Home Assistant under mfi_server_next/web/ (editor.js, editor.css and the editor view in index.html) with "When / And if / Then do" sections and a "+ Add" type list; YAML round trip in mfi_server_next/editor.py (to_yaml/from_yaml, own standard-library YAML subset, invalid YAML raises a ValueError with the line number); page API routes api/v1/editor/save|validate|to_yaml|from_yaml and api/v1/editor/traces/<id> (session, admin for writes); the script action appears only when enabled, with its warning; English and Italian strings.
+
 ## 0.31.1 - 2026-11-20
 
 - EPIC-17 (T-MWNRGTE3): hardening of the controller-compatible API - `cmd/devmgr` now requires `Content-Type: application/json` (a cross-site HTML form can no longer switch an outlet), validates the MAC (12 lowercase hex) and the output value (0 or 1), and wraps the output enqueue in the same `ValueError` guard as kick-serial; new abuse tests for a wrong content type, a bad MAC and an out-of-range value.
