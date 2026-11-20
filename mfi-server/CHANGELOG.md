@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.0 - 2026-11-20
+
+- EPIC-06 (T-MWNRGNZJ): event log and e-mail alerts in the new server - `mfi_server_next/events.py` (`EventLog` with `record`, `list_events`, age-based `prune`, and `notify_email` over smtplib with a timeout), the `event` and `actionevent` tables in state.sqlite3, the "hold additional e-mail alerts for N minutes" and "don't create an event again for N minutes" throttles, and the `notify.email` and `mfi.event` rule actions in `rules.py`. A failed send is recorded as an event and logged without the password.
+
 ## 0.20.0 - 2026-11-20
 
 - EPIC-05: rules and scenes engine in mfi_server_next/rules.py (extended Home Assistant format) with the serial script action over telnet off by default.
