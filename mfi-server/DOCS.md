@@ -175,6 +175,30 @@ History is kept for `history_days` (default 30) in `history.sqlite3` inside the 
 Security warning: never expose 8099/tcp on the internet. Standalone mode has no built-in
 HTTPS: for remote access put a reverse proxy with TLS in front of it, on the isolated network.
 
+## Controller-compatible API
+
+The controller-compatible API is found by the `api/v1.0/` part of the path. It has its own route marker, separate from the page API `api/v1/`. It exists so that the Home Assistant core `mfi` integration (library mficlient) can point at mfi-server.
+
+Only the routes marked OBSERVED in `docs/controller/web-api.md` are implemented:
+
+- `/api/v1.0/cmd/devmgr`: commands `mfi-output` (switch an outlet) and `kick-serial` (for an mPort Serial).
+- `/api/v1.0/upd/sensor`: sensor calibration.
+
+All these routes are POST and need an admin session: the session of the page API login (`api/v1/login`). A `read_only` user is refused. There is no login route under `api/v1.0/`.
+
+The answer envelope is `{"data":[...],"meta":{"rc":"ok"}}` on success and `{"meta":{"rc":"error","msg":"api.err.<Name>"}}` on error, with these names:
+
+- `api.err.LoginRequired`: no session (401).
+- `api.err.NoPermission`: `read_only` user (403).
+- `api.err.UnknownMethod`: unknown verb or object (404).
+- `api.err.WrongMethod`: wrong HTTP method (405).
+- `api.err.InvalidPayload`: malformed JSON or missing fields (400; 413 when the body is too large).
+- `api.err.ServerError`: unexpected failure (500).
+
+The real controller error codes are UNVERIFIED, so these `api.err.*` names are the server's own choice. The UNVERIFIED controller routes (device and sensor list, measurement read, login) stay pending until the R-WEB device captures confirm them.
+
+Security: never expose this API to the internet. Keep it on the isolated network, next to the devices, and never expose 6080/tcp, 6443/tcp or 8099/tcp to the internet.
+
 ## Web page
 
 The web page is served by the same server as the API, on port 8099 (`web_port`, variable `MFI_WEB_PORT`). It uses hand-written static files (HTML, CSS and JavaScript): there are no build tools and no resources loaded from the Internet.

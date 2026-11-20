@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.31.0 - 2026-11-20
+
+- EPIC-17 (T-MWNRGTE3): controller-compatible HTTP API (`mfi_server_next/compat_api.py`, `make_compat_handler`) under `api/v1.0/<verb>/<object>` with its own route marker, OBSERVED routes only - `/api/v1.0/cmd/devmgr` (mfi-output, kick-serial) and `/api/v1.0/upd/sensor` - so the Home Assistant mfi integration (mficlient) can point at mfi-server; controller envelope {"data":[...],"meta":{"rc":"ok"}} / {"meta":{"rc":"error","msg":"api.err...."}}, admin session reused from auth.py (read_only refused), UNVERIFIED routes kept PENDING in the replay fixtures; abuse tests. Owner approval required before merge.
+
 ## 0.30.0 - 2026-11-20
 
 - EPIC-16 (T-MWNRGSZL): new server web page in style A (Home Assistant look, automatic dark theme) under `mfi_server_next/web/` (`index.html`, `style.css`, `app.js`, `i18n/en.json`, `i18n/it.json`) served by a fixed-list static route in `page_api.py`; views for devices, outlets, measurements, rules, events and alarms, users, maps and system, English and Italian with a visible language selector kept in localStorage, live updates over the comet long poll, no external assets, no innerHTML.
