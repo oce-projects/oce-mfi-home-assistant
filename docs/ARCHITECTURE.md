@@ -62,6 +62,8 @@ page (`docs/WIFI-SETUP.md`). Wired devices do not need it.
 | 2026-11-16 | Repository published on GitHub (public, existing history kept); standard install from the add-on store |
 | 2026-11-17 | First setup of Wi-Fi devices through a Windows program (`mfi-wifi-setup/`, one `.exe`, nothing installed), not a browser extension: an extension cannot add TLS 1.0 to Chrome |
 | 2026-11-18 | Full rewrite: feature parity with the 2.1.11 controller, Home Assistant style, whole repository; plan in docs/REBUILD-PLAN.md |
+| 2026-11-19 | Risky network functions (web shell, SSH from the browser, UPnP announcements, guest page) are implemented but off by default, each behind its own setting, with a risk warning in `mfi-server/DOCS.md` (owner decision) |
+| 2026-11-19 | The web shell and SSH from the browser take the target address only from the stored device record, never from the request; the web shell accepts only adopted mPort Serial devices |
 
 ## Existing work (checked 2026-11-15)
 
