@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.40.0 - 2026-11-20
+
+- mfi-server 0.29.0: EPIC-14 MQTT bridge (`mfi_server_next/mqtt.py`) and Home Assistant discovery (`mfi_server_next/mqtt_discovery.py`) - own MQTT 3.1.1 client (CONNECT/PUBLISH/SUBSCRIBE/PINGREQ, retained, last will, backoff reconnect), MqttBridge off by default when no broker is configured, ON/OFF commands routed to output tasks, discovery entities per device type; standard library only, offline tests with a fake transport.
+
 ## 0.39.0 - 2026-11-20
 
 - mfi-server 0.28.0: EPIC-13 network and Wi-Fi tools (`mfi_server_next/network_tools.py`) all off by default - web shell to an adopted mPort Serial, SSH from the browser, UPnP announcements and the guest access page, each with its own setting and refused with 403 `disabled` when off; the web shell and browser SSH use only the stored device address, never a host/port from the request; `sensors.build_wifi_config` builds the device Wi-Fi block including RADIUS (Wi-Fi Enterprise) with the secret never logged; POST routes under `/api/v1/net/`; a `Risky functions` section in mfi-server/DOCS.md; abuse tests. Owner approval required before merge.

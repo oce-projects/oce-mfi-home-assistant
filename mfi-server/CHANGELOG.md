@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.29.0 - 2026-11-20
+
+- EPIC-14 (T-MWNRGSEQ): MQTT bridge and Home Assistant discovery - `mfi_server_next/mqtt.py` (own MQTT 3.1.1 client: CONNECT/PUBLISH QoS 0-1/SUBSCRIBE/PINGREQ, retained messages, last will, reconnect with backoff, socket timeouts, password never logged; `MqttBridge` publishes device states and turns ON/OFF commands into output tasks through tasks.py; optional, does nothing with no broker configured) and `mfi_server_next/mqtt_discovery.py` (`discovery_messages`, `state_messages`: Home Assistant entities per device type - switches and power sensors for mPower outlets, two switches for IWO2U, a light for IWD1U, none for IWS1U and mPort Serial, binary and measure sensors for mPort sensors, alarms as binary sensors); standard library only, offline tests with an in-memory fake transport.
+
 ## 0.28.0 - 2026-11-20
 
 - EPIC-13 (T-MWNRGRZS): network and Wi-Fi tools, all off by default - `mfi_server_next/network_tools.py` (web shell to the serial line of an adopted mPort Serial, SSH from the browser, UPnP announcements and the guest page, each gated by its own setting `allow_webshell`/`allow_browser_ssh`/`allow_upnp`/`allow_guest_page`; the web shell and browser SSH take host and port only from the stored device record, never from the request; admin only; `NetworkToolError` carries the API error key and HTTP status), the matching POST routes `/api/v1/net/webshell`, `/net/ssh`, `/net/upnp`, `/net/guest` in `page_api.py` (403 `disabled` when off), the Wi-Fi configuration builder `sensors.build_wifi_config` including RADIUS (Wi-Fi Enterprise) with the secret kept out of the logs, the `Risky functions` section in DOCS.md, and abuse tests in tests_next/test_network_tools.py and test_network_tools_abuse.py. Owner approval required before merge.
