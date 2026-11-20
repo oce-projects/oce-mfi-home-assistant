@@ -63,7 +63,12 @@ set "ENTRY=%BUILD_DIR%\entry.py"
 > "%ENTRY%" echo from mfi_wifi_setup.window import run
 >> "%ENTRY%" echo run()
 
-"%VENV_DIR%\Scripts\pyinstaller.exe" --onefile --windowed --name "%EXE_NAME%" --distpath "%~dp0dist" --workpath "%BUILD_DIR%\work" --specpath "%BUILD_DIR%" --paths "%~dp0." "%ENTRY%"
+if not exist "%~dp0icon.ico" (
+    echo icon.ico is missing: run python3 tools/make_icons.py from the repository root.
+    goto :fail
+)
+
+"%VENV_DIR%\Scripts\pyinstaller.exe" --onefile --windowed --name "%EXE_NAME%" --distpath "%~dp0dist" --workpath "%BUILD_DIR%\work" --specpath "%BUILD_DIR%" --paths "%~dp0." --icon "%~dp0icon.ico" --add-data "%~dp0icon.ico;." "%ENTRY%"
 if errorlevel 1 (
     echo PyInstaller failed: see the messages above.
     goto :fail

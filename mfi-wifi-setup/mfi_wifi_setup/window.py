@@ -15,7 +15,7 @@ import tkinter as tk
 import webbrowser
 from collections.abc import Callable
 
-from . import bridge, device_check, messages, wifi_configure, wifi_survey
+from . import bridge, device_check, icon, messages, wifi_configure, wifi_survey
 
 DEVICE_HOST = "192.168.2.20"
 DEVICE_PORT = 443
@@ -333,8 +333,21 @@ class SetupWindow:
         self.root.destroy()
 
 
+def _set_icon(root: tk.Tk) -> None:
+    """Set the program icon of the window. A missing or unusable icon never stops the program."""
+    path = icon.icon_path()
+    if path is None:
+        return
+    try:
+        root.iconbitmap(default=str(path))
+    except tk.TclError:
+        # the icon is cosmetic: the window opens without it
+        pass
+
+
 def run() -> None:
     """Open the window and run it until it is closed."""
     root = tk.Tk()
+    _set_icon(root)
     SetupWindow(root).start()
     root.mainloop()
