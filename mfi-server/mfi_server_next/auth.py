@@ -25,6 +25,7 @@ LEGACY_AUTH_FILE = "auth.json"
 ROLE_ADMIN = "admin"
 ROLE_READ_ONLY = "read_only"
 ROLES = (ROLE_ADMIN, ROLE_READ_ONLY)
+_DUMMY_PASSWORD_HASH = crypto.pbkdf2_hash("timing-equalizer", iterations=crypto.DEFAULT_ITERATIONS)
 
 
 class LoginFailed(Exception):
@@ -172,6 +173,8 @@ class AuthManager:
     def add_user(self, username: str, password: str, role: str) -> None:
         if not isinstance(username, str) or username == "":
             raise ValueError("username must be a non-empty string")
+        if username in self._users:
+            raise ValueError(f"user {username!r} already exists")
         if role not in ROLES:
             raise ValueError("role must be one of: " + ", ".join(ROLES))
         self._check_new_password(password)
@@ -190,6 +193,7 @@ class AuthManager:
     def verify(self, username: str, password: str) -> bool:
         entry = self._users.get(username)
         if entry is None:
+            crypto.pbkdf2_verify(password, _DUMMY_PASSWORD_HASH)
             return False
         return crypto.pbkdf2_verify(password, entry["password_hash"])
 
@@ -223,6 +227,8 @@ class AuthManager:
             return False
         value = legacy.get("password_hash")
         if not isinstance(value, str):
+            return False
+        if not value.startswith(crypto.PBKDF2_ALGORITHM + "$") or len(value.split("$")) != 4:
             return False
         if self._users:
             return False
