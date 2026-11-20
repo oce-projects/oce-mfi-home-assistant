@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.34.0 - 2026-11-20
+
+- mfi-server 0.23.0: EPIC-08 alarms (`mfi_server_next/alarms.py`): `alarm` and `alarmdef` tables in state.sqlite3, startup definitions created idempotently, one alarm per cause with occurrence count, acknowledge/archive and state-filtered listing, the 'Create System Alert' rule action, and one event per raised alarm.
+
 ## 0.33.0 - 2026-11-20
 
 - mfi-server 0.22.0: EPIC-07 statistics (`mfi_server_next/stats.py`): per-minute/quarter-hour/hour/day aggregates over history.sqlite3, energy counter with reset handling, energy price and ISO currency, per-outlet monthly cost and 30-day retention.
