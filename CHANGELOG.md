@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.37.0 - 2026-11-20
+
+- mfi-server 0.26.0: EPIC-11 page API (`mfi_server_next/page_api.py`) and comet buffer for live updates (`mfi_server_next/comet.py`): the Page route family (login/logout, port output, backup import, comet long poll, statistics, rules, events, alarms, map placeholders, firmware download allowlist, device actions and user management) with session and admin-role checks, add-on ingress trust, JSON body limits and abuse handling (401/403/404/405/413), and an in-memory comet ring buffer with a cursor.
+
 ## 0.36.0 - 2026-11-20
 
 - mfi-server 0.25.0: EPIC-10 system - data migration with timestamped 0600 backup copies and restore-on-failure, idempotent devices.json/history/automation upgrades, `.unf` backup import of device keys (read-only), Support Info with keys/passwords/MACs removed, and the NTP server and time zone delivered to devices through the setparam `system_cfg`.

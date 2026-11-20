@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.26.0 - 2026-11-20
+
+- EPIC-11 (T-MWNRGQWY): web page API in the new server - `mfi_server_next/page_api.py` (`make_handler` builds the http.server handler of the Page family: login and logout with a session cookie, output command of one port, backup import, comet long poll, statistics by interval, rules GET and POST, events, alarms, map placeholders answering 404, firmware download `/dl/firmware/<path>` only from the allowlist, adopt/forget/reboot/locate/upgrade/port-settings actions and user management; session required except login and firmware download, admin role for every write, trusted Home Assistant ingress peer in add-on mode, JSON in and out with a 413 body limit, 400 for malformed JSON, 404 for unknown routes, 405 for a wrong method, path traversal refused) and the `mfi_server_next/comet.py` buffer (`CometBuffer`, in-memory ring buffer with a size limit and cursor-based long poll), with tests in mfi-server/tests_next/test_page_api.py, test_page_api_abuse.py and test_comet.py.
+
 ## 0.25.0 - 2026-11-20
 
 - EPIC-10 (T-MWNRGQJ6): data migration and system settings in the new server - `mfi_server_next/migrate.py` (`migrate_all` adds the new fields to devices.json, the `raw` history table and the automation fields idempotently, each change preceded by a timestamped 0600 backup copy kept to the newest `backup_copies` and restored on failure; `import_backup` reads a `.unf` controller backup read-only and imports the device keys into devices.json; `build_support_info` with keys, passwords and MAC addresses scrubbed) and the NTP server and time zone `system_cfg` of `mfi_server_next/tasks.py` (`build_system_cfg`, `build_setparam`), with tests in mfi-server/tests_next/test_migrate.py and test_tasks.py.
