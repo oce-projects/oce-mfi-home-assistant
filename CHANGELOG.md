@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.46.3 - 2026-11-20
+
+- mfi-wifi-setup 0.5.2: step-by-step guide corrections.
+
 ## 0.46.2 - 2026-11-20
 
 - mfi-controller 0.3.3: the recorder records the exchange when the client closes the connection (a log line instead of a traceback); dates of the entries 0.46.0, 0.46.1 and 0.45.2 corrected to 2026-11-20.

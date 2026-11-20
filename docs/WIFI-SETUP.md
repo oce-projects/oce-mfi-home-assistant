@@ -44,6 +44,8 @@ flowchart LR
 ```
 The full step-by-step guide for users, with factory reset and LED states, is in `mfi-wifi-setup/README.md`, section "Step by step".
 
+Note: mfi-server 1.0.0 does not adopt devices yet (adoption is not wired in mfi-server/mfi_server_next/__main__.py). Where this document says that mfi-server adopts the device, that is the planned behaviour; until then adopt with the mfi-controller add-on.
+
 ## Requirements
 
 | ID | Requirement |
