@@ -1,0 +1,17 @@
+{
+  "code": "R-WEB",
+  "source": "synthetic",
+  "owner_epic": "EPIC-17",
+  "handler": "mfi_server_next.compat_api.ok_envelope",
+  "request": {
+    "sId": 1,
+    "calibration": "abc123"
+  },
+  "expected": {
+    "status": 200,
+    "keys": {
+      "data": "list",
+      "meta": "dict"
+    }
+  }
+}
