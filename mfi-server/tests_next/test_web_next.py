@@ -40,6 +40,13 @@ class TestTranslations(unittest.TestCase):
     def test_both_languages_have_the_same_keys(self):
         self.assertEqual(set(self.en), set(self.it))
 
+    def test_no_translation_value_is_empty(self):
+        for name, data in (("en", self.en), ("it", self.it)):
+            for key, value in data.items():
+                with self.subTest(lang=name, key=key):
+                    self.assertIsInstance(value, str)
+                    self.assertNotEqual(value.strip(), "")
+
     def test_at_least_80_percent_of_italian_values_differ_from_english(self):
         different = [key for key in self.en if self.it.get(key) != self.en[key]]
         self.assertGreaterEqual(len(different) * 100, 80 * len(self.en))
@@ -168,6 +175,11 @@ class TestStaticRoute(unittest.TestCase):
     def test_parent_directory_is_404(self):
         status, _ = self.get("/i18n/../secret")
         self.assertEqual(status, 404)
+
+    def test_parent_traversal_to_real_file_is_404(self):
+        # '..' pointing at an otherwise servable fixed file must still be refused by the guard.
+        self.assertEqual(self.get("/i18n/../index.html")[0], 404)
+        self.assertEqual(self.get("/../app.js")[0], 404)
 
 
 class TestRulesView(unittest.TestCase):
