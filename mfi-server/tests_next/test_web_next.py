@@ -170,5 +170,20 @@ class TestStaticRoute(unittest.TestCase):
         self.assertEqual(status, 404)
 
 
+class TestRulesView(unittest.TestCase):
+    """The rules row must contain the name, state and copy button cells, not an empty row."""
+
+    def test_rule_row_is_not_an_empty_tr(self):
+        app = (WEB / "app.js").read_text(encoding="utf-8")
+        match = re.search(r"function renderRuleRow\(rule\)\s*\{(.*?)\n\}", app, re.DOTALL)
+        self.assertIsNotNone(match, "renderRuleRow not found")
+        body = match.group(1)
+        self.assertNotRegex(body, r'return\s+el\("tr"\)\s*;', "renderRuleRow returns an empty row")
+        self.assertIn("nameCell", body)
+        self.assertIn("stateCell", body)
+        self.assertIn("actionCell", body)
+        self.assertRegex(body, r"\.append\([^)]*nameCell[^)]*stateCell[^)]*actionCell")
+
+
 if __name__ == "__main__":
     unittest.main()
