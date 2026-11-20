@@ -39,5 +39,7 @@ LABEL io.hass.version="${BUILD_VERSION}" \
 
 EXPOSE 6080/tcp 3478/udp
 
-# Runs as root: the Supervisor /data volume belongs to root (see DOCS.md)
-CMD ["python3", "-m", "mfi_server_next"]
+# Runs as root: the Supervisor /data volume belongs to root (see DOCS.md).
+# --data-dir /data: the add-on data (migrated devices, history, automations).
+# --mode addon: the Home Assistant ingress is trusted, no login.
+CMD ["python3", "-m", "mfi_server_next", "--data-dir", "/data", "--mode", "addon"]
