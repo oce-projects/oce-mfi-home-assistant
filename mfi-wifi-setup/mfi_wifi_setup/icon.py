@@ -14,7 +14,7 @@ ICON_NAME = "icon.ico"
 
 def icon_path() -> pathlib.Path | None:
     """The path of the icon file, or None when the file is not there."""
-    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    if getattr(sys, "frozen", False) and getattr(sys, "_MEIPASS", None):
         path = pathlib.Path(sys._MEIPASS) / ICON_NAME
     else:
         path = pathlib.Path(__file__).resolve().parent.parent / ICON_NAME
