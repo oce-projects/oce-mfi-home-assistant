@@ -15,7 +15,7 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from mfi_server_next import auth, network_tools, rules
+from mfi_server_next import auth, editor, network_tools, rules
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +38,14 @@ SIMPLE_ROUTES = {
     "users": ("users_add", {"POST"}),
 }
 DEVICE_ACTIONS = ("adopt", "forget", "reboot", "locate", "upgrade")
+EDITOR_POST = {"save", "validate", "to_yaml", "from_yaml"}
 # Fixed web page files served without a session; the request path is only matched against these names.
 STATIC_FILES = {
     "index.html": "text/html; charset=utf-8",
     "style.css": "text/css; charset=utf-8",
     "app.js": "text/javascript; charset=utf-8",
+    "editor.js": "text/javascript; charset=utf-8",
+    "editor.css": "text/css; charset=utf-8",
     "i18n/en.json": "application/json; charset=utf-8",
     "i18n/it.json": "application/json; charset=utf-8",
 }
@@ -69,6 +72,10 @@ def _match_route(parts):
         return "net_" + parts[3], {"POST"}, ()
     if count == 5 and parts[2] == "net" and parts[3] in ("webshell", "ssh"):
         return "net_" + parts[3], {"POST"}, (parts[4],)
+    if count == 4 and parts[2] == "editor" and parts[3] in EDITOR_POST:
+        return "editor_" + parts[3], {"POST"}, ()
+    if count == 5 and parts[2] == "editor" and parts[3] == "traces":
+        return "editor_traces", {"GET"}, (parts[4],)
     return None
 
 
@@ -197,6 +204,16 @@ def make_handler(context):
                     getattr(context, "net_guest_limiter", None),
                     self.client_address[0],
                 ))
+            elif name == "editor_save":
+                self._editor_save(body)
+            elif name == "editor_validate":
+                self._editor_validate(body)
+            elif name == "editor_to_yaml":
+                self._editor_to_yaml(body)
+            elif name == "editor_from_yaml":
+                self._editor_from_yaml(body)
+            elif name == "editor_traces":
+                self._editor_traces(params[0])
             else:
                 self._device_action(name, params, body)
 
@@ -278,6 +295,93 @@ def make_handler(context):
                 automations.append(normalized)
                 context.automations.save(automations)
             self._send_json(200, {"automation": normalized})
+
+        def _editor_problems(self, automation: dict) -> list[str]:
+            """Problems of an editor automation, checked with the script settings of this server."""
+            return rules.validate(
+                automation,
+                allow_script_action=context.settings.get("allow_script_action", False),
+                script_max_length=context.settings.get("script_max_length", rules.DEFAULT_SCRIPT_MAX_LENGTH),
+            )
+
+        def _editor_save(self, body: bytes) -> None:
+            data = self._json_object(body)
+            if data is None:
+                return
+            automation = data.get("automation")
+            if not isinstance(automation, dict):
+                self._error(400, "bad_request")
+                return
+            problems = self._editor_problems(automation)
+            if problems:
+                self._send_json(400, {"error": "invalid", "details": problems})
+                return
+            normalized = rules.normalize(automation)
+            with rules_lock:
+                automations = context.automations.load()
+                for index, item in enumerate(automations):
+                    if item.get("id") == normalized["id"]:
+                        automations[index] = normalized
+                        break
+                else:
+                    automations.append(normalized)
+                context.automations.save(automations)
+            self._send_json(200, {"automation": normalized})
+
+        def _editor_validate(self, body: bytes) -> None:
+            data = self._json_object(body)
+            if data is None:
+                return
+            automation = data.get("automation")
+            if not isinstance(automation, dict):
+                self._error(400, "bad_request")
+                return
+            problems = self._editor_problems(automation)
+            if problems:
+                self._send_json(200, {"valid": False, "details": problems})
+            else:
+                self._send_json(200, {"valid": True, "details": []})
+
+        def _editor_to_yaml(self, body: bytes) -> None:
+            data = self._json_object(body)
+            if data is None:
+                return
+            automation = data.get("automation")
+            if not isinstance(automation, dict):
+                self._error(400, "bad_request")
+                return
+            try:
+                text = editor.to_yaml(automation)
+            except (TypeError, ValueError):
+                self._send_json(400, {"error": "invalid"})
+                return
+            self._send_json(200, {"yaml": text})
+
+        def _editor_from_yaml(self, body: bytes) -> None:
+            data = self._json_object(body)
+            if data is None:
+                return
+            text = data.get("yaml")
+            if not isinstance(text, str):
+                self._error(400, "bad_request")
+                return
+            try:
+                obj = editor.from_yaml(text)
+            except editor.YamlError as exc:
+                self._send_json(400, {"error": "invalid_yaml", "line": exc.line, "detail": str(exc)})
+                return
+            if not isinstance(obj, dict):
+                self._send_json(400, {"error": "invalid_yaml", "line": 1, "detail": "not a mapping"})
+                return
+            self._send_json(200, {"automation": obj})
+
+        def _editor_traces(self, automation_id: str) -> None:
+            try:
+                traces = context.rules_engine.traces(automation_id)
+            except KeyError:
+                self._error(404, "not_found")
+                return
+            self._send_json(200, {"traces": traces})
 
         def _user_add(self, body: bytes) -> None:
             data = self._json_object(body)
