@@ -60,25 +60,35 @@ def _parser():
     """The command line options of the server."""
     parser = argparse.ArgumentParser(prog="mfi_server_next", description="Run the mFi server.")
     parser.add_argument("--data-dir", default=config.DEFAULT_DATA_DIR, help="data folder (default: %(default)s)")
-    parser.add_argument("--host", default=DEFAULT_HOST, help="address the servers listen on (default: %(default)s)")
+    parser.add_argument("--host", default=None,
+                        help="address the servers listen on (default: the saved setting, else 0.0.0.0)")
     parser.add_argument("--inform-port", type=_port, default=None, help="inform port (default: the setting, 6080)")
-    parser.add_argument("--web-port", type=_port, default=DEFAULT_WEB_PORT, help="web page port (default: %(default)s)")
-    parser.add_argument("--compat-port", type=_port, default=DEFAULT_COMPAT_PORT,
-                        help="compatible API port (default: %(default)s)")
-    parser.add_argument("--mode", choices=MODES, default=DEFAULT_MODE,
-                        help="standalone, or addon behind the Home Assistant ingress (default: %(default)s)")
+    parser.add_argument("--web-port", type=_port, default=None,
+                        help="web page port (default: the saved setting, else 8099)")
+    parser.add_argument("--compat-port", type=_port, default=None,
+                        help="compatible API port (default: the saved setting, else 8100)")
+    parser.add_argument("--mode", choices=MODES, default=None,
+                        help="standalone, or addon behind the Home Assistant ingress (default: standalone)")
     return parser
 
 
 def _settings(args):
     """Effective settings: the stored ones, then the command line; every risky function stays off by default."""
     settings = dict(config.load_settings(args.data_dir))
-    settings["host"] = args.host
-    settings["web_port"] = args.web_port
-    settings["compat_port"] = args.compat_port
-    settings["mode"] = args.mode
+    if args.host is not None:
+        settings["host"] = args.host
+    if args.web_port is not None:
+        settings["web_port"] = args.web_port
+    if args.compat_port is not None:
+        settings["compat_port"] = args.compat_port
+    if args.mode is not None:
+        settings["mode"] = args.mode
     if args.inform_port is not None:
         settings["inform_port"] = args.inform_port
+    settings.setdefault("host", DEFAULT_HOST)
+    settings.setdefault("web_port", DEFAULT_WEB_PORT)
+    settings.setdefault("compat_port", DEFAULT_COMPAT_PORT)
+    settings.setdefault("mode", DEFAULT_MODE)
     for flag in RISKY_FLAGS:
         settings.setdefault(flag, False)
     return settings
@@ -198,9 +208,12 @@ def _guarded(name, target, *args):
 
 
 def _close_all(closers):
-    """Run every close function in order."""
-    for close in closers:
-        close()
+    """Run every close function, newest first; a failure in one does not stop the others."""
+    for close in reversed(closers):
+        try:
+            close()
+        except Exception as exc:
+            logger.error("close failed: %s", type(exc).__name__)
 
 
 class _Actions:
@@ -436,12 +449,12 @@ def main(argv=None, *, on_ready=None, discovery=True):
         return exc.code if isinstance(exc.code, int) else 2
     try:
         settings = _settings(args)
-    except ValueError as exc:
+    except (ValueError, OSError) as exc:
         return _fail(_describe(exc))
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
     try:
         migrate.migrate_all(settings["data_dir"])
-    except (migrate.MigrateError, ValueError) as exc:
+    except (migrate.MigrateError, ValueError, OSError, sqlite3.Error) as exc:
         return _fail(_describe(exc))
     try:
         app = build_application(settings, discovery=discovery)
