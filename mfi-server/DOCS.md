@@ -352,3 +352,19 @@ With the host network, port 8099 is reachable from the whole LAN, not only from 
 If the page answers 403, read the server log: the server writes a WARNING with the address that made the request. Put that address in the `ingress_peer` option of the add-on. In standalone mode, set the variable `MFI_INGRESS_PEER`, or the key `ingress_peer` in `settings.json`.
 
 Keep the devices on an isolated network without internet access. Never expose 6080/tcp, 3478/udp or 8099/tcp to the internet.
+
+### Script action over telnet (off by default)
+
+A `script` action sends a block of plain text over telnet to the serial port of the corresponding adopted mPort Serial. It is not a root shell on the device. What the serial device does with the text is device-specific and not yet verified on a real device.
+
+Risks:
+
+- The text travels in clear text over telnet, so anyone on the network path can read it. Keep the devices and the mPort Serial on the isolated network.
+- The serial device receives the text as written. A wrong or unexpected text can change how the device behaves.
+
+Rules:
+
+- Off by default: `allow_script_action` is `False`. It is not an add-on option yet, only a parameter of the engine, so a script action is refused with `script action is disabled` until the owner enables it.
+- Only the host and port of an adopted mPort Serial are allowed. Any other target is refused with `device is not an adopted mPort Serial`.
+- The length of the text is limited (`script_max_length`, default 1024 characters). Longer text is refused with `script text too long`.
+- The owner must approve this action before it is enabled.

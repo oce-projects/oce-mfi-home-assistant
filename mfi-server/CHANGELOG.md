@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.0 - 2026-11-20
+
+- EPIC-05: rules and scenes engine in mfi_server_next/rules.py (extended Home Assistant format) with the serial script action over telnet off by default.
+
 ## 0.19.0 - 2026-11-20
 
 - EPIC-04 (T-MWNRGN3M): sensors and mPort in the new server — `mfi_server_next/sensors.py` (mPower/in-wall/mPort model tables, `build_port_config`, `parse_measurements`, `SensorRegistry` with Move Device) and `serial.py` (`build_ser2net_cfg`, `kick_serial`). The EPIC-01b compatibility fixtures owned by EPIC-04 (R-MPORT, R-SERIAL) are now checked instead of pending.
