@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.46.1 - 2026-11-21
+
+- documentation only: step-by-step guide for mfi-wifi-setup (ticket T-MWPH7MOC).
+
 ## 0.46.0 - 2026-11-21
 
 - mfi-wifi-setup 0.5.0: the program has an icon (`icon.ico` from `tools/make_icons.py`) in the `.exe` and in the window; `tools/make_icons.py` writes the ICO file. Tests in `mfi-wifi-setup/tests/test_icon.py`.
