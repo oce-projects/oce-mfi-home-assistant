@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -69,6 +70,8 @@ def _non_negative_int(text: str) -> int:
 def make_handler(context):
     """Build the request handler class of the web page; context holds the stores and actions (see the contract)."""
 
+    rules_lock = threading.Lock()
+
     class PageHandler(BaseHTTPRequestHandler):
         """Answers the web page API and the firmware download."""
 
@@ -102,7 +105,7 @@ def make_handler(context):
                 self._firmware(path[len(FIRMWARE_PREFIX):])
                 return
             idx = path.find(API_MARKER)
-            if idx == -1:
+            if idx <= 0 or path[idx - 1] != "/":
                 self._error(404, "not_found")
                 return
             matched = _match_route(path[idx:].split("/"))
@@ -213,9 +216,10 @@ def make_handler(context):
                 self._send_json(400, {"error": "invalid", "details": problems})
                 return
             normalized = rules.normalize(obj)
-            automations = context.automations.load()
-            automations.append(normalized)
-            context.automations.save(automations)
+            with rules_lock:
+                automations = context.automations.load()
+                automations.append(normalized)
+                context.automations.save(automations)
             self._send_json(200, {"automation": normalized})
 
         def _user_add(self, body: bytes) -> None:
@@ -295,6 +299,9 @@ def make_handler(context):
                 self._error(400, "bad_request")
             except PermissionError as exc:
                 self._send_json(409, {"error": str(exc)})
+            except Exception:  # noqa: BLE001 - never leak the connection on an unexpected failure
+                logger.exception("page api: device action failed")
+                self._error(500, "internal_error")
             else:
                 self._send_json(202, {"result": "accepted"})
 
