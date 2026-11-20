@@ -25,8 +25,6 @@ MODULE_NAMES = [
 FUNCTIONS = {
     "__main__": ["main"],
 
-    "sensors": ["build_port_config"],
-    "serial": ["build_ser2net_cfg", "kick_serial"],
     "auth": ["login", "check_session"],
     "page_api": ["make_handler"],
     "compat_api": ["make_compat_handler"],
@@ -39,7 +37,6 @@ FUNCTIONS = {
 
 CLASSES = {
 
-    "sensors": {"SensorRegistry": []},
     "rules": {"AutomationEngine": ["tick"], "AutomationStore": []},
     "events": {"EventLog": ["record"]},
     "alarms": {"AlarmStore": ["raise_alarm"]},
