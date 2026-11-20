@@ -17,7 +17,8 @@
 #   0.2.0 - 2026-11-19 - compatibility recorder: options record_traffic and record_max_mb.
 #   0.3.0 - 2026-11-19 - passive UDP capture (10001/3478): --udp-capture to the recorder.
 #   0.3.1 - 2026-11-20 - recorder opens the raw socket as root, then runs as mfi (--user): UDP capture did not start in 0.3.0.
-#   0.3.2 - 2026-11-21 - Host header forwarded by the recorder; java and the recorder start without SUPERVISOR_TOKEN and HASSIO_TOKEN.
+#   0.3.2 - 2026-11-20 - Host header forwarded by the recorder; java and the recorder start without SUPERVISOR_TOKEN and HASSIO_TOKEN.
+#   0.3.3 - 2026-11-20 - no change to run.sh; recorder fix in recorder.py.
 # =============================================================================
 set -u
 

@@ -119,11 +119,15 @@ With `record_traffic` off, nothing is recorded and the controller listens on 608
 
 ### How it works
 
-With `record_traffic` on, the controller moves its own listeners to the internal ports 16080 (inform) and 16443 (web). The move of the web port is set through the property `unifi.https.port`: OBSERVED on Home Assistant OS on 2026-11-20 (the add-on log says `recording inform 6080 -> 16080 and web 6443 -> 16443`). The inform port `unifi.http.port` is OBSERVED in `docs/controller/system.md`. The recorder listens on 6080 and 6443, forwards each request unchanged to the controller and returns the answer of the controller unchanged. Devices and browsers keep using the same ports. After each exchange the recorder writes one line.
+With `record_traffic` on, the controller moves its own listeners to the internal ports 16080 (inform) and 16443 (web). The move of the web port is set through the property `unifi.https.port`: OBSERVED on Home Assistant OS on 2026-11-20: the browser on port 6443 got a redirect from the controller through the recorder, and the log did not say `https recording unavailable`. (The line `recording inform ...` is printed by the recorder with its own arguments: it does not prove that the controller moved.). The inform port `unifi.http.port` is OBSERVED in `docs/controller/system.md`. The recorder listens on 6080 and 6443, forwards each request unchanged to the controller and returns the answer of the controller unchanged. Devices and browsers keep using the same ports. After each exchange the recorder writes one line.
 
 With the recorder on, open the web UI at `https://HOME-ASSISTANT-IP:6443/`. The recorder forwards the Host header of the browser, so the controller builds its redirects with the same address. Version 0.3.1 and earlier sent the recorder's own address (`127.0.0.1:16443`) and the browser could not open the web UI; fixed in 0.3.2.
 
 If the controller does not move to 16443 within 120 seconds, the log says `https recording unavailable: the controller did not move to 16443` and only the inform port 6080 is recorded.
+
+UNVERIFIED: after Adopt the controller may tell the device to inform on its own HTTP port, which is 16080 while recording is on (docs/controller/device-lifecycle.md, "The default port is the controller's HTTP port"). The device can reach 16080 directly because the app uses the host network, so later informs would bypass the recorder. In the controller log of 2026-11-20 the adopted device shows ext_ip equal to its own address, while the recorder connects from 127.0.0.1 and adds no X-Forwarded-For header. Check the day file: if no line with "port": 6080 comes after the adoption, the informs bypass the recorder.
+
+When the browser closes a connection before the answer is sent, the log says `client ... closed the connection before the answer was sent` and the exchange is still recorded (from 0.3.3).
 
 ### Passive UDP capture
 

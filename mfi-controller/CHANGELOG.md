@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.3.2 - 2026-11-21
+## 0.3.3 - 2026-11-20
+
+- Fix: the recorder sent the answer to the client before recording the exchange, so a client that closed the connection first (for example the browser on port 6443, `ssl.SSLEOFError`) stopped the exchange from being recorded and the log showed a traceback. The exchange is now recorded in every case; the log has one WARNING line (`closed the connection before the answer was sent`) instead of the traceback.
+- `DOCS.md`: the evidence for the move to 16443 is corrected; new UNVERIFIED note on device informs that may bypass the recorder on 16080.
+- Dates of the 0.3.2 entry and of the 0.3.2 headers of `run.sh` and `Dockerfile` corrected from 2026-11-21 to 2026-11-20.
+- Version 0.3.3 in `config.yaml`, `CHANGELOG.md` and `Dockerfile`.
+
+## 0.3.2 - 2026-11-20
 
 - Fix: the recorder forwarded the request with its own address as Host (`127.0.0.1:16443`), so the controller built its redirect to `https://127.0.0.1:16443/manage` and the browser could not open the web UI. The Host of the client is now forwarded unchanged; the `Location` header of responses is passed unchanged.
 - Security: `run.sh` starts java and the recorder without `SUPERVISOR_TOKEN` and `HASSIO_TOKEN`, so the controller log no longer contains them. Versions up to 0.3.1 wrote them in the log. The token changes at each start: restart the app after the update.

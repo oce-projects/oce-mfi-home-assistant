@@ -390,7 +390,12 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             log.error("controller unreachable (%s): answering 502", type(exc).__name__)
             self._send_empty(502)
             return
-        self._send_back(status, resp_headers, resp_body)
+        try:
+            self._send_back(status, resp_headers, resp_body)
+        except OSError as exc:
+            self.close_connection = True
+            log.warning("client %s closed the connection before the answer was sent (%s): exchange recorded anyway",
+                        self.client_address[0], type(exc).__name__)
         try:
             record_line(self.server.out_dir, self.server.port_label, self.client_address[0],
                         self.command, self.path, req_headers, req_body, status, resp_headers,
