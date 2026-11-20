@@ -16,6 +16,7 @@ import importlib.util
 import json
 import shutil
 import socket
+import ssl
 import struct
 import tempfile
 import threading
@@ -378,6 +379,47 @@ class TestHostHeader(RecordedProxyTest):
         self.assertEqual(status, 302)
         self.assertEqual(location, "https://ha.example:6443/manage")
         self.assertEqual(HostEchoController.seen_hosts, ["ha.example:6443"])
+
+
+class TestClientClosed(RecordedProxyTest):
+    def close_during_answer(self, port, error):
+        """Sends one inform while _send_back raises error; returns the WARNING lines of mfi-recorder."""
+        with mock.patch.object(recorder.ProxyHandler, "_send_back", side_effect=error):
+            with self.assertLogs("mfi-recorder", "WARNING") as logs:
+                try:
+                    ask(port, "POST", "/inform", INFORM_BODY, {"Content-Type": "application/octet-stream"})
+                except (http.client.HTTPException, OSError):
+                    pass
+                self.assertTrue(self.recorded.acquire(timeout=5), "record_line was not called")
+        return logs.output
+
+    def test_client_closed_connection_is_still_recorded(self):
+        port = self.start_proxy(self.start_controller())
+        output = self.close_during_answer(port, ssl.SSLEOFError(8, "EOF occurred in violation of protocol"))
+        lines = read_lines(self.tmp)
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0]["status"], CONTROLLER_STATUS)
+        self.assertEqual(base64.b64decode(lines[0]["resp_body_b64"]), CONTROLLER_BODY)
+        self.assertTrue(any("closed the connection before the answer was sent" in line and "SSLEOFError" in line
+                            for line in output), output)
+
+    def test_broken_pipe_is_recorded_too(self):
+        port = self.start_proxy(self.start_controller())
+        output = self.close_during_answer(port, BrokenPipeError())
+        lines = read_lines(self.tmp)
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0]["status"], CONTROLLER_STATUS)
+        self.assertEqual(base64.b64decode(lines[0]["resp_body_b64"]), CONTROLLER_BODY)
+        self.assertTrue(any("closed the connection before the answer was sent" in line and "BrokenPipeError" in line
+                            for line in output), output)
+
+    def test_proxy_still_serves_after_a_closed_client(self):
+        port = self.start_proxy(self.start_controller())
+        self.close_during_answer(port, ssl.SSLEOFError(8, "EOF occurred in violation of protocol"))
+        status, body = self.inform(port)
+        self.assertEqual(status, CONTROLLER_STATUS)
+        self.assertEqual(body, CONTROLLER_BODY)
+        self.assertEqual(len(read_lines(self.tmp)), 2)
 
 
 class TestControllerDown(RecordedProxyTest):
