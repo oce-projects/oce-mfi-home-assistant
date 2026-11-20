@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.35.0 - 2026-11-20
+
+- mfi-server 0.24.0: EPIC-09 users (`mfi_server_next/auth.py`): PBKDF2 accounts in users.json (0600), admin and read_only roles, in-memory sessions with expiry, the existing 401/429 lockout, Home Assistant ingress trust for 172.30.32.2, and migration of the legacy password hash into one admin user.
+
 ## 0.34.0 - 2026-11-20
 
 - mfi-server 0.23.0: EPIC-08 alarms (`mfi_server_next/alarms.py`): `alarm` and `alarmdef` tables in state.sqlite3, startup definitions created idempotently, one alarm per cause with occurrence count, acknowledge/archive and state-filtered listing, the 'Create System Alert' rule action, and one event per raised alarm.

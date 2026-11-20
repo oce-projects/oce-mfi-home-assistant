@@ -24,8 +24,6 @@ MODULE_NAMES = [
 
 FUNCTIONS = {
     "__main__": ["main"],
-
-    "auth": ["login", "check_session"],
     "page_api": ["make_handler"],
     "compat_api": ["make_compat_handler"],
     "mqtt_discovery": ["discovery_messages", "state_messages"],
