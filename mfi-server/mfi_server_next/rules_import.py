@@ -297,7 +297,8 @@ def _rule_automation(auto_id, rule, docs, allow_script_action):
     if not triggers:
         if not windows:
             raise _Skip("rule without trigger")
-        triggers.append(_window_trigger(windows[0]))
+        for window in windows:
+            triggers.append(_window_trigger(window))
     actions = [_rule_action(doc, alias) for doc in _children(docs["ruleaction"], "rulesetId", rule_id)]
     if not actions:
         raise _Skip("rule without action")
@@ -359,6 +360,23 @@ def collect_rule_docs(docs):
     return grouped
 
 
+MAX_BACKUP_BYTES = 2 * 1024 * 1024 * 1024  # 2 GiB: a generous cap that still stops a gzip bomb
+
+
+def _gunzip_limited(data, limit=MAX_BACKUP_BYTES):
+    """Decompress gzip bytes, raising ValueError if the output grows past limit bytes (gzip-bomb guard)."""
+    out = bytearray()
+    with gzip.GzipFile(fileobj=io.BytesIO(data)) as gz:
+        while True:
+            chunk = gz.read(65536)
+            if not chunk:
+                break
+            out += chunk
+            if len(out) > limit:
+                raise ValueError("backup db.gz is too large")
+    return bytes(out)
+
+
 def read_backup_documents(data):
     """Decrypt a .unf backup and return its BSON documents. Any failure is a ValueError."""
     try:
@@ -369,7 +387,7 @@ def read_backup_documents(data):
         entries = migrate._read_zip_entries(plain)
         if "db.gz" not in entries:
             raise ValueError("db.gz not found in backup")
-        raw = gzip.decompress(entries["db.gz"])
+        raw = _gunzip_limited(entries["db.gz"])
         return bson.read_bson_stream(io.BytesIO(raw))
     except ValueError:
         raise
