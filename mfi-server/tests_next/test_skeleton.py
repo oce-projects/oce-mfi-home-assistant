@@ -24,7 +24,6 @@ MODULE_NAMES = [
 
 FUNCTIONS = {
     "__main__": ["main"],
-    "rules_import": ["convert_rules"],
 }
 
 CLASSES = {}
