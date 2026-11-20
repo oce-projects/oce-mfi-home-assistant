@@ -285,6 +285,7 @@ function applyMessage(message) {
   if (typeof message.version === "string") versionText = message.version;
   if (typeof message.risky_enabled === "boolean") riskyEnabled = message.risky_enabled;
   if (typeof message.mac !== "string") return;
+  if (!/^[0-9a-fA-F:-]+$/.test(message.mac)) return;
   if (message.removed === true) {
     devices.delete(message.mac);
     return;
@@ -329,13 +330,17 @@ function tile(labelKey, value) {
 function tableWrap(headKeys, rows) {
   const wrap = el("div", "table-wrap");
   const table = el("table", "table");
-  const thead = el("thead");
-  const head = el("tr");
-  for (const key of headKeys) head.appendChild(el("th", "", t(key)));
-  thead.appendChild(head);
   const tbody = el("tbody");
   tbody.append(...rows);
-  table.append(thead, tbody);
+  if (headKeys.length > 0) {
+    const thead = el("thead");
+    const head = el("tr");
+    for (const key of headKeys) head.appendChild(el("th", "", t(key)));
+    thead.appendChild(head);
+    table.append(thead, tbody);
+  } else {
+    table.appendChild(tbody);
+  }
   wrap.appendChild(table);
   return wrap;
 }
@@ -637,7 +642,9 @@ function renderRuleRow(rule) {
     copyRule(rule, copyButton).catch(reportError);
   });
   actionCell.appendChild(copyButton);
-  return el("tr");
+  const row = el("tr");
+  row.append(nameCell, stateCell, actionCell);
+  return row;
 }
 
 async function copyRule(rule, button) {
