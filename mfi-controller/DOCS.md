@@ -23,6 +23,8 @@ The container is built on the Home Assistant machine: there is no prebuilt image
 5. Open `https://HOME-ASSISTANT-IP:6443/`. The certificate is self-signed: the browser asks for confirmation.
 6. Follow the controller setup wizard and create the administrator.
 
+Until the setup wizard is finished, the controller writes `*** Factory Default *** Database exists. Drop it` at each start, and a device stays `waiting for adoption` with `cannot be auto-adopted: no account info in inform message`. Press **Adopt** only after the wizard is finished (observed in the add-on log on Home Assistant OS, 2026-11-20).
+
 ### Installing from the local apps folder (without a repository URL)
 
 1. Install and start an app that gives file access: **Samba share** or **Advanced SSH & Web Terminal**.
@@ -101,6 +103,7 @@ The controller is from 2015 and gets no updates: Java 7 and MongoDB 2.4 are out 
 - The controller 2.1.11 has a published authentication bypass (published 2015-09-03, UNVERIFIED: date not checked against the original advisory) that lets an attacker skip the login and read the administrator password. Ubiquiti never released a fix. An unofficial patch of the class `com/ubnt/ace/view/AuthFilter` exists (https://github.com/ikkisoft/mFiPatchMe); **this app does not apply it**. Anyone who can reach port 6443 can take over the controller and, through it, the devices.
 - The controller stores the administrator password in clear text and gives the same user name and password to every adopted device for SSH and its web page (source: decompiled `ace.jar` 2.1.11, analysis done outside this repository; UNVERIFIED with this app). Use a dedicated password that is not used anywhere else.
 - Devices are adopted over SSH with the factory user `ubnt` / `ubnt` and the controller does not check the SSH host key (same source, UNVERIFIED with this app).
+- Up to 0.3.1 the log of the controller (`/data/logs/server.log`) contained `SUPERVISOR_TOKEN` and `HASSIO_TOKEN` in clear text. From 0.3.2 java no longer receives them. The token changes at each start, so restart the app after the update. `/data/logs/server.log` may still contain old tokens: do not share that file.
 
 ## Compatibility recorder
 
@@ -116,7 +119,9 @@ With `record_traffic` off, nothing is recorded and the controller listens on 608
 
 ### How it works
 
-With `record_traffic` on, the controller moves its own listeners to the internal ports 16080 (inform) and 16443 (web). The move of the web port is set through the property `unifi.https.port`, which is a naming assumption: UNVERIFIED on the 2.1.11 controller (the inform port `unifi.http.port` is OBSERVED in `docs/controller/system.md`). The recorder listens on 6080 and 6443, forwards each request unchanged to the controller and returns the answer of the controller unchanged. Devices and browsers keep using the same ports. After each exchange the recorder writes one line.
+With `record_traffic` on, the controller moves its own listeners to the internal ports 16080 (inform) and 16443 (web). The move of the web port is set through the property `unifi.https.port`: OBSERVED on Home Assistant OS on 2026-11-20 (the add-on log says `recording inform 6080 -> 16080 and web 6443 -> 16443`). The inform port `unifi.http.port` is OBSERVED in `docs/controller/system.md`. The recorder listens on 6080 and 6443, forwards each request unchanged to the controller and returns the answer of the controller unchanged. Devices and browsers keep using the same ports. After each exchange the recorder writes one line.
+
+With the recorder on, open the web UI at `https://HOME-ASSISTANT-IP:6443/`. The recorder forwards the Host header of the browser, so the controller builds its redirects with the same address. Version 0.3.1 and earlier sent the recorder's own address (`127.0.0.1:16443`) and the browser could not open the web UI; fixed in 0.3.2.
 
 If the controller does not move to 16443 within 120 seconds, the log says `https recording unavailable: the controller did not move to 16443` and only the inform port 6080 is recorded.
 

@@ -88,6 +88,25 @@ class TestRunScript(unittest.TestCase):
         self.assertIn("openssl req -x509 -newkey rsa:2048", self.run_sh)
         self.assertIn("https recording unavailable: the controller did not move to 16443", self.run_sh)
 
+    def test_java_starts_without_supervisor_tokens(self):
+        start = self.run_sh.find("as_mfi() {")
+        self.assertNotEqual(start, -1, "as_mfi is missing")
+        end = self.run_sh.find("\n}", start)
+        self.assertNotEqual(end, -1, "as_mfi is not closed")
+        body = self.run_sh[start:end]
+        env = body.find("env -u SUPERVISOR_TOKEN -u HASSIO_TOKEN")
+        self.assertNotEqual(env, -1, "as_mfi does not drop the Supervisor tokens")
+        self.assertLess(env, body.find("start-stop-daemon"))
+
+    def test_recorder_starts_without_supervisor_tokens(self):
+        sep = self.run_sh.find("-- /recorder.py")
+        self.assertNotEqual(sep, -1, "the recorder start command is missing")
+        begin = self.run_sh.rfind("start-stop-daemon", 0, sep)
+        self.assertNotEqual(begin, -1, "start-stop-daemon for the recorder is missing")
+        line_start = self.run_sh.rfind("\n", 0, begin) + 1
+        prefix = self.run_sh[line_start:begin]
+        self.assertIn("env -u SUPERVISOR_TOKEN -u HASSIO_TOKEN", prefix)
+
 
 class TestAddonConfig(unittest.TestCase):
     def setUp(self):
