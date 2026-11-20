@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.0 - 2026-11-20
+
+- EPIC-09 (T-MWNRGQ6Z): users in the new server - `mfi_server_next/auth.py` (`AuthManager` with PBKDF2 accounts in users.json mode 0600, `admin` and `read_only` roles, in-memory sessions with hmac.compare_digest and expiry, the existing 401/429 lockout, `trusted_ingress` for 172.30.32.2, and migration of the legacy password hash into one admin user), with tests in mfi-server/tests_next/test_auth.py and test_auth_abuse.py.
+
 ## 0.23.0 - 2026-11-20
 
 - EPIC-08 (T-MWNRGPS8): alarms in the new server - `mfi_server_next/alarms.py` (`AlarmStore` with `ensure_definitions` creating the six startup `alarmdef` rows idempotently, `raise_alarm` raising one alarm per cause and counting `occurs`, `clear` auto-closing when the definition allows it, `acknowledge`, `archive`, `create_system_alert` for the 'Create System Alert' rule action, and `list_alarms` filtering by state), with the `alarm` and `alarmdef` tables in state.sqlite3 and one event per raised alarm; tested in mfi-server/tests_next/test_alarms.py.
