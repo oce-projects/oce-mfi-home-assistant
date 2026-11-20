@@ -119,5 +119,8 @@
   "editor_remove": "Remove",
   "trace_time": "Time",
   "trace_trigger": "Trigger",
-  "trace_result": "Result"
+  "trace_result": "Result",
+  "import_rules_action": "Import old rules",
+  "import_rules_report": "Converted {converted}, skipped {skipped}",
+  "import_rules_error": "Could not import the old rules"
 }

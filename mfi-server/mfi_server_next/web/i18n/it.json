@@ -119,5 +119,8 @@
   "editor_remove": "Rimuovi",
   "trace_time": "Ora",
   "trace_trigger": "Attivatore",
-  "trace_result": "Esito"
+  "trace_result": "Esito",
+  "import_rules_action": "Importa regole vecchie",
+  "import_rules_report": "Convertite {converted}, saltate {skipped}",
+  "import_rules_error": "Impossibile importare le regole vecchie"
 }
