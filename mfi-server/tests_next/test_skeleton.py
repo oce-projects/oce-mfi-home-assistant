@@ -38,7 +38,6 @@ FUNCTIONS = {
 CLASSES = {
 
     "alarms": {"AlarmStore": ["raise_alarm"]},
-    "stats": {"Aggregator": ["add", "read"]},
     "comet": {"CometBuffer": []},
     "maps": {"MapStore": []},
     "mqtt": {"MqttBridge": []},
