@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from mfi_server_next import alarms, auth, comet, events, page_api, rules, stats
+from mfi_server_next import alarms, auth, comet, events, network_tools, page_api, rules, stats
 from mfi_server_next.devices import DeviceRegistry
 from mfi_server_next.store import Store
 
@@ -23,7 +23,7 @@ READ_ONLY_PASSWORD = "Bcdefghijk2@"
 MAC_SERIAL = "aabbccddeeff"
 MAC_OTHER = "001122334455"
 HOST = "203.0.113.5"
-WEBSHELL_PORT = 2323
+WEBSHELL_PORT = network_tools.WEBSHELL_PORT
 MAX_BODY = 65536
 NET_ROUTES = (
     f"/api/v1/net/webshell/{MAC_SERIAL}",
@@ -179,6 +179,22 @@ class TestWebshellTarget(AbuseTestCase):
         self.assertEqual(self.fake_connect.calls, before)
         self.assertNotIn(("evil.example", 1), self.fake_connect.calls)
 
+    def test_benign_body_keys_are_ignored_and_connect_uses_stored_address(self):
+        self.context.settings["allow_webshell"] = True
+        token = self.session("boss", ADMIN_PASSWORD)
+        path = f"/api/v1/net/webshell/{MAC_SERIAL}"
+        bodies = (b"", json.dumps({"ip": "evil.example", "foo": "bar"}).encode("utf-8"))
+        expected = {"result": "ok", "host": HOST, "port": WEBSHELL_PORT, "protocol": "telnet"}
+        for body in bodies:
+            with self.subTest(body=body):
+                status, _, data = self.call("POST", path, body=body, cookie=token)
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(data), expected)
+        self.assertEqual(len(self.fake_connect.calls), 2)
+        for call in self.fake_connect.calls:
+            self.assertEqual(call, (HOST, WEBSHELL_PORT))
+        self.assertNotIn(("evil.example", network_tools.WEBSHELL_PORT), self.fake_connect.calls)
+
 
 class TestWebshellNonSerial(AbuseTestCase):
     def test_webshell_on_a_non_serial_device_is_refused(self):
@@ -187,6 +203,20 @@ class TestWebshellNonSerial(AbuseTestCase):
         status, _, data = self.call("POST", f"/api/v1/net/webshell/{MAC_OTHER}", cookie=token)
         self.assertEqual(status, 409)
         self.assertEqual(json.loads(data), {"error": "not_serial"})
+        self.assertEqual(self.fake_connect.calls, [])
+
+
+class TestMalformedMac(AbuseTestCase):
+    def test_malformed_mac_is_not_adopted_and_opens_nothing(self):
+        self.context.settings["allow_webshell"] = True
+        token = self.session("boss", ADMIN_PASSWORD)
+        # DeviceRegistry.get rejects a MAC that is not 12 lowercase hex digits with ValueError,
+        # so the route answers 400 bad_request (not not_adopted): still no connection is opened.
+        for bad in ("AABBCCDDEEFF", "aabbccddeeff00", "zzzzzzzzzzzz"):
+            with self.subTest(mac=bad):
+                status, _, data = self.call("POST", f"/api/v1/net/webshell/{bad}", cookie=token)
+                self.assertEqual(status, 400)
+                self.assertEqual(json.loads(data), {"error": "bad_request"})
         self.assertEqual(self.fake_connect.calls, [])
 
 
@@ -208,6 +238,15 @@ class TestRoles(AbuseTestCase):
                 status, _, data = self.call("POST", path)
                 self.assertEqual(status, 401)
                 self.assertEqual(json.loads(data), {"error": "unauthorized"})
+        self.assertEqual(self.fake_connect.calls, [])
+
+    def test_read_only_is_forbidden_before_disabled(self):
+        token = self.session("viewer", READ_ONLY_PASSWORD)
+        for path in NET_ROUTES:
+            with self.subTest(path=path):
+                status, _, data = self.call("POST", path, cookie=token)
+                self.assertEqual(status, 403)
+                self.assertEqual(json.loads(data), {"error": "forbidden"})
         self.assertEqual(self.fake_connect.calls, [])
 
 

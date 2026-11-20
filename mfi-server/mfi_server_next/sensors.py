@@ -36,6 +36,10 @@ WIFI_SECURITY_MODES = frozenset({
     "wpa2", "wpa2tkip", "wpa2aes", "wpaeap", "wpa2eap",
 })
 WIFI_ENTERPRISE_MODES = frozenset({"wpaeap", "wpa2eap"})
+# UNVERIFIED on a device - the wireless_cfg key names written by build_wifi_config
+# (wireless.1.ssid, wireless.1.security, wireless.1.passphrase, wireless.1.radius.ip,
+# wireless.1.radius.port, wireless.1.radius.secret) are modelled on the controller's
+# key=value config format and need a device test.
 
 # A device MAC as the controller writes it: 12 lowercase hex digits, no colons.
 MAC_PATTERN = re.compile(r"[0-9a-f]{12}")
