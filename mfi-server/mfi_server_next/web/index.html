@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title data-i18n="app_title"></title>
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__title">
+        <h1 data-i18n="app_title"></h1>
+        <span id="version" class="topbar__version"></span>
+      </div>
+      <div class="topbar__controls">
+        <label class="topbar__label" for="lang" data-i18n="lang_label"></label>
+        <select id="lang">
+          <option value="en" data-i18n="lang_en"></option>
+          <option value="it" data-i18n="lang_it"></option>
+        </select>
+        <button id="logout-button" type="button" class="button" data-i18n="logout"></button>
+      </div>
+      <nav class="tabs">
+        <a class="tab" href="#view-devices" aria-current="page" data-i18n="nav_devices"></a>
+        <a class="tab" href="#view-ports" data-i18n="nav_ports"></a>
+        <a class="tab" href="#view-measures" data-i18n="nav_measures"></a>
+        <a class="tab" href="#view-rules" data-i18n="nav_rules"></a>
+        <a class="tab" href="#view-events" data-i18n="nav_events"></a>
+        <a class="tab" href="#view-users" data-i18n="nav_users"></a>
+        <a class="tab" href="#view-maps" data-i18n="nav_maps"></a>
+        <a class="tab" href="#view-system" data-i18n="nav_system"></a>
+      </nav>
+    </header>
+    <main class="page">
+      <section id="login" class="panel" hidden>
+        <h2 data-i18n="login_heading"></h2>
+        <input id="username" type="text" autocomplete="username" data-i18n-placeholder="username_label">
+        <input id="password" type="password" autocomplete="current-password" data-i18n-placeholder="password_label">
+        <button id="login-button" type="button" class="button button--primary" data-i18n="login_button"></button>
+        <p id="login-message" class="message"></p>
+      </section>
+      <section id="view-devices" class="tab-section" hidden>
+        <h2 data-i18n="devices_heading"></h2>
+        <div id="devices-list"></div>
+      </section>
+      <section id="view-ports" class="tab-section" hidden>
+        <h2 data-i18n="ports_heading"></h2>
+        <div id="ports-list"></div>
+      </section>
+      <section id="view-measures" class="tab-section" hidden>
+        <h2 data-i18n="measures_heading"></h2>
+        <div id="measures-chart"></div>
+      </section>
+      <section id="view-rules" class="tab-section" hidden>
+        <h2 data-i18n="rules_heading"></h2>
+        <div id="rules-list"></div>
+      </section>
+      <section id="view-events" class="tab-section" hidden>
+        <h2 data-i18n="events_heading"></h2>
+        <div id="events-list"></div>
+        <h2 data-i18n="alarms_heading"></h2>
+        <div id="alarms-list"></div>
+      </section>
+      <section id="view-users" class="tab-section" hidden>
+        <h2 data-i18n="users_heading"></h2>
+        <div id="users-list"></div>
+      </section>
+      <section id="view-maps" class="tab-section" hidden>
+        <h2 data-i18n="maps_heading"></h2>
+        <div id="maps-list"></div>
+      </section>
+      <section id="view-system" class="tab-section" hidden>
+        <h2 data-i18n="system_heading"></h2>
+        <div id="system-info"></div>
+        <section id="risky" class="panel" hidden>
+          <h2 data-i18n="risky_heading"></h2>
+          <p class="message" data-i18n="risky_warning"></p>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

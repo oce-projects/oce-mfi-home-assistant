@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.30.0 - 2026-11-20
+
+- EPIC-16 (T-MWNRGSZL): new server web page in style A (Home Assistant look, automatic dark theme) under `mfi_server_next/web/` (`index.html`, `style.css`, `app.js`, `i18n/en.json`, `i18n/it.json`) served by a fixed-list static route in `page_api.py`; views for devices, outlets, measurements, rules, events and alarms, users, maps and system, English and Italian with a visible language selector kept in localStorage, live updates over the comet long poll, no external assets, no innerHTML.
+
 ## 0.29.0 - 2026-11-20
 
 - EPIC-14 (T-MWNRGSEQ): MQTT bridge and Home Assistant discovery - `mfi_server_next/mqtt.py` (own MQTT 3.1.1 client: CONNECT/PUBLISH QoS 0-1/SUBSCRIBE/PINGREQ, retained messages, last will, reconnect with backoff, socket timeouts, password never logged; `MqttBridge` publishes device states and turns ON/OFF commands into output tasks through tasks.py; optional, does nothing with no broker configured) and `mfi_server_next/mqtt_discovery.py` (`discovery_messages`, `state_messages`: Home Assistant entities per device type - switches and power sensors for mPower outlets, two switches for IWO2U, a light for IWD1U, none for IWS1U and mPort Serial, binary and measure sensors for mPort sensors, alarms as binary sensors); standard library only, offline tests with an in-memory fake transport.

@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.41.0 - 2026-11-20
+
+- mfi-server 0.30.0: EPIC-16 new server web page in style A with automatic dark theme, English and Italian, served by a fixed-list static route in `mfi_server_next/page_api.py`; views for devices, outlets, measurements, rules, events and alarms, users, maps and system; live updates over the comet long poll; no external assets.
+
 ## 0.40.0 - 2026-11-20
 
 - mfi-server 0.29.0: EPIC-14 MQTT bridge (`mfi_server_next/mqtt.py`) and Home Assistant discovery (`mfi_server_next/mqtt_discovery.py`) - own MQTT 3.1.1 client (CONNECT/PUBLISH/SUBSCRIBE/PINGREQ, retained, last will, backoff reconnect), MqttBridge off by default when no broker is configured, ON/OFF commands routed to output tasks, discovery entities per device type; standard library only, offline tests with a fake transport.
