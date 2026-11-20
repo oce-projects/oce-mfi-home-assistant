@@ -7,12 +7,15 @@ the map name or the icons, so a request cannot choose a path or overwrite a file
 """
 from __future__ import annotations
 
+import logging
 import math
 import os
 import pathlib
 import threading
 import time
 import uuid
+
+logger = logging.getLogger(__name__)
 
 
 class MapStore:
@@ -109,7 +112,10 @@ class MapStore:
             del maps[map_id]
             self._save(maps)
         if record["image"] is not None:
-            self._image_file(record["image"]).unlink(missing_ok=True)
+            try:
+                self._image_file(record["image"]).unlink(missing_ok=True)
+            except OSError:
+                logger.warning("could not remove map image %s", record["image"])
         return True
 
     def image_path(self, map_id) -> pathlib.Path | None:
@@ -151,13 +157,15 @@ class MapStore:
             raise ValueError("name")
         if scale_unit not in self.SCALE_UNITS:
             raise ValueError("scale_unit")
-        if scale is not None and (
-            isinstance(scale, bool)
-            or not isinstance(scale, (int, float))
-            or not math.isfinite(scale)
-            or scale <= 0
-        ):
-            raise ValueError("scale")
+        if scale is not None:
+            if isinstance(scale, bool) or not isinstance(scale, (int, float)):
+                raise ValueError("scale")
+            try:
+                finite = math.isfinite(scale)
+            except OverflowError:  # a huge int does not fit in a float
+                raise ValueError("scale")
+            if not finite or scale <= 0:
+                raise ValueError("scale")
         if icons is None:
             icons = []
         if not isinstance(icons, list):

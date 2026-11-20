@@ -137,6 +137,11 @@ class TestScaleAndLock(MapStoreTestCase):
                     self.maps.create_map("Bad", scale=bad)
         self.assertEqual(self.maps.list_maps(), [])
 
+    def test_huge_integer_scale_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.maps.create_map("Huge", scale=10 ** 400)
+        self.assertEqual(self.maps.list_maps(), [])
+
     def test_invalid_inputs_are_refused(self):
         cases = [
             ("", {}),
