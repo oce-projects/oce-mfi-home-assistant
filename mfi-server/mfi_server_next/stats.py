@@ -3,6 +3,7 @@
 Standard library only. The raw table is kept in history.sqlite3 next to the
 measurement table of mfi_server.history; this module creates only raw and its index.
 """
+import math
 import time
 
 INTERVAL_SECONDS = {"minute": 60, "quarterhour": 900, "hour": 3600, "day": 86400}
@@ -23,9 +24,14 @@ class Aggregator:
     """Stores raw readings and reads aggregates per interval, energy and cost."""
 
     def __init__(self, conn, *, retention_days=30, price=0.0, currency="EUR", clock=time.time):
+        if retention_days <= 0:
+            raise ValueError(f"retention_days must be > 0, got {retention_days!r}")
+        price = float(price)
+        if not math.isfinite(price) or price < 0:
+            raise ValueError(f"price must be >= 0, got {price!r}")
         self.conn = conn
         self.retention_days = retention_days
-        self.price = float(price)
+        self.price = price
         self.currency = currency
         self.clock = clock
         self.conn.execute(
@@ -40,9 +46,12 @@ class Aggregator:
 
     def add(self, mac, sensor_id, tag, value, time_ms):
         """Store one raw reading."""
+        numeric = float(value)
+        if not math.isfinite(numeric):
+            raise ValueError(f"value must be finite, got {value!r}")
         self.conn.execute(
             "INSERT INTO raw(mac, sensor_id, tag, time_ms, value) VALUES (?, ?, ?, ?, ?)",
-            (mac, sensor_id, tag, int(time_ms), float(value)),
+            (mac, sensor_id, tag, int(time_ms), numeric),
         )
         self.conn.commit()
 
@@ -65,7 +74,7 @@ class Aggregator:
         where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
         rows = self.conn.execute(
             "SELECT mac, sensor_id, tag, time_ms, value FROM raw" + where
-            + " ORDER BY mac, sensor_id, tag, time_ms",
+            + " ORDER BY mac, sensor_id, tag, time_ms, rowid",
             params,
         ).fetchall()
         width = INTERVAL_SECONDS[interval] * MS_PER_SECOND
@@ -108,10 +117,14 @@ class Aggregator:
         return result
 
     def monthly_cost(self, mac, sensor_id, from_ms, to_ms):
-        """Energy (kWh) and cost of one outlet between from_ms and to_ms, in the configured currency."""
+        """Energy (kWh) and cost of one outlet between from_ms and to_ms, in the configured currency.
+
+        Consumption is computed only on the readings between from_ms and to_ms inclusive: the consumption
+        between the last reading before from_ms and the first reading in the window is NOT included (intended).
+        """
         rows = self.conn.execute(
             "SELECT time_ms, value FROM raw WHERE mac = ? AND sensor_id = ? AND tag = ? "
-            "AND time_ms >= ? AND time_ms <= ? ORDER BY time_ms",
+            "AND time_ms >= ? AND time_ms <= ? ORDER BY time_ms, rowid",
             (mac, sensor_id, ENERGY_TAG, int(from_ms), int(to_ms)),
         ).fetchall()
         total_wh = 0.0

@@ -54,6 +54,20 @@ class TestAggregates(unittest.TestCase):
     def test_empty_store_gives_empty_list(self):
         self.assertEqual(self.agg.read("day"), [])
 
+    def test_add_rejects_non_finite_values(self):
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.assertRaises(ValueError):
+                self.agg.add(MAC, SENSOR, "active_pwr", value, 0)
+        self.assertEqual(self.agg.read("minute"), [])
+
+    def test_tied_time_ms_last_follows_insertion_order(self):
+        self.agg.add(MAC, SENSOR, "active_pwr", 5.0, 1000)
+        self.agg.add(MAC, SENSOR, "active_pwr", 9.0, 1000)
+        rows = self.agg.read("minute")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["count"], 2)
+        self.assertEqual(rows[0]["last"], 9.0)
+
     def test_unknown_interval_raises_value_error(self):
         with self.assertRaises(ValueError):
             self.agg.read("week")
@@ -124,6 +138,26 @@ class TestCost(unittest.TestCase):
         self.assertEqual(cost["currency"], "USD")
 
 
+class TestConstructorValidation(unittest.TestCase):
+    def setUp(self):
+        self.conn = sqlite3.connect(":memory:")
+        self.addCleanup(self.conn.close)
+
+    def test_retention_days_must_be_positive(self):
+        with self.assertRaises(ValueError):
+            Aggregator(self.conn, retention_days=0)
+        with self.assertRaises(ValueError):
+            Aggregator(self.conn, retention_days=-1)
+
+    def test_price_cannot_be_negative(self):
+        with self.assertRaises(ValueError):
+            Aggregator(self.conn, price=-0.1)
+
+    def test_price_zero_is_allowed(self):
+        agg = Aggregator(self.conn, price=0.0)
+        self.assertEqual(agg.price, 0.0)
+
+
 class TestRetention(unittest.TestCase):
     NOW = 1700000000.0
 
@@ -142,6 +176,14 @@ class TestRetention(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["last"], 2.0)
         self.assertEqual(rows[0]["start_ms"], (recent_ms // MINUTE_MS) * MINUTE_MS)
+
+    def test_row_exactly_at_cutoff_is_kept(self):
+        cutoff_ms = int((self.NOW - 30 * 86400) * 1000)
+        self.agg.add(MAC, SENSOR, "active_pwr", 7.0, cutoff_ms)
+        self.assertEqual(self.agg.purge(), 0)
+        rows = self.agg.read("minute")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["last"], 7.0)
 
 
 class TestExistingHistoryDatabase(unittest.TestCase):
