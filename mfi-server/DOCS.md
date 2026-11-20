@@ -368,3 +368,16 @@ Rules:
 - Only the host and port of an adopted mPort Serial are allowed. Any other target is refused with `device is not an adopted mPort Serial`.
 - The length of the text is limited (`script_max_length`, default 1024 characters). Longer text is refused with `script text too long`.
 - The owner must approve this action before it is enabled.
+
+## Risky functions
+
+Four extra network functions from the original 2.1.11 controller are implemented but **off by default**. Each one stays disabled until its setting is set to `true` in the server settings (`settings.json` in the data folder). These settings are not add-on options yet. The owner must approve these functions before the add-on is published. Keep the devices on an isolated network and never expose ports 6080/tcp, 6443/tcp or 8099/tcp to the internet (AGENTS.md rule 8).
+
+| Function | Setting (default `false`) | Who | What it does |
+|---|---|---|---|
+| Web shell | `allow_webshell` | admin only | Checks that the serial line of an adopted mPort Serial is reachable (telnet, port 2323, UNVERIFIED on a device - see network_tools.py). The interactive session is not built yet (UI work, EPIC-16). The host and port are taken only from the stored device record, never from the request. |
+| SSH from the browser | `allow_browser_ssh` | admin only | Checks that an adopted device is reachable over SSH (port 22). It is separate from the adoption SSH call. The interactive session is not built yet (UI work, EPIC-16). The host and port are taken only from the stored device record. |
+| UPnP announcements | `allow_upnp` | admin only | Builds the UPnP announcement content: only the product name, no version string. The network send is not built yet (transport and UI work, EPIC-16). Their use by mFi devices is UNVERIFIED and needs a device test. |
+| Guest access page | `allow_guest_page` | admin only | Builds the guest access page content. It is rate limited only when a rate limiter is configured in the context. Its use with mFi devices is UNVERIFIED (most likely a UniFi remnant) and needs a device test. |
+
+Risks: a web shell or an SSH session gives access to a device over weak, old ciphers with no host-key check; UPnP announcements can reveal the product on the local network; a guest page can open network access to clients that were never authorised. When any of these is off, its route answers `403` with the error key `disabled` and opens no connection. The RADIUS secret of the Wi-Fi Enterprise settings is never written to a log.

@@ -28,7 +28,6 @@ FUNCTIONS = {
     "mqtt_discovery": ["discovery_messages", "state_messages"],
     "rules_import": ["convert_rules"],
     "editor": ["to_yaml", "from_yaml"],
-    "network_tools": ["open_webshell", "start_browser_ssh", "upnp_announce", "guest_portal"],
 }
 
 CLASSES = {
