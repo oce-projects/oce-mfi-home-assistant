@@ -11,6 +11,7 @@ from pathlib import Path
 from mfi_server_next.stats import Aggregator
 
 MAC = "aabbccddeeff"
+MAC2 = "112233445566"
 SENSOR = "1"
 MINUTE_MS = 60000
 HISTORY_STATEMENTS = (
@@ -77,6 +78,27 @@ class TestAggregates(unittest.TestCase):
         self.assertAlmostEqual(bucket["energy"], 140.0)
         self.assertGreaterEqual(bucket["energy"], 0.0)
 
+    def test_energy_consumption_carries_across_buckets(self):
+        for time_ms, value in ((0, 100.0), (1800000, 150.0), (3600000, 200.0), (5400000, 260.0)):
+            self.agg.add(MAC, SENSOR, "energy_sum", value, time_ms)
+        buckets = self.agg.read("hour")
+        self.assertEqual(len(buckets), 2)
+        self.assertEqual(buckets[0]["start_ms"], 0)
+        self.assertAlmostEqual(buckets[0]["energy"], 50.0)
+        self.assertEqual(buckets[1]["start_ms"], 3600000)
+        self.assertAlmostEqual(buckets[1]["energy"], 110.0)
+
+    def test_energy_is_computed_per_series_not_across_macs(self):
+        for time_ms, value in ((0, 100.0), (3600000, 160.0)):
+            self.agg.add(MAC, SENSOR, "energy_sum", value, time_ms)
+        for time_ms, value in ((0, 500.0), (3600000, 700.0)):
+            self.agg.add(MAC2, SENSOR, "energy_sum", value, time_ms)
+        buckets = self.agg.read("hour", tag="energy_sum")
+        by_series = {(row["mac"], row["start_ms"]): row["energy"] for row in buckets}
+        self.assertAlmostEqual(by_series[(MAC, 3600000)], 60.0)
+        self.assertAlmostEqual(by_series[(MAC2, 0)], 0.0)
+        self.assertAlmostEqual(by_series[(MAC2, 3600000)], 200.0)
+
 
 class TestCost(unittest.TestCase):
     def setUp(self):
@@ -92,6 +114,14 @@ class TestCost(unittest.TestCase):
         self.assertAlmostEqual(cost["cost"], 2.5)
         self.assertEqual(cost["currency"], "USD")
         self.assertAlmostEqual(self.agg.cost(10), 2.5)
+
+    def test_monthly_cost_window_excludes_readings_before_from_ms(self):
+        for time_ms, value in ((0, 0.0), (3600000, 100.0), (7200000, 300.0)):
+            self.agg.add(MAC, SENSOR, "energy_sum", value, time_ms)
+        cost = self.agg.monthly_cost(MAC, SENSOR, 3600000, 7200000)
+        self.assertAlmostEqual(cost["energy_kwh"], 0.2)
+        self.assertAlmostEqual(cost["cost"], 0.05)
+        self.assertEqual(cost["currency"], "USD")
 
 
 class TestRetention(unittest.TestCase):
