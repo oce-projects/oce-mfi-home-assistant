@@ -26,3 +26,18 @@ configuration:
   ssh_extra_options:
     name: "Opzioni SSH extra"
     description: "Opzioni extra per gli algoritmi SSH dei dispositivi vecchi, in coppie CHIAVE=valore separate da punti e virgola. Lascia il predefinito se un dispositivo richiede altri algoritmi."
+  allow_webshell:
+    name: "Shell web verso mPort Serial"
+    description: "Spento per impostazione predefinita. Permette alla pagina web di aprire una shell sulla linea seriale di un mPort Serial adottato. Funzione rischiosa: attivala solo sulla rete isolata dei dispositivi."
+  allow_browser_ssh:
+    name: "SSH dal browser"
+    description: "Spento per impostazione predefinita. Permette alla pagina web di aprire una sessione SSH verso un dispositivo adottato. Funzione rischiosa: attivala solo sulla rete isolata dei dispositivi."
+  allow_upnp:
+    name: "Annuncio UPnP"
+    description: "Spento per impostazione predefinita. Annuncia il server sulla rete con UPnP, quindi gli altri apparecchi della rete possono vederlo. Funzione rischiosa."
+  allow_guest_page:
+    name: "Pagina ospiti"
+    description: "Spento per impostazione predefinita. Mostra una pagina per gli ospiti senza login: chiunque raggiunga la porta può aprirla. Funzione rischiosa."
+  allow_script_action:
+    name: "Azione script nelle regole"
+    description: "Spento per impostazione predefinita. Permette alle regole di eseguire uno script sulla linea seriale, quindi di mandare comandi a un dispositivo. Funzione rischiosa."

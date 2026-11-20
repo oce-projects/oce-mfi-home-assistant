@@ -26,3 +26,18 @@ configuration:
   ssh_extra_options:
     name: "Extra SSH options"
     description: "Extra SSH algorithm options for old devices, as KEY=value pairs separated by semicolons. Keep the default unless a device needs other algorithms."
+  allow_webshell:
+    name: "Web shell to mPort Serial"
+    description: "Off by default. Lets the web page open a shell on the serial line of an adopted mPort Serial. Risky: enable it only on the isolated device network."
+  allow_browser_ssh:
+    name: "SSH from the browser"
+    description: "Off by default. Lets the web page open an SSH session to an adopted device. Risky: enable it only on the isolated device network."
+  allow_upnp:
+    name: "UPnP announcement"
+    description: "Off by default. Announces the server on the network with UPnP, so other devices on the network can see it. Risky."
+  allow_guest_page:
+    name: "Guest page"
+    description: "Off by default. Serves a page for guests with no login: anyone who can reach the port can open it. Risky."
+  allow_script_action:
+    name: "Script action in rules"
+    description: "Off by default. Lets rules run a script on the serial line, so a rule can send commands to a device. Risky."

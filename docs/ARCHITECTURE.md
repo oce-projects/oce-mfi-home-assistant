@@ -64,6 +64,7 @@ page (`docs/WIFI-SETUP.md`). Wired devices do not need it.
 | 2026-11-18 | Full rewrite: feature parity with the 2.1.11 controller, Home Assistant style, whole repository; plan in docs/REBUILD-PLAN.md |
 | 2026-11-19 | Risky network functions (web shell, SSH from the browser, UPnP announcements, guest page) are implemented but off by default, each behind its own setting, with a risk warning in `mfi-server/DOCS.md` (owner decision) |
 | 2026-11-19 | The web shell and SSH from the browser take the target address only from the stored device record, never from the request; the web shell accepts only adopted mPort Serial devices |
+| 2026-11-20 | The mFi Server add-on (1.0.0) runs the new package `mfi_server_next`; the previous package `mfi_server` stays in the repository, not started, until the next epic removes it. Way back: change the `CMD` of `mfi-server/Dockerfile` to `mfi_server` and release a patch |
 
 ## Existing work (checked 2026-11-15)
 

@@ -1,12 +1,13 @@
 # =============================================================================
 # mFi Server add-on: our own controller for Ubiquiti mFi devices, in pure
 # Python with the standard library only. It contains no Ubiquiti file: the
-# image holds only the mfi_server code.
+# image holds the mfi_server_next code (the server that runs) and the mfi_server
+# package (the previous server, kept as the way back).
 # =============================================================================
 # Digest not measured yet: pin it by hand after a real build
 FROM python:3.12-slim
 
-ARG BUILD_VERSION="0.33.0"
+ARG BUILD_VERSION="1.0.0"
 ARG BUILD_ARCH="amd64"
 ARG FW_URL="https://dl.ubnt.com/mfi/2.1.11/firmware/M2M/firmware.bin"
 ARG FW_SHA256="7dc6fb4bd67c6352b940d8b65dd0d99325199e8dc4052c20139aaf861fec2a79"
@@ -23,6 +24,7 @@ RUN mkdir -p /opt/mfi-server/firmware/M2M/2.1.11.1309 \
  && chmod -R a-w /opt/mfi-server/firmware
 
 WORKDIR /app
+COPY mfi_server_next /app/mfi_server_next
 COPY mfi_server /app/mfi_server
 
 LABEL io.hass.version="${BUILD_VERSION}" \
@@ -37,5 +39,7 @@ LABEL io.hass.version="${BUILD_VERSION}" \
 
 EXPOSE 6080/tcp 3478/udp
 
-# Runs as root: the Supervisor /data volume belongs to root (see DOCS.md)
-CMD ["python3", "-m", "mfi_server"]
+# Runs as root: the Supervisor /data volume belongs to root (see DOCS.md).
+# --data-dir /data: the add-on data (migrated devices, history, automations).
+# --mode addon: the Home Assistant ingress is trusted, no login.
+CMD ["python3", "-m", "mfi_server_next", "--data-dir", "/data", "--mode", "addon"]

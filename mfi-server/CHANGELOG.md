@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 - 2026-11-20
+
+- The add-on now runs the new clean-room server `mfi_server_next` (`python3 -m mfi_server_next`). It keeps the same slug (`mfi_server`), so the update installs in place and the data folder is kept.
+- Data is migrated at every start: the missing fields are added to `devices.json`, `history.sqlite3` and `automations.json`. Each file is first copied to a timestamped backup (`*.bak`). If a migration fails, the server does not start and the log names the file.
+- Risky network functions are off by default: web shell to an mPort Serial, SSH from the browser, UPnP announcement, guest page and script action in rules. The new options `allow_webshell`, `allow_browser_ssh`, `allow_upnp`, `allow_guest_page` and `allow_script_action` are in the add-on configuration, all false. In this version the new server does not read these options yet, so the functions stay off even when an option is set to true.
+- How to go back: change the Dockerfile `CMD` to `["python3", "-m", "mfi_server"]` and release a patch.
+
 ## 0.33.0 - 2026-11-20
 
 - EPIC-19 (T-MWNRGUB6): import of the old controller rules from a `.unf` backup. `mfi_server_next/rules_import.py` (`convert_rules`, `collect_rule_docs`, `read_backup_documents`, `store_automations`, `import_backup_rules`) converts the rule, ruleset, ruleaction, rulecondition, ruleschedule, rulestatecalendar, scene, sceneaction and script collections into automations in the Home Assistant format, with a converted/skipped report, one automation or one skipped entry per input document, idempotent replacement by id, a backup copy of `automations.json`, script actions imported disabled when `allow_script_action` is off, and the admin route `POST api/v1/upload/rules` with the "Import old rules" action in the System view; English and Italian strings.
