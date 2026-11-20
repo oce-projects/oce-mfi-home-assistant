@@ -6,6 +6,7 @@ once; only its first two bytes are known, see build_wakeup().
 from __future__ import annotations
 
 import logging
+import re
 import socket
 import threading
 
@@ -15,6 +16,14 @@ WAKEUP_PORT = 3478
 WAKEUP_LEN = 20
 OUTPUT_CMD = "mfi-output"
 MAX_QUEUE_PER_MAC = 64
+# UNVERIFIED (needs a device test): the exact system_cfg keys for the NTP server
+# and the time zone are not confirmed on a device. docs/controller/system.md
+# section 4 and docs/PROTOCOL.md name system_cfg and the server time zone, not
+# these keys.
+MAX_CFG_VALUE_LEN = 253
+_CFG_VALUE_RE = re.compile(r"[A-Za-z0-9._:/+-]+")
+NTP_CFG_KEY = "ntpclient.1.server"
+TIMEZONE_CFG_KEY = "system.timezone"
 
 
 def build_wakeup() -> bytes:
@@ -26,6 +35,35 @@ def build_wakeup() -> bytes:
 def build_output_command(mac, port, val, **extra) -> dict:
     """Return the command that sets one port of a device to val (1 on, 0 off)."""
     return {"_type": "cmd", "cmd": OUTPUT_CMD, "mac": mac, "port": port, "val": val, **extra}
+
+
+def _valid_cfg_value(value):
+    return (
+        isinstance(value, str)
+        and 0 < len(value) <= MAX_CFG_VALUE_LEN
+        and _CFG_VALUE_RE.fullmatch(value) is not None
+    )
+
+
+def build_system_cfg(*, ntp_server=None, timezone=None) -> str:
+    """Return the system_cfg text of a setparam: one key=value line per given value, sorted by key."""
+    values = {}
+    if _valid_cfg_value(ntp_server):
+        values[NTP_CFG_KEY] = ntp_server
+    if _valid_cfg_value(timezone):
+        values[TIMEZONE_CFG_KEY] = timezone
+    return "\n".join(f"{key}={values[key]}" for key in sorted(values))
+
+
+def build_setparam(cfgversion=None, *, system_cfg=None, **extra) -> dict:
+    """Return a setparam message; cfgversion and system_cfg are added only when given. Reserved keys win over extra."""
+    message = dict(extra)
+    message["_type"] = "setparam"
+    if cfgversion is not None:
+        message["cfgversion"] = cfgversion
+    if isinstance(system_cfg, str) and system_cfg:
+        message["system_cfg"] = system_cfg
+    return message
 
 
 def send_wakeup(sock: socket.socket, ip: str, port: int) -> None:
