@@ -375,7 +375,7 @@ Four extra network functions from the original 2.1.11 controller are implemented
 
 | Function | Setting (default `false`) | Who | What it does |
 |---|---|---|---|
-| Web shell | `allow_webshell` | admin only | Checks that the serial line of an adopted mPort Serial is reachable (telnet, port 2323). The interactive session is not built yet (UI work, EPIC-16). The host and port are taken only from the stored device record, never from the request. |
+| Web shell | `allow_webshell` | admin only | Checks that the serial line of an adopted mPort Serial is reachable (telnet, port 2323, UNVERIFIED on a device - see network_tools.py). The interactive session is not built yet (UI work, EPIC-16). The host and port are taken only from the stored device record, never from the request. |
 | SSH from the browser | `allow_browser_ssh` | admin only | Checks that an adopted device is reachable over SSH (port 22). It is separate from the adoption SSH call. The interactive session is not built yet (UI work, EPIC-16). The host and port are taken only from the stored device record. |
 | UPnP announcements | `allow_upnp` | admin only | Builds the UPnP announcement content: only the product name, no version string. The network send is not built yet (transport and UI work, EPIC-16). Their use by mFi devices is UNVERIFIED and needs a device test. |
 | Guest access page | `allow_guest_page` | admin only | Builds the guest access page content. It is rate limited only when a rate limiter is configured in the context. Its use with mFi devices is UNVERIFIED (most likely a UniFi remnant) and needs a device test. |
