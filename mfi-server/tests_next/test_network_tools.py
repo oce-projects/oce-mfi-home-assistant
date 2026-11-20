@@ -94,6 +94,29 @@ class TestWifiConfig(unittest.TestCase):
     def test_bad_security(self):
         self.assertRaises(ValueError, sensors.build_wifi_config, {"essid": "x", "security": "bad"})
 
+    def test_rejects_line_injection_and_bad_port(self):
+        cases = {
+            "radius_port=0": dict(ENTERPRISE_REQUEST, radius_port=0),
+            "radius_port=65536": dict(ENTERPRISE_REQUEST, radius_port=65536),
+            "radius_port as string": dict(ENTERPRISE_REQUEST, radius_port="1812"),
+            "radius_server with newline": dict(ENTERPRISE_REQUEST, radius_server="203.0.113.9\nwireless.1.extra=1"),
+            "radius_secret with newline": dict(ENTERPRISE_REQUEST, radius_secret="secret\nwireless.1.x=1"),
+            "personal essid with newline": {"essid": "home\nwireless.1.x=1", "security": "wpa2aes"},
+            "personal passphrase with newline": {
+                "essid": "home",
+                "security": "wpa2aes",
+                "passphrase": "pass\nwireless.1.x=1",
+            },
+        }
+        for name, request in cases.items():
+            with self.subTest(case=name):
+                self.assertRaises(ValueError, sensors.build_wifi_config, request)
+
+    def test_secret_absent_from_error_message(self):
+        with self.assertRaises(ValueError) as cm:
+            sensors.build_wifi_config(dict(ENTERPRISE_REQUEST, radius_port=0))
+        self.assertNotIn(RADIUS_SECRET, str(cm.exception))
+
 
 class TestWebshell(unittest.TestCase):
     def test_disabled(self):
@@ -127,6 +150,13 @@ class TestWebshell(unittest.TestCase):
         self.assertEqual(cm.exception.status, 409)
         self.assertEqual(cm.exception.code, "no_address")
 
+    def test_connect_failure_propagates(self):
+        def unreachable(host, port):
+            raise OSError("unreachable")
+
+        with self.assertRaises(OSError):
+            network_tools.open_webshell({"allow_webshell": True}, serial_registry(), MAC, connect=unreachable)
+
 
 class TestBrowserSsh(unittest.TestCase):
     def test_disabled(self):
@@ -142,6 +172,13 @@ class TestBrowserSsh(unittest.TestCase):
         self.assertTrue(fc.sockets[0].closed)
         self.assertEqual(result, {"host": HOST, "port": 22})
 
+    def test_connect_failure_propagates(self):
+        def unreachable(host, port):
+            raise OSError("unreachable")
+
+        with self.assertRaises(OSError):
+            network_tools.start_browser_ssh({"allow_browser_ssh": True}, serial_registry(), MAC, connect=unreachable)
+
 
 class TestUpnp(unittest.TestCase):
     def test_disabled(self):
@@ -150,7 +187,7 @@ class TestUpnp(unittest.TestCase):
         self.assertEqual(cm.exception.status, 403)
         self.assertEqual(cm.exception.code, "disabled")
 
-    def test_enabled(self):
+    def test_product_has_no_version(self):
         result = network_tools.upnp_announce({"allow_upnp": True})
         self.assertEqual(result, {"product": "mFi Server"})
         self.assertFalse(any(ch.isdigit() for ch in result["product"]))

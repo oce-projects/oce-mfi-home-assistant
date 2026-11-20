@@ -383,7 +383,7 @@ def make_handler(context):
                 self._error(400, "bad_request")
             except OSError:
                 self._error(502, "connect_failed")
-            except Exception:  # noqa: BLE001 - never leak the connection on an unexpected failure
+            except Exception:  # noqa: BLE001 - map any unexpected failure to a 500 without leaking internals
                 logger.exception("page api: network tool failed")
                 self._error(500, "internal_error")
             else:
