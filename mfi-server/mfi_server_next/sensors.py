@@ -29,6 +29,14 @@ MPORT_MODELS = frozenset(MPORT_PORTS)
 
 OUTLET_TAGS = ("output", "pf", "energy_sum", "v_rms", "i_rms", "active_pwr")
 
+# Wi-Fi security modes the controller offers (PROTO "Wi-Fi setup mode"); the
+# *eap modes are Wi-Fi Enterprise (RADIUS), from the 2.1.11 release notes.
+WIFI_SECURITY_MODES = frozenset({
+    "none", "wep", "wpa", "wpatkip", "wpaaes",
+    "wpa2", "wpa2tkip", "wpa2aes", "wpaeap", "wpa2eap",
+})
+WIFI_ENTERPRISE_MODES = frozenset({"wpaeap", "wpa2eap"})
+
 # A device MAC as the controller writes it: 12 lowercase hex digits, no colons.
 MAC_PATTERN = re.compile(r"[0-9a-f]{12}")
 
@@ -160,6 +168,51 @@ def build_port_config(request=None):
     if cfg:
         message["mgmt"]["device_cfg"] = "\n".join(f"{key}={value}" for key, value in cfg.items())
     return message
+
+
+def build_wifi_config(request=None):
+    """Build the setparam message that configures the Wi-Fi of a device.
+
+    request keys: `essid` (str), `security` (one of WIFI_SECURITY_MODES), an
+    optional `passphrase` (personal modes) and, for an Enterprise mode,
+    `radius_server` (str), `radius_port` (int 1..65535) and `radius_secret` (str).
+    The RADIUS secret goes only into the returned device configuration and is
+    never logged. Returns {"_type": "setparam", "mgmt": {"wireless_cfg": "<lines>"}}.
+    A missing or invalid field raises ValueError naming the field.
+    """
+    if not isinstance(request, dict):
+        raise ValueError("essid")
+    essid = request.get("essid")
+    security = request.get("security")
+    if not isinstance(essid, str) or essid == "":
+        raise ValueError("essid")
+    _reject_line_break(essid, "essid")
+    if security not in WIFI_SECURITY_MODES:
+        raise ValueError("security")
+    lines = [f"wireless.1.ssid={essid}", f"wireless.1.security={security}"]
+    if security in WIFI_ENTERPRISE_MODES:
+        server = request.get("radius_server")
+        port = request.get("radius_port")
+        secret = request.get("radius_secret")
+        if not isinstance(server, str) or server == "":
+            raise ValueError("radius_server")
+        _reject_line_break(server, "radius_server")
+        if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+            raise ValueError("radius_port")
+        if not isinstance(secret, str) or secret == "":
+            raise ValueError("radius_secret")
+        _reject_line_break(secret, "radius_secret")
+        lines.append(f"wireless.1.radius.ip={server}")
+        lines.append(f"wireless.1.radius.port={port}")
+        lines.append(f"wireless.1.radius.secret={secret}")
+    else:
+        passphrase = request.get("passphrase")
+        if passphrase is not None:
+            if not isinstance(passphrase, str):
+                raise ValueError("passphrase")
+            _reject_line_break(passphrase, "passphrase")
+            lines.append(f"wireless.1.passphrase={passphrase}")
+    return {"_type": "setparam", "mgmt": {"wireless_cfg": "\n".join(lines)}}
 
 
 def _check_placement(mac, port):
