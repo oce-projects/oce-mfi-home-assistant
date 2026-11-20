@@ -163,7 +163,10 @@ def parse_duration(value: object) -> float:
         if match is None:
             raise ValueError(f"invalid duration: {value!r}")
         hours, minutes, seconds = (int(part) for part in match.groups())
-        return float(hours * 3600 + minutes * 60 + seconds)
+        total = hours * 3600 + minutes * 60 + seconds
+        if total > MAX_DURATION:
+            raise ValueError(f"duration too large: {value!r}")
+        return float(total)
     if isinstance(value, dict):
         if not value or set(value) - set(DURATION_UNITS):
             raise ValueError("duration mapping must have hours, minutes or seconds only")
