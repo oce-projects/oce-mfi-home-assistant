@@ -67,6 +67,10 @@ def make_compat_handler(context):
     class CompatHandler(BaseHTTPRequestHandler):
         """Answers the controller-compatible API."""
 
+        # Bound a slow client that opens a connection and sends the body in a trickle:
+        # BaseHTTPRequestHandler applies this to the socket in setup().
+        timeout = 10
+
         def log_message(self, format, *args):
             logger.debug("compat api: %s", format % args)
 
@@ -193,7 +197,7 @@ def make_compat_handler(context):
             """Parse a JSON object; answer 400 and return None when the body is not one."""
             try:
                 data = json.loads(body.decode("utf-8"))
-            except ValueError:
+            except (ValueError, RecursionError):
                 self._send_error(400, ERR_INVALID_PAYLOAD)
                 return None
             if not isinstance(data, dict):

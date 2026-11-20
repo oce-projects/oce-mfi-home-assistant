@@ -112,5 +112,50 @@ class TestRequestLimits(AbuseTestCase):
         self.assertEqual(json.loads(data)["meta"]["msg"], "api.err.WrongMethod")
 
 
+class TestDeeplyNestedJson(unittest.TestCase):
+    """A deeply nested JSON body is refused with InvalidPayload, not an uncaught error."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.store = Store.open(Path(tmp.name))
+        self.addCleanup(self.store.close)
+        self.auth = auth.AuthManager(self.store)
+        self.auth.add_user("boss", ADMIN_PASSWORD, auth.ROLE_ADMIN)
+        self.context = SimpleNamespace(
+            auth=self.auth,
+            tasks=tasks.TaskQueue(),
+            sensors=sensors.SensorRegistry(),
+            settings={"mode": "standalone", "max_body": 1 << 20},
+        )
+        self.server = http.server.ThreadingHTTPServer(
+            ("127.0.0.1", 0), compat_api.make_compat_handler(self.context)
+        )
+        self.addCleanup(self.server.server_close)
+        self.port = self.server.server_address[1]
+        thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join)
+        self.addCleanup(self.server.shutdown)
+
+    def test_deeply_nested_json_is_rejected(self):
+        token = self.auth.login("boss", ADMIN_PASSWORD, "127.0.0.1")
+        depth = 20000
+        body = b"[" * depth + b"]" * depth
+        headers = {
+            "Content-Type": "application/json",
+            "Cookie": f"{compat_api.SESSION_COOKIE}={token}",
+        }
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            conn.request("POST", "/api/v1.0/cmd/devmgr", body=body, headers=headers)
+            response = conn.getresponse()
+            status, data = response.status, response.read()
+        finally:
+            conn.close()
+        self.assertEqual(status, 400)
+        self.assertEqual(json.loads(data)["meta"]["msg"], "api.err.InvalidPayload")
+
+
 if __name__ == "__main__":
     unittest.main()
