@@ -67,7 +67,7 @@ Python 3.11 or later. No extra packages.
 
 mFi Server also runs as a standalone program, without Home Assistant. Choose one of the three ways below. The Python way needs Python 3.11 or later. Docker and systemd run the same code.
 
-Note: only the add-on switches to the new package `mfi_server_next`. The standalone examples below still start the previous package `mfi_server`, until they are migrated in a later release.
+Note: the add-on and the Docker image now start the new package `mfi_server_next`. The Python and systemd examples below still start the previous package `mfi_server`, until they are migrated in a later release.
 
 ### Python
 
