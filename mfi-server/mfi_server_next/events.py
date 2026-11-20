@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import smtplib
+import ssl
 import time
 from collections.abc import Callable
 from email.message import EmailMessage
@@ -10,6 +11,7 @@ from email.message import EmailMessage
 EVENT_TABLE = "event"
 ACTIONEVENT_TABLE = "actionevent"
 EMAIL_FAILED_KEY = "EVT_EMAIL_FAILED"
+EMAIL_FAILED_DEDUP_MINUTES = 5
 DEFAULT_RETENTION_DAYS = 30
 DEFAULT_TIMEOUT = 10
 DAY_SECONDS = 86400
@@ -82,6 +84,7 @@ class EventLog:
 
     def list_events(self, *, device=None, since=None, until=None, limit: int = 1000) -> list[dict]:
         """Return the events, newest first. Each filter applies only when it is not None."""
+        limit = max(0, limit)
         clauses: list[str] = []
         params: list = []
         if device is not None:
@@ -110,7 +113,9 @@ class EventLog:
         cutoff = int(self._now()) - max_age_seconds
         with self._store.transaction() as conn:
             cursor = conn.execute(f"DELETE FROM {EVENT_TABLE} WHERE ts < ?", (cutoff,))
-            return cursor.rowcount
+            removed = cursor.rowcount
+            conn.execute(f"DELETE FROM {ACTIONEVENT_TABLE} WHERE ts < ?", (cutoff,))
+            return removed
 
     def notify_email(self, settings, addr, subject, body, *, key=None, hold_minutes=0) -> bool:
         """Send one e-mail. Return False when it is held, disabled or failed; a failure is recorded as an event.
@@ -118,6 +123,14 @@ class EventLog:
         The password is passed only to login(). It never goes into a log line, an event or an actionevent row.
         """
         now = self._now()
+        addr = list(addr) if addr is not None else []
+        if any(("\r" in value or "\n" in value) for value in addr) or "\r" in subject or "\n" in subject:
+            detail = "rejected: newline in recipient or subject"
+            self._logger.error("e-mail notification %s", detail)
+            self.record(key=EMAIL_FAILED_KEY, msg="e-mail notification " + detail, level=2,
+                        dedup_minutes=EMAIL_FAILED_DEDUP_MINUTES)
+            self._log_action(addr, "error", detail)
+            return False
         if key is not None and hold_minutes > 0:
             last = self._last_email.get(key)
             if last is not None and now - last < hold_minutes * 60:
@@ -135,15 +148,18 @@ class EventLog:
             msg.set_content(body)
             with factory(settings["host"], settings["port"], timeout=settings.get("timeout", DEFAULT_TIMEOUT)) as smtp:
                 if settings.get("use_tls"):
-                    smtp.starttls()
+                    smtp.starttls(context=ssl.create_default_context())
                 if settings.get("user"):
                     smtp.login(settings["user"], settings["password"])
                 smtp.send_message(msg)
         except Exception as exc:
             detail = _scrub(str(exc) or type(exc).__name__, settings.get("password"))
             self._logger.error("e-mail notification failed: %s", detail)
-            self.record(key=EMAIL_FAILED_KEY, msg="e-mail notification failed: " + detail, level=2)
+            self.record(key=EMAIL_FAILED_KEY, msg="e-mail notification failed: " + detail, level=2,
+                        dedup_minutes=EMAIL_FAILED_DEDUP_MINUTES)
             self._log_action(addr, "error", detail)
+            if key is not None and hold_minutes > 0:
+                self._last_email[key] = now
             return False
         if key is not None:
             self._last_email[key] = now

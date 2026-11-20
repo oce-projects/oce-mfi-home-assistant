@@ -58,23 +58,23 @@ def run_rule(rule, **callbacks):
 
 class ValidateTest(unittest.TestCase):
     def test_notify_email_with_addr_and_body_is_valid(self):
-        self.assertEqual(validate(mail_rule({"addr": [ADDR], "body": "Porta spenta"})), [])
+        self.assertEqual(validate(mail_rule({"addr": [ADDR], "body": "Port is off"})), [])
 
     def test_notify_email_with_all_optional_keys_is_valid(self):
         data = {
             "addr": [ADDR, ADDR_2],
-            "subject": "Allarme",
-            "body": "Porta spenta",
+            "subject": "Alarm",
+            "body": "Port is off",
             "key": "port_1",
             "hold_minutes": 10,
         }
         self.assertEqual(validate(mail_rule(data)), [])
 
     def test_notify_email_text_may_be_non_ascii(self):
-        self.assertEqual(validate(mail_rule({"addr": [ADDR], "body": "Attenzione: è spenta"})), [])
+        self.assertEqual(validate(mail_rule({"addr": [ADDR], "body": "Warning: café is off"})), [])
 
     def test_notify_email_without_addr_is_refused(self):
-        errors = validate(mail_rule({"body": "Porta spenta"}))
+        errors = validate(mail_rule({"body": "Port is off"}))
         self.assertTrue(any("addr" in e and "required" in e for e in errors), errors)
 
     def test_notify_email_without_body_is_refused(self):
@@ -106,14 +106,14 @@ class ValidateTest(unittest.TestCase):
                 self.assertEqual(errors == [], ok, errors)
 
     def test_mfi_event_with_key_and_msg_is_valid(self):
-        self.assertEqual(validate(event_rule({"key": "EVT_PORT", "msg": "Porta spenta"})), [])
+        self.assertEqual(validate(event_rule({"key": "EVT_PORT", "msg": "Port is off"})), [])
 
     def test_mfi_event_with_all_optional_keys_is_valid(self):
-        data = {"key": "EVT_PORT", "msg": "Porta spenta", "device": "mport_1", "level": 2, "dedup_minutes": 5}
+        data = {"key": "EVT_PORT", "msg": "Port is off", "device": "mport_1", "level": 2, "dedup_minutes": 5}
         self.assertEqual(validate(event_rule(data)), [])
 
     def test_mfi_event_without_key_is_refused(self):
-        errors = validate(event_rule({"msg": "Porta spenta"}))
+        errors = validate(event_rule({"msg": "Port is off"}))
         self.assertTrue(any("key" in e and "required" in e for e in errors), errors)
 
     def test_mfi_event_without_msg_is_refused(self):
@@ -124,7 +124,7 @@ class ValidateTest(unittest.TestCase):
         for field in ("key", "msg"):
             for value in ("", None, 5):
                 with self.subTest(field=field, value=value):
-                    data = {"key": "EVT_PORT", "msg": "Porta spenta"}
+                    data = {"key": "EVT_PORT", "msg": "Port is off"}
                     data[field] = value
                     errors = validate(event_rule(data))
                     self.assertTrue(
@@ -144,7 +144,7 @@ class ValidateTest(unittest.TestCase):
         ]
         for field, value, ok in cases:
             with self.subTest(field=field, value=value):
-                data = {"key": "EVT_PORT", "msg": "Porta spenta", field: value}
+                data = {"key": "EVT_PORT", "msg": "Port is off", field: value}
                 errors = validate(event_rule(data))
                 self.assertEqual(errors == [], ok, errors)
 
@@ -157,8 +157,8 @@ class NotifyEmailRunTest(unittest.TestCase):
     def test_callback_receives_the_data_dict_unchanged(self):
         data = {
             "addr": [ADDR, ADDR_2],
-            "subject": "Allarme",
-            "body": "Porta spenta",
+            "subject": "Alarm",
+            "body": "Port is off",
             "key": "port_1",
             "hold_minutes": 10,
         }
@@ -169,7 +169,7 @@ class NotifyEmailRunTest(unittest.TestCase):
         self.assertEqual(engine.traces("mail_rule")[0]["result"], "finished")
 
     def test_without_a_sender_the_trace_records_the_error(self):
-        engine = run_rule(mail_rule({"addr": [ADDR], "body": "Porta spenta"}))
+        engine = run_rule(mail_rule({"addr": [ADDR], "body": "Port is off"}))
         trace = engine.traces("mail_rule")[0]
         self.assertEqual(trace["result"], "error")
         self.assertEqual(trace["message"], "email notification not configured")
@@ -179,7 +179,7 @@ class NotifyEmailRunTest(unittest.TestCase):
         def broken(data):
             raise OSError("smtp unavailable")
 
-        engine = run_rule(mail_rule({"addr": [ADDR], "body": "Porta spenta"}), notify_email=broken)
+        engine = run_rule(mail_rule({"addr": [ADDR], "body": "Port is off"}), notify_email=broken)
         trace = engine.traces("mail_rule")[0]
         self.assertEqual(trace["result"], "error")
         self.assertEqual(trace["message"], "smtp unavailable")
@@ -187,7 +187,7 @@ class NotifyEmailRunTest(unittest.TestCase):
 
 class MfiEventRunTest(unittest.TestCase):
     def test_callback_receives_the_data_dict_unchanged(self):
-        data = {"key": "EVT_PORT", "msg": "Porta spenta", "device": "mport_1", "level": 2, "dedup_minutes": 5}
+        data = {"key": "EVT_PORT", "msg": "Port is off", "device": "mport_1", "level": 2, "dedup_minutes": 5}
         sinks = FakeSinks()
         engine = run_rule(event_rule(data), record_event=sinks.record_event)
         self.assertEqual(sinks.events, [data])
@@ -195,7 +195,7 @@ class MfiEventRunTest(unittest.TestCase):
         self.assertEqual(engine.traces("event_rule")[0]["result"], "finished")
 
     def test_without_a_recorder_the_trace_records_the_error(self):
-        engine = run_rule(event_rule({"key": "EVT_PORT", "msg": "Porta spenta"}))
+        engine = run_rule(event_rule({"key": "EVT_PORT", "msg": "Port is off"}))
         trace = engine.traces("event_rule")[0]
         self.assertEqual(trace["result"], "error")
         self.assertEqual(trace["message"], "event recording not configured")
@@ -205,7 +205,7 @@ class MfiEventRunTest(unittest.TestCase):
         def broken(data):
             raise OSError("disk full")
 
-        engine = run_rule(event_rule({"key": "EVT_PORT", "msg": "Porta spenta"}), record_event=broken)
+        engine = run_rule(event_rule({"key": "EVT_PORT", "msg": "Port is off"}), record_event=broken)
         trace = engine.traces("event_rule")[0]
         self.assertEqual(trace["result"], "error")
         self.assertEqual(trace["message"], "disk full")
