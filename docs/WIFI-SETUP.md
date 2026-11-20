@@ -42,6 +42,7 @@ flowchart LR
   E --> F[Device joins the home network]
   F --> G[mfi-server adopts it]
 ```
+The full step-by-step guide for users, with factory reset and LED states, is in `mfi-wifi-setup/README.md`, section "Step by step".
 
 ## Requirements
 
