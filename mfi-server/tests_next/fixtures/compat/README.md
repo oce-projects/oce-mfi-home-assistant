@@ -7,8 +7,10 @@ the controller interface, and the answer the new server must give to it.
 ## Purpose
 
 The bench replays recorded or synthetic exchanges against the handler that owns
-each route, offline, with the standard library only. Today every fixture is
-synthetic and the handlers are stubs, so every fixture is PENDING.
+each route, offline, with the standard library only. Every fixture today is
+synthetic. The handlers of the OBSERVED routes of the controller-compatible API
+(`compat_api.py`, EPIC-17) are implemented, so their fixtures are active; the
+fixtures of the UNVERIFIED routes are PENDING.
 
 Real recordings are added later as more `*.json` files in this folder. Adding a
 recording needs no code change: the helper `compat_replay.py` and the test

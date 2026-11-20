@@ -24,7 +24,6 @@ MODULE_NAMES = [
 
 FUNCTIONS = {
     "__main__": ["main"],
-    "compat_api": ["make_compat_handler"],
     "rules_import": ["convert_rules"],
     "editor": ["to_yaml", "from_yaml"],
 }

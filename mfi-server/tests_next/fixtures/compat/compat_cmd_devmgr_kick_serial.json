@@ -1,0 +1,17 @@
+{
+  "code": "R-WEB",
+  "source": "synthetic",
+  "owner_epic": "EPIC-17",
+  "handler": "mfi_server_next.compat_api.ok_envelope",
+  "request": {
+    "cmd": "kick-serial",
+    "mac": "002722000001"
+  },
+  "expected": {
+    "status": 200,
+    "keys": {
+      "data": "list",
+      "meta": "dict"
+    }
+  }
+}

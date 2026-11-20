@@ -1,0 +1,19 @@
+{
+  "code": "R-WEB",
+  "source": "synthetic",
+  "owner_epic": "EPIC-17",
+  "handler": "mfi_server_next.compat_api.ok_envelope",
+  "request": {
+    "cmd": "mfi-output",
+    "mac": "002722000001",
+    "port": 1,
+    "val": 1
+  },
+  "expected": {
+    "status": 200,
+    "keys": {
+      "data": "list",
+      "meta": "dict"
+    }
+  }
+}
