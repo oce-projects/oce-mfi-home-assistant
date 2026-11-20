@@ -55,7 +55,7 @@ class TestBuildSer2netCfg(unittest.TestCase):
         self.assertEqual(ctx.exception.args, ("baudRate",))
 
     def test_invalid_baud_rate_values_rejected(self):
-        for value in ("", "9600.0", "abc", 0, None):
+        for value in ("", "9600.0", "abc", 0, None, True, -9600):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError) as ctx:
                     serial.build_ser2net_cfg({"serial": {"baudRate": value, "parity": "none"}})
