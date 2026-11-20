@@ -45,10 +45,40 @@ class TestReadmeGuide(unittest.TestCase):
         self.assertIsNotNone(match, "no Version line in README.md")
         self.assertEqual(match.group(1), mfi_wifi_setup.__version__)
 
+    def test_numbered_steps_start_a_list_item(self):
+        text = README.read_text(encoding="utf-8")
+        step_start = text.find("## Step by step")
+        step_end = text.find("## ", step_start + 1)
+        lines = text[step_start:step_end].splitlines()
+        numbered = [i for i, line in enumerate(lines) if re.match(r"^\d+\. ", line)]
+        self.assertEqual(len(numbered), 7)
+        for i in numbered:
+            if i == 0:
+                continue
+            prev = lines[i - 1].strip()
+            self.assertTrue(prev == "" or re.match(r"^\d+\. ", prev), f"line {i} does not start a list item")
+
+    def test_readme_does_not_claim_mfi_server_adopts(self):
+        text = README.read_text(encoding="utf-8")
+        self.assertNotIn("in a table", text)
+        self.assertNotIn("the device appears and is adopted", text)
+        self.assertNotIn("it adopts the device", text)
+
+    def test_troubleshooting_marks_deduced_causes(self):
+        text = README.read_text(encoding="utf-8")
+        troub_start = text.find("## Troubleshooting")
+        troub_end = text.find("## ", troub_start + 1)
+        self.assertGreaterEqual(text[troub_start:troub_end].count("UNVERIFIED"), 2)
+
+    def test_changelog_has_no_wrong_date(self):
+        changelog = (FOLDER / "CHANGELOG.md").read_text(encoding="utf-8")
+        self.assertNotIn("2026-11-21", changelog)
+
     def test_spec_links_the_guide(self):
         text = WIFI_SETUP.read_text(encoding="utf-8")
         self.assertIn("mfi-wifi-setup/README.md", text)
         self.assertIn("Step by step", text)
+        self.assertIn("mfi-server 1.0.0 does not adopt devices yet", text)
 
 
 if __name__ == "__main__":

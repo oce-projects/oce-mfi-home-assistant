@@ -1,6 +1,6 @@
 # mFi Wi-Fi Setup (Windows helper)
 
-Version 0.5.1 - the Windows program: the version 2 window (guided setup, the
+Version 0.5.2 - the Windows program: the version 2 window (guided setup, the
 Wi-Fi network is chosen in the program) and the version 1 window (bridge to the
 device page), in `mfi_wifi_setup/`. `build_windows.cmd` builds the `.exe` (see
 "Build"); the first device test is ticket W3.
@@ -32,7 +32,7 @@ Offline tests, from the repository root:
 Taken from the mPower mini (EU) Quick Start Guide, pages 3-4 and 12-15:
 
 1. **Factory reset.** Press and hold the Reset button until the Status LED alternates colors (page 4). A quick press only restarts the device (page 4).
-2. **Status LED** (page 3), in a table:
+2. **Status LED** (page 3):
 
 | Status LED | Meaning |
 |---|-|
@@ -42,18 +42,19 @@ Taken from the mPower mini (EU) Quick Start Guide, pages 3-4 and 12-15:
 | Solid blue | connected to the mFi Controller |
 
 Taken from the mPower mini guide; for other Wi-Fi models UNVERIFIED.
+
 3. **Join the device network.** In Windows, connect to the open Wi-Fi network whose name is `mFi` followed by the last six characters of the MAC address (page 12). The exact separator in the name is UNVERIFIED.
 4. **Run the program** (`.exe` from the release, see "Download"). Step 1 checks the device and shows model and firmware.
 5. **Choose the home network** and type its password; press `Configure`; wait until the window shows the device address on the home network. The LED goes from flashing yellow to flashing blue.
 6. **Back to the home network.** Reconnect the PC to the home Wi-Fi network if Windows does not do it by itself (page 15, step 9).
-7. **Adoption.** With mfi-server: open mfi-server, the device appears and is adopted. With the original controller (mfi-controller add-on): the device appears as pending and must be adopted by hand, because the program does not write the controller fields. Alternative: the version 1 button "Open the device page" shows the original portal, where Address (controller IP and port 6080, for example `HOME-ASSISTANT-IP:6080`), User and Password of the controller can be entered (page 14); with those the device can be adopted by the controller without pressing Adopt (UNVERIFIED with this program).
+7. **Adoption.** With mfi-server: version 1.0.0 does not adopt devices yet (adoption is not wired in mfi-server/mfi_server_next/__main__.py); until a later version, adopt the device with the original controller (mfi-controller add-on). With the original controller (mfi-controller add-on): the device appears as pending and must be adopted by hand, because the program does not write the controller fields. Alternative: the version 1 button "Open the device page" shows the original portal, where Address (controller IP and port 6080, for example `HOME-ASSISTANT-IP:6080`), User and Password of the controller can be entered (page 14); with those the device can be adopted by the controller without pressing Adopt (UNVERIFIED with this program).
 
 ## Troubleshooting
 
 - SmartScreen or the antivirus warn: the `.exe` is not code-signed; check the sha256 first (see "Download").
 - The device network does not appear: do a factory reset again (step 1).
-- The LED keeps flashing yellow: wrong Wi-Fi password or a network type that is not listed (WEP, enterprise); reset and repeat.
-- The LED keeps flashing blue: the device is on the home network but no controller answers on port 6080; check that mfi-server (or mfi-controller) is running and that only one of them uses port 6080.
+- The LED keeps flashing yellow: wrong Wi-Fi password or a network type that is not listed (WEP, enterprise); reset and repeat. (cause UNVERIFIED: not in the Quick Start Guide).
+- The LED keeps flashing blue: the device is on the home network but no controller answers on port 6080; check that mfi-server (or mfi-controller) is running and that only one of them uses port 6080. (cause UNVERIFIED: not in the Quick Start Guide).
 
 ## Version 2: guided setup (0.3.0)
 
@@ -63,7 +64,7 @@ The version 2 window does the whole setup in the program:
 2. Choose your home network in the list and type its password.
 3. Press `Configure`. The window follows the device and shows the device address
    on your network when it has one.
-4. Open mfi-server: it adopts the device.
+4. Adopt the device with the original controller: mfi-server 1.0.0 does not adopt devices yet (see "Step by step", step 7).
 
 - Only open networks and WPA/WPA2 personal networks are listed. WEP and enterprise
   networks are not.
