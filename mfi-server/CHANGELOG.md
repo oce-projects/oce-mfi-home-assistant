@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.0 - 2026-11-20
+
+- EPIC-10 (T-MWNRGQJ6): data migration and system settings in the new server - `mfi_server_next/migrate.py` (`migrate_all` adds the new fields to devices.json, the `raw` history table and the automation fields idempotently, each change preceded by a timestamped 0600 backup copy kept to the newest `backup_copies` and restored on failure; `import_backup` reads a `.unf` controller backup read-only and imports the device keys into devices.json; `build_support_info` with keys, passwords and MAC addresses scrubbed) and the NTP server and time zone `system_cfg` of `mfi_server_next/tasks.py` (`build_system_cfg`, `build_setparam`), with tests in mfi-server/tests_next/test_migrate.py and test_tasks.py.
+
 ## 0.24.0 - 2026-11-20
 
 - EPIC-09 (T-MWNRGQ6Z): users in the new server - `mfi_server_next/auth.py` (`AuthManager` with PBKDF2 accounts in users.json mode 0600, `admin` and `read_only` roles, in-memory sessions with hmac.compare_digest and expiry, the existing 401/429 lockout, `trusted_ingress` for 172.30.32.2, and migration of the legacy password hash into one admin user), with tests in mfi-server/tests_next/test_auth.py and test_auth_abuse.py.

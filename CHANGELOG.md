@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.36.0 - 2026-11-20
+
+- mfi-server 0.25.0: EPIC-10 system - data migration with timestamped 0600 backup copies and restore-on-failure, idempotent devices.json/history/automation upgrades, `.unf` backup import of device keys (read-only), Support Info with keys/passwords/MACs removed, and the NTP server and time zone delivered to devices through the setparam `system_cfg`.
+
 ## 0.35.0 - 2026-11-20
 
 - mfi-server 0.24.0: EPIC-09 users (`mfi_server_next/auth.py`): PBKDF2 accounts in users.json (0600), admin and read_only roles, in-memory sessions with expiry, the existing 401/429 lockout, Home Assistant ingress trust for 172.30.32.2, and migration of the legacy password hash into one admin user.
