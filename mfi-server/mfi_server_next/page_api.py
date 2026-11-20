@@ -61,6 +61,8 @@ def _match_route(parts):
         return "stat", {"GET"}, (parts[3],)
     if count == 4 and parts[2] == "upload" and parts[3] == "backup":
         return "backup", {"POST"}, ()
+    if count == 4 and parts[2] == "upload" and parts[3] == "rules":
+        return "import_rules", {"POST"}, ()
     if count == 5 and parts[2] == "users" and parts[4] == "password":
         return "users_password", {"POST"}, (parts[3],)
     if count == 5 and parts[2] == "devices" and parts[4] in DEVICE_ACTIONS:
@@ -192,6 +194,8 @@ def make_handler(context):
                 self._user_password(params[0], body)
             elif name == "backup":
                 self._backup(body)
+            elif name == "import_rules":
+                self._import_rules(body)
             elif name == "net_webshell":
                 self._net_webshell(params[0], body)
             elif name == "net_ssh":
@@ -416,6 +420,17 @@ def make_handler(context):
                 self._send_json(400, {"error": "invalid"})
                 return
             self._send_json(200, {"imported": imported})
+
+        def _import_rules(self, body: bytes) -> None:
+            try:
+                report = context.import_rules(body)
+            except ValueError:
+                self._send_json(400, {"error": "invalid"})
+                return
+            except OSError:
+                self._send_json(500, {"error": "io_error"})
+                return
+            self._send_json(200, {"report": report})
 
         def _device_action(self, name: str, params, body: bytes) -> None:
             actions = context.actions

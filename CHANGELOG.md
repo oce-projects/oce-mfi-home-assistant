@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.44.0 - 2026-11-20
+
+- mfi-server 0.33.0: EPIC-19 import of the old controller rules from a `.unf` backup (`mfi_server_next/rules_import.py`) into Home Assistant format automations, with a converted/skipped report, idempotent by id, a backup copy of `automations.json`, script actions disabled by default, and the "Import old rules" action in the System view.
+
 ## 0.43.0 - 2026-11-20
 
 - mfi-server 0.32.0: EPIC-18 visual automation editor (When / And if / Then do) in the new web page, YAML round trip (mfi_server_next/editor.py) with line-numbered errors, page API routes under api/v1/editor/ (save, validate, to_yaml, from_yaml, traces), script action off by default with a warning, English and Italian.
