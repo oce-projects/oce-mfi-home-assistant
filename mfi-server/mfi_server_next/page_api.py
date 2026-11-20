@@ -7,6 +7,7 @@ Responses are JSON only, and request values are never put into HTML.
 """
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import threading
@@ -160,7 +161,7 @@ def make_handler(context):
             elif name == "alarms":
                 self._send_json(200, {"alarms": context.alarms.list_alarms()})
             elif name == "maps":
-                self._error(404, "not_found")
+                self._maps(method, body)
             elif name == "users_add":
                 self._user_add(body)
             elif name == "users_password":
@@ -198,6 +199,32 @@ def make_handler(context):
             timeout = context.settings.get("comet_timeout_s", DEFAULT_COMET_TIMEOUT_S)
             new_cursor, messages = context.comet.read_after(cursor, timeout=timeout)
             self._send_json(200, {"cursor": new_cursor, "messages": messages})
+
+        def _maps(self, method, body: bytes) -> None:
+            if method == "GET":
+                self._send_json(200, {"maps": context.maps.list_maps()})
+                return
+            data = self._json_object(body)
+            if data is None:
+                return
+            name = data.get("name")
+            scale = data.get("scale")
+            scale_unit = data.get("scale_unit", "metres")
+            icons = data.get("icons")
+            image = None
+            value = data.get("image_base64")
+            if value is not None:
+                try:
+                    image = base64.b64decode(value, validate=True)
+                except (ValueError, TypeError):
+                    self._error(400, "bad_request")
+                    return
+            try:
+                created = context.maps.create_map(name, scale=scale, scale_unit=scale_unit, image=image, icons=icons)
+            except ValueError:
+                self._send_json(400, {"error": "invalid"})
+                return
+            self._send_json(201, {"map": created})
 
         def _stat(self, interval: str) -> None:
             try:
