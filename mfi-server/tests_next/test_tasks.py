@@ -198,6 +198,15 @@ class TestSystemCfg(unittest.TestCase):
     def test_non_string_values_are_ignored(self):
         self.assertEqual(tasks.build_system_cfg(ntp_server=None, timezone=123), "")
 
+    def test_values_with_newline_or_equals_are_rejected(self):
+        self.assertEqual(tasks.build_system_cfg(ntp_server="pool\nsystem.foo=bar"), "")
+        self.assertEqual(tasks.build_system_cfg(timezone="UTC\nsystem.foo=1"), "")
+        self.assertEqual(tasks.build_system_cfg(ntp_server="a=b"), "")
+        self.assertEqual(
+            tasks.build_system_cfg(ntp_server="pool.ntp.org"),
+            "ntpclient.1.server=pool.ntp.org",
+        )
+
     def test_setparam_without_arguments(self):
         self.assertEqual(tasks.build_setparam(), {"_type": "setparam"})
 

@@ -30,12 +30,16 @@ def build_output_command(mac, port, val, **extra) -> dict:
     return {"_type": "cmd", "cmd": OUTPUT_CMD, "mac": mac, "port": port, "val": val, **extra}
 
 
+def _valid_cfg_value(value):
+    return isinstance(value, str) and value and not any(c in value for c in ("\n", "\r", "=", "\x00"))
+
+
 def build_system_cfg(*, ntp_server=None, timezone=None) -> str:
     """Return the system_cfg text of a setparam: one key=value line per given value, sorted by key."""
     values = {}
-    if isinstance(ntp_server, str) and ntp_server:
+    if _valid_cfg_value(ntp_server):
         values[NTP_CFG_KEY] = ntp_server
-    if isinstance(timezone, str) and timezone:
+    if _valid_cfg_value(timezone):
         values[TIMEZONE_CFG_KEY] = timezone
     return "\n".join(f"{key}={values[key]}" for key in sorted(values))
 

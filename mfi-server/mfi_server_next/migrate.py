@@ -27,9 +27,10 @@ RAW_INDEX_DDL = "CREATE INDEX IF NOT EXISTS raw_series ON raw(mac, sensor_id, ta
 SECRET_WORDS = ("password", "authkey", "key", "secret", "token")
 LOG_TAIL_LINES = 200
 SCRUB_RE = re.compile(
-    r"[0-9a-fA-F]{32}"
-    r"|(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}"
-    r"|[0-9a-fA-F]{12}"
+    r"(?i)(?:password|passwd|secret|token|authkey)\s*[:=]\s*\S+"
+    r"|[0-9a-fA-F]{32}"
+    r"|(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}"
+    r"|(?<![0-9a-fA-F])[0-9a-fA-F]{12}(?![0-9a-fA-F])"
 )
 MAC_HEX_RE = re.compile(r"[0-9a-f]{12}")
 AUTHKEY_RE = re.compile(r"[0-9a-f]{32}")
@@ -321,7 +322,22 @@ def _store_devices(data_dir, imported):
             else:
                 kept.append(record)
         for record in imported:
-            by_mac[record["mac"]] = {**by_mac.get(record["mac"], {}), **record}
+            mac = record["mac"]
+            existing = by_mac.get(mac)
+            if not isinstance(existing, dict):
+                by_mac[mac] = record
+                continue
+            merged_record = dict(existing)
+            for key in ("model", "name"):
+                if record[key]:
+                    merged_record[key] = record[key]
+            if record["ports"]:
+                merged_record["ports"] = record["ports"]
+            if record["x_authkey"]:
+                merged_record["x_authkey"] = record["x_authkey"]
+            for key, default in DEVICE_DEFAULTS.items():
+                merged_record.setdefault(key, default)
+            by_mac[mac] = merged_record
         merged = kept + [by_mac[mac] for mac in sorted(by_mac)]
         protected_write(
             folder / DEVICES_FILE,
