@@ -28,6 +28,11 @@ class CometBuffer:
 
     def read_after(self, cursor, *, timeout=0.0):
         with self._cond:
+            # A cursor above the newest seq means the client is ahead of a reset
+            # buffer (seq restarts at 0 after a restart); treat it as a reset so
+            # the client resynchronises instead of waiting out every long poll.
+            if cursor > self._seq:
+                cursor = 0
             if timeout > 0 and not self._has_newer(cursor):
                 self._cond.wait_for(lambda: self._has_newer(cursor), timeout=timeout)
             newer = self._newer(cursor)

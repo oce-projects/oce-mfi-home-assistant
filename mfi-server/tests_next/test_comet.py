@@ -61,6 +61,20 @@ class TestCometBuffer(unittest.TestCase):
         self.assertEqual(buf.latest_cursor(), 0)
         self.assertEqual(buf.read_after(0), (0, []))
 
+    def test_future_cursor_after_reset_returns_current_buffer(self):
+        buf = CometBuffer()
+        buf.append("a")
+        buf.append("b")
+        cursor, messages = buf.read_after(500)
+        self.assertEqual(messages, ["a", "b"])
+        self.assertEqual(cursor, 2)
+
+    def test_future_cursor_on_empty_buffer_resets_to_zero(self):
+        buf = CometBuffer()
+        cursor, messages = buf.read_after(500, timeout=0.05)
+        self.assertEqual(messages, [])
+        self.assertEqual(cursor, 0)
+
     def test_none_and_non_ascii_messages_are_kept_as_given(self):
         buf = CometBuffer()
         buf.append(None)
