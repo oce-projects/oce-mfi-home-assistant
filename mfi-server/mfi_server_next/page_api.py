@@ -1,6 +1,388 @@
-"""Web page API: builds the request handler of the web page. Implemented in EPIC-11."""
+"""Web page API: builds the request handler of the web page (EPIC-11). Standard library only.
+
+make_handler(context) returns a BaseHTTPRequestHandler subclass that captures context in a closure.
+Routes are found by the 'api/v1/' part of the path, so the Home Assistant ingress prefix is accepted.
+Every route except login and the firmware download needs a session; every write needs the admin role.
+Responses are JSON only, and request values are never put into HTML.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import threading
+from http.server import BaseHTTPRequestHandler
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+from mfi_server_next import auth, rules
+
+logger = logging.getLogger(__name__)
+
+SESSION_COOKIE = "mfi_session"
+API_MARKER = "api/v1/"
+FIRMWARE_PREFIX = "/dl/firmware/"
+DEFAULT_MAX_BODY = 65536
+DEFAULT_COMET_TIMEOUT_S = 25.0
+DEFAULT_REQUEST_TIMEOUT_S = 30.0
+# After a refused oversized body, up to this many bytes are read so the client receives the answer.
+MAX_DRAIN = 1048576
+SIMPLE_ROUTES = {
+    "login": ("login", {"POST"}),
+    "logout": ("logout", {"POST"}),
+    "comet": ("comet", {"GET"}),
+    "rules": ("rules", {"GET", "POST"}),
+    "events": ("events", {"GET"}),
+    "alarms": ("alarms", {"GET"}),
+    "maps": ("maps", {"GET", "POST"}),
+    "users": ("users_add", {"POST"}),
+}
+DEVICE_ACTIONS = ("adopt", "forget", "reboot", "locate", "upgrade")
 
 
-def make_handler():
-    """Build the request handler of the web page. Implemented in EPIC-11."""
-    raise NotImplementedError("page_api: implemented in EPIC-11")
+def _match_route(parts):
+    """Return (name, allowed methods, captured parts) for the route shape, or None when no shape matches."""
+    count = len(parts)
+    if count == 3 and parts[2] in SIMPLE_ROUTES:
+        name, methods = SIMPLE_ROUTES[parts[2]]
+        return name, methods, ()
+    if count == 4 and parts[2] == "stat":
+        return "stat", {"GET"}, (parts[3],)
+    if count == 4 and parts[2] == "upload" and parts[3] == "backup":
+        return "backup", {"POST"}, ()
+    if count == 5 and parts[2] == "users" and parts[4] == "password":
+        return "users_password", {"POST"}, (parts[3],)
+    if count == 5 and parts[2] == "devices" and parts[4] in DEVICE_ACTIONS:
+        return parts[4], {"POST"}, (parts[3],)
+    if count == 7 and parts[2] == "devices" and parts[4] == "ports" and parts[6] in ("output", "settings"):
+        name = "output" if parts[6] == "output" else "port_settings"
+        return name, {"POST"}, (parts[3], parts[5])
+    return None
+
+
+def _non_negative_int(text: str) -> int:
+    """Return the integer of text, or 0 when it is not an integer or is negative."""
+    try:
+        return max(0, int(text))
+    except ValueError:
+        return 0
+
+
+def make_handler(context):
+    """Build the request handler class of the web page; context holds the stores and actions (see the contract)."""
+
+    rules_lock = threading.Lock()
+
+    class PageHandler(BaseHTTPRequestHandler):
+        """Answers the web page API and the firmware download."""
+
+        def setup(self) -> None:
+            # Bound the time a slow client can hold a worker thread (the body is read before auth).
+            self.timeout = context.settings.get("request_timeout_s", DEFAULT_REQUEST_TIMEOUT_S)
+            super().setup()
+
+        def log_message(self, format: str, *args: object) -> None:
+            logger.debug("page api: %s", format % args)
+
+        def do_GET(self) -> None:
+            self._dispatch("GET")
+
+        def do_POST(self) -> None:
+            self._dispatch("POST")
+
+        def _dispatch(self, method: str) -> None:
+            path = urlparse(self.path).path
+            body = b""
+            if method == "POST":
+                # The body is read before any refusal, so the client always gets the answer.
+                read = self._read_body()
+                if read is None:
+                    return
+                body = read
+            if path.startswith(FIRMWARE_PREFIX):
+                if method != "GET":
+                    self._error(405, "method_not_allowed")
+                    return
+                self._firmware(path[len(FIRMWARE_PREFIX):])
+                return
+            idx = path.find(API_MARKER)
+            if idx <= 0 or path[idx - 1] != "/":
+                self._error(404, "not_found")
+                return
+            matched = _match_route(path[idx:].split("/"))
+            if matched is None:
+                self._error(404, "not_found")
+                return
+            name, methods, params = matched
+            if method not in methods:
+                self._error(405, "method_not_allowed")
+                return
+            if not self._authorized(method, name):
+                return
+            self._route(method, name, params, body)
+
+        def _authorized(self, method, name) -> bool:
+            """Check the session and the role; send the refusal and return False when the request may not go on."""
+            if name == "login":
+                return True
+            if context.settings.get("mode", "standalone") == "addon":
+                peer = self.client_address[0]
+                if peer != context.settings.get("ingress_peer", auth.TRUSTED_INGRESS_PEER):
+                    self._error(403, "forbidden")
+                    return False
+                session = {"username": "ingress", "role": auth.ROLE_ADMIN}
+            else:
+                session = context.auth.check_session(self._session_token())
+                if session is None:
+                    self._error(401, "unauthorized")
+                    return False
+            if method == "POST" and name not in ("login", "logout") and session["role"] != auth.ROLE_ADMIN:
+                self._error(403, "forbidden")
+                return False
+            return True
+
+        def _route(self, method, name, params, body) -> None:
+            if name == "login":
+                self._login(body)
+            elif name == "logout":
+                context.auth.logout(self._session_token())
+                self._send_empty(204)
+            elif name == "comet":
+                self._comet()
+            elif name == "stat":
+                self._stat(params[0])
+            elif name == "rules":
+                if method == "GET":
+                    self._send_json(200, {"automations": context.automations.load()})
+                else:
+                    self._rule_add(body)
+            elif name == "events":
+                self._send_json(200, {"events": context.events.list_events()})
+            elif name == "alarms":
+                self._send_json(200, {"alarms": context.alarms.list_alarms()})
+            elif name == "maps":
+                self._error(404, "not_found")
+            elif name == "users_add":
+                self._user_add(body)
+            elif name == "users_password":
+                self._user_password(params[0], body)
+            elif name == "backup":
+                self._backup(body)
+            else:
+                self._device_action(name, params, body)
+
+        def _login(self, body: bytes) -> None:
+            data = self._json_object(body)
+            if data is None:
+                return
+            username = data.get("username")
+            password = data.get("password")
+            if not isinstance(username, str) or not isinstance(password, str):
+                self._error(400, "bad_request")
+                return
+            try:
+                token = context.auth.login(username, password, self.client_address[0])
+            except auth.TooManyAttempts:
+                self._error(429, "too_many_attempts")
+            except auth.LoginFailed:
+                self._error(401, "login_failed")
+            else:
+                cookie = f"{SESSION_COOKIE}={token}; HttpOnly; SameSite=Strict; Path=/"
+                self._send_json(
+                    200,
+                    {"username": username, "role": context.auth.role(username)},
+                    [("Set-Cookie", cookie)],
+                )
+
+        def _comet(self) -> None:
+            cursor = _non_negative_int(self._query("cursor", "0"))
+            timeout = context.settings.get("comet_timeout_s", DEFAULT_COMET_TIMEOUT_S)
+            new_cursor, messages = context.comet.read_after(cursor, timeout=timeout)
+            self._send_json(200, {"cursor": new_cursor, "messages": messages})
+
+        def _stat(self, interval: str) -> None:
+            try:
+                aggregates = context.stats.read(interval)
+            except ValueError:
+                self._error(400, "bad_request")
+                return
+            self._send_json(200, {"interval": interval, "aggregates": aggregates})
+
+        def _rule_add(self, body: bytes) -> None:
+            obj = self._json_object(body)
+            if obj is None:
+                return
+            problems = rules.validate(obj)
+            if problems:
+                self._send_json(400, {"error": "invalid", "details": problems})
+                return
+            normalized = rules.normalize(obj)
+            with rules_lock:
+                automations = context.automations.load()
+                automations.append(normalized)
+                context.automations.save(automations)
+            self._send_json(200, {"automation": normalized})
+
+        def _user_add(self, body: bytes) -> None:
+            data = self._json_object(body)
+            if data is None:
+                return
+            username = data.get("username")
+            role = data.get("role")
+            try:
+                context.auth.add_user(username, data.get("password"), role)
+            except ValueError as exc:
+                self._send_json(400, {"error": "invalid", "details": [str(exc)]})
+                return
+            self._send_json(201, {"username": username, "role": role})
+
+        def _user_password(self, username: str, body: bytes) -> None:
+            data = self._json_object(body)
+            if data is None:
+                return
+            try:
+                context.auth.set_password(username, data.get("password"))
+            except KeyError:
+                self._error(404, "not_found")
+            except ValueError as exc:
+                self._send_json(400, {"error": "invalid", "details": [str(exc)]})
+            else:
+                self._send_empty(204)
+
+        def _backup(self, body: bytes) -> None:
+            try:
+                imported = context.import_backup(body)
+            except ValueError:
+                self._send_json(400, {"error": "invalid"})
+                return
+            self._send_json(200, {"imported": imported})
+
+        def _device_action(self, name: str, params, body: bytes) -> None:
+            actions = context.actions
+            mac = params[0]
+            if name == "output":
+                data = self._json_object(body)
+                if data is None:
+                    return
+                if "value" not in data:
+                    self._error(400, "bad_request")
+                    return
+                port, value = params[1], data["value"]
+                self._run_action(lambda: actions.set_output(mac, int(port), value))
+            elif name == "port_settings":
+                data = self._json_object(body)
+                if data is None:
+                    return
+                port = params[1]
+                self._run_action(lambda: actions.set_port(mac, int(port), data))
+            elif name == "locate":
+                data = self._json_object(body)
+                if data is None:
+                    return
+                self._run_action(lambda: actions.locate(mac, data))
+            else:
+                by_name = {
+                    "adopt": actions.adopt,
+                    "forget": actions.forget,
+                    "reboot": actions.reboot,
+                    "upgrade": actions.upgrade,
+                }
+                action = by_name[name]
+                self._run_action(lambda: action(mac))
+
+        def _run_action(self, action) -> None:
+            """Run one device command and map its exceptions to the API answers."""
+            try:
+                action()
+            except LookupError:
+                self._error(404, "not_found")
+            except ValueError:
+                self._error(400, "bad_request")
+            except PermissionError as exc:
+                self._send_json(409, {"error": str(exc)})
+            except Exception:  # noqa: BLE001 - never leak the connection on an unexpected failure
+                logger.exception("page api: device action failed")
+                self._error(500, "internal_error")
+            else:
+                self._send_json(202, {"result": "accepted"})
+
+        def _firmware(self, rel: str) -> None:
+            """Send one firmware file; only the exact names of context.firmware_paths are ever read."""
+            folder = context.firmware_dir
+            if rel not in context.firmware_paths or folder is None:
+                self._error(404, "not_found")
+                return
+            try:
+                data = (Path(folder) / rel).read_bytes()
+            except OSError:
+                self._error(404, "not_found")
+                return
+            self._send_bytes(200, data, "application/octet-stream")
+
+        def _query(self, key: str, default: str) -> str:
+            values = parse_qs(urlparse(self.path).query).get(key)
+            return values[0] if values else default
+
+        def _session_token(self) -> str:
+            """Return the value of the mfi_session cookie, or an empty string when it is missing."""
+            for item in self.headers.get("Cookie", "").split(";"):
+                name, _, value = item.strip().partition("=")
+                if name == SESSION_COOKIE:
+                    return value
+            return ""
+
+        def _read_body(self):
+            """Read the request body; over max_body bytes answer 413 and return None."""
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                self._error(400, "bad_request")
+                return None
+            if length < 0:
+                self._error(400, "bad_request")
+                return None
+            max_body = context.settings.get("max_body", DEFAULT_MAX_BODY)
+            if length > max_body:
+                self.close_connection = True
+                self._error(413, "payload_too_large")
+                self.rfile.read(min(length, MAX_DRAIN))
+                return None
+            return self.rfile.read(length)
+
+        def _json_object(self, body: bytes):
+            """Parse a JSON object; answer 400 and return None when the body is not one."""
+            try:
+                data = json.loads(body.decode("utf-8"))
+            except ValueError:
+                self._error(400, "bad_request")
+                return None
+            if not isinstance(data, dict):
+                self._error(400, "bad_request")
+                return None
+            return data
+
+        def _send_json(self, status: int, obj, extra_headers=None) -> None:
+            body = json.dumps(obj).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            for name, value in extra_headers or []:
+                self.send_header(name, value)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _send_empty(self, status: int) -> None:
+            self.send_response(status)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+        def _send_bytes(self, status: int, data: bytes, content_type: str) -> None:
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def _error(self, status: int, code: str) -> None:
+            self._send_json(status, {"error": code})
+
+    return PageHandler
