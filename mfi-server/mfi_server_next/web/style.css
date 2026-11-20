@@ -489,7 +489,7 @@ main.page {
 }
 
 /* Legend and pie of the device overview */
-.pie {
+.pie__svg {
   display: block;
   width: var(--size-pie);
   height: var(--size-pie);
@@ -498,36 +498,61 @@ main.page {
 
 .pie__ring {
   fill: none;
-  stroke-width: 24;
-}
-
-.pie__ring--empty {
-  fill: none;
   stroke: var(--rule);
-  stroke-width: 1;
+  stroke-width: 6;
 }
 
-.legend {
+.pie__segment {
+  fill: none;
+  stroke-width: 6;
+}
+
+.pie__segment--connected {
+  stroke: var(--state-connected);
+}
+
+.pie__segment--lost {
+  stroke: var(--state-lost);
+}
+
+.pie__segment--unknown {
+  stroke: var(--state-unknown);
+}
+
+.pie__legend {
   display: grid;
   gap: var(--space-2);
-  margin: 0;
+  margin: var(--space-3) 0 0;
   padding: 0;
   list-style: none;
   font-size: 14px;
   color: var(--ink);
 }
 
-.legend__item {
+.pie__item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
 }
 
-.legend__dot {
+.pie__dot {
   flex: none;
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  background: var(--ink-muted);
+}
+
+.pie__dot--connected {
+  background: var(--state-connected);
+}
+
+.pie__dot--lost {
+  background: var(--state-lost);
+}
+
+.pie__dot--unknown {
+  background: var(--state-unknown);
 }
 
 /* Ports and outlet switches */
