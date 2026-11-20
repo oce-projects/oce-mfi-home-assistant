@@ -38,6 +38,14 @@ SIMPLE_ROUTES = {
     "users": ("users_add", {"POST"}),
 }
 DEVICE_ACTIONS = ("adopt", "forget", "reboot", "locate", "upgrade")
+# Fixed web page files served without a session; the request path is only matched against these names.
+STATIC_FILES = {
+    "index.html": "text/html; charset=utf-8",
+    "style.css": "text/css; charset=utf-8",
+    "app.js": "text/javascript; charset=utf-8",
+    "i18n/en.json": "application/json; charset=utf-8",
+    "i18n/it.json": "application/json; charset=utf-8",
+}
 
 
 def _match_route(parts):
@@ -109,6 +117,11 @@ def make_handler(context):
                     return
                 self._firmware(path[len(FIRMWARE_PREFIX):])
                 return
+            if method == "GET":
+                target = self._static_target(path)
+                if target is not None:
+                    self._serve_static(*target)
+                    return
             idx = path.find(API_MARKER)
             if idx <= 0 or path[idx - 1] != "/":
                 self._error(404, "not_found")
@@ -388,6 +401,26 @@ def make_handler(context):
                 self._error(500, "internal_error")
             else:
                 self._send_json(200, {"result": "ok", **result})
+
+        def _static_target(self, path):
+            """Map a GET path to one fixed web file, or None; the request path never becomes a filesystem path."""
+            if getattr(context, "web_dir", None) is None or ".." in path:
+                return None
+            if path.endswith("/"):
+                return "index.html", STATIC_FILES["index.html"]
+            for rel, content_type in STATIC_FILES.items():
+                if path.endswith("/" + rel):
+                    return rel, content_type
+            return None
+
+        def _serve_static(self, rel, content_type):
+            """Send one fixed web file from context.web_dir; 404 when it cannot be read."""
+            try:
+                data = (Path(context.web_dir) / rel).read_bytes()
+            except OSError:
+                self._error(404, "not_found")
+                return
+            self._send_bytes(200, data, content_type)
 
         def _firmware(self, rel: str) -> None:
             """Send one firmware file; only the exact names of context.firmware_paths are ever read."""
