@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.31.0 - 2026-11-20
+
+- mfi-server 0.20.0: EPIC-05 rules and scenes engine (rules.py), serial script action off by default.
+
 ## 0.30.0 - 2026-11-20
 
 - EPIC-04 (T-MWNRGN3M): sensors and mPort in the new server (`mfi_server_next/sensors.py`, `serial.py`), with their tests in `mfi-server/tests_next`.
