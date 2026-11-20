@@ -157,9 +157,11 @@ class TestUdpCapture(unittest.TestCase):
         self.assertIn("--user mfi", arg_lines[0])
 
     def test_recorder_is_not_started_with_chuid(self):
-        start = self.run_sh.find("--startas /usr/bin/python3 -- /recorder.py")
-        self.assertNotEqual(start, -1, "the recorder start command is missing")
-        command = self.run_sh[self.run_sh.rfind("start-stop-daemon", 0, start):start]
+        sep = self.run_sh.find("-- /recorder.py")
+        self.assertNotEqual(sep, -1, "the recorder start command is missing")
+        begin = self.run_sh.rfind("start-stop-daemon", 0, sep)
+        self.assertNotEqual(begin, -1, "start-stop-daemon for the recorder is missing")
+        command = self.run_sh[begin:sep]
         self.assertNotIn("--chuid", command)
 
 

@@ -739,6 +739,23 @@ class TestDropPrivileges(unittest.TestCase):
             recorder.drop_privileges("no-such-user", getuid=lambda: 0, getpwnam=missing,
                                      setgroups=nothing, setgid=nothing, setuid=nothing)
 
+    def test_setgid_failure_stops_before_setuid(self):
+        calls = []
+
+        def setgid(gid):
+            calls.append(("setgid", gid))
+            raise PermissionError("operation not permitted")
+
+        def setuid(uid):
+            calls.append(("setuid", uid))
+
+        with self.assertRaises(PermissionError):
+            recorder.drop_privileges("mfi", getuid=lambda: 0,
+                                     getpwnam=lambda name: FakePasswd(500, 501),
+                                     setgroups=lambda groups: calls.append(("setgroups", list(groups))),
+                                     setgid=setgid, setuid=setuid)
+        self.assertEqual(calls, [("setgroups", []), ("setgid", 501)])
+
 
 if __name__ == "__main__":
     unittest.main()
