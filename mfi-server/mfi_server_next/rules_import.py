@@ -325,6 +325,9 @@ def _convert_one(kind, doc, build, docs, allow_script_action, automations, skipp
     except _Skip as exc:
         skipped.append({"id": auto_id, "reason": str(exc)})
         return
+    except (ValueError, TypeError, KeyError) as exc:
+        skipped.append({"id": auto_id, "reason": "conversion failed: " + str(exc)})
+        return
     automations.append(auto)
     skipped.extend(notes)
 
@@ -360,7 +363,7 @@ def collect_rule_docs(docs):
     return grouped
 
 
-MAX_BACKUP_BYTES = 2 * 1024 * 1024 * 1024  # 2 GiB: a generous cap that still stops a gzip bomb
+MAX_BACKUP_BYTES = 256 * 1024 * 1024  # 256 MiB: enough for a controller backup, low enough to stop a gzip bomb
 
 
 def _gunzip_limited(data, limit=MAX_BACKUP_BYTES):
@@ -374,7 +377,7 @@ def _gunzip_limited(data, limit=MAX_BACKUP_BYTES):
             out += chunk
             if len(out) > limit:
                 raise ValueError("backup db.gz is too large")
-    return bytes(out)
+    return out
 
 
 def read_backup_documents(data):
@@ -406,12 +409,15 @@ def store_automations(automations, data_dir, *, clock=time.time):
         folder = db.data_dir
         astore = rules.AutomationStore(db)
         by_id = {}
+        kept = []
         for auto in astore.load():
             if "id" in auto:
                 by_id[auto["id"]] = auto
+            else:
+                kept.append(auto)
         for auto in automations:
             by_id[auto["id"]] = auto
-        merged = list(by_id.values())
+        merged = kept + list(by_id.values())
         migrate._protected_step(
             folder / migrate.AUTOMATIONS_FILE,
             lambda: astore.save(merged),
