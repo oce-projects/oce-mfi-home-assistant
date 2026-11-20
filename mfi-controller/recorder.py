@@ -1,6 +1,7 @@
 """Compatibility recorder of the mFi Controller add-on.
 
-Started by run.sh as a separate process (python3 /recorder.py, user mfi). When
+Started by run.sh as a separate process (python3 /recorder.py). It starts as root
+only to open the raw capture socket, then keeps running as user mfi (--user). When
 recording is on, the controller moves to 16080 (inform, HTTP) and 16443 (web,
 HTTPS); this program listens on the public ports 6080 and 6443 and forwards each
 request unchanged to the controller and the answer back unchanged. Every
@@ -19,6 +20,7 @@ import http.server
 import json
 import logging
 import os
+import pwd
 import socket
 import socketserver
 import ssl
@@ -47,6 +49,10 @@ ETHERTYPE_IPV4 = 0x0800
 IPV4_MIN_HEADER_LEN = 20
 IPPROTO_UDP = 17
 UDP_HEADER_LEN = 8
+PACKET_OUTGOING = 4  # packet type of a copy of an outgoing frame (linux/if_packet.h)
+ARPHRD_ETHER = 1  # hardware type Ethernet (linux/if_arp.h)
+ARPHRD_LOOPBACK = 772  # hardware type loopback (linux/if_arp.h)
+RECORDER_USER = "mfi"
 
 log = logging.getLogger("mfi-recorder")
 _write_lock = threading.Lock()
@@ -274,6 +280,44 @@ def open_capture_socket():
     return socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ALL))
 
 
+def frame_usable(address):
+    """True when a captured frame is parsed: not an outgoing copy on lo, and Ethernet or loopback link type.
+
+    address is the tuple of recvfrom on AF_PACKET: (ifname, protocol, packet type, hardware type, hardware address).
+    UNVERIFIED on a device: the field order follows the Python socket documentation; this filter is not
+    tested on Home Assistant OS.
+    """
+    ifname, pkttype, hatype = address[0], address[2], address[3]
+    if pkttype == PACKET_OUTGOING and ifname == "lo":
+        return False
+    return hatype in (ARPHRD_ETHER, ARPHRD_LOOPBACK)
+
+
+def drop_privileges(name, getuid=os.getuid, getpwnam=pwd.getpwnam, setgroups=os.setgroups,
+                    setgid=os.setgid, setuid=os.setuid):
+    """Change from root to user name; a process that is not root must already be that user.
+
+    Called after the raw socket is open: the capability to open it is lost on the change of user.
+    Raises RuntimeError when the user does not exist, when the change does not take effect, or
+    when the process is neither root nor that user.
+    """
+    try:
+        entry = getpwnam(name)
+    except KeyError:
+        raise RuntimeError("user %s does not exist" % name)
+    current = getuid()
+    if current == 0:
+        setgroups([])
+        setgid(entry.pw_gid)
+        setuid(entry.pw_uid)
+        if getuid() == 0:
+            raise RuntimeError("still root after the change to user %s" % name)
+        return
+    if current == entry.pw_uid:
+        return
+    raise RuntimeError("not root and not user %s (uid %d)" % (name, current))
+
+
 def capture_udp(out_dir, max_mb, open_socket=None):
     """Listen passively to UDP 10001 and 3478 and record those packets; never answers.
 
@@ -290,10 +334,12 @@ def capture_udp(out_dir, max_mb, open_socket=None):
     try:
         while True:
             try:
-                frame = sock.recv(65535)
+                frame, address = sock.recvfrom(65535)
             except OSError as exc:
                 log.error("udp capture stopped: %s", exc)
                 return
+            if not frame_usable(address):
+                continue
             parsed = parse_ipv4_udp(frame)
             if parsed is None:
                 continue
@@ -441,19 +487,37 @@ def main(argv=None):
     parser.add_argument("--max-mb", type=int, default=200, help="size limit of each day file in MB (default 200)")
     parser.add_argument("--udp-capture", action="store_true",
                         help="passively record UDP ports 10001 and 3478 (needs NET_RAW)")
+    parser.add_argument("--user", default=RECORDER_USER,
+                        help="user the recorder runs as after the capture socket is open (default mfi)")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="[mfi-recorder] %(asctime)s %(levelname)s %(message)s")
+    capture_socket = None
+    if args.udp_capture:
+        # Opened while still root: a change of user takes away the right to open a raw socket.
+        try:
+            capture_socket = open_capture_socket()
+        except OSError as exc:
+            log.warning("udp capture unavailable: %s", exc)
     inform = build_proxy_server(LISTEN_HOST, args.inform_listen, "127.0.0.1", args.inform_target,
                                 args.out, INFORM_PORT, args.max_mb)
     web = build_proxy_server(LISTEN_HOST, args.https_listen, "127.0.0.1", args.https_target,
                              args.out, WEB_PORT, args.max_mb, use_tls=True,
                              cert_file=args.cert, key_file=args.key)
+    try:
+        drop_privileges(args.user)
+    except (RuntimeError, OSError) as exc:
+        log.error("cannot run as user %s: %s", args.user, exc)
+        inform.server_close()
+        web.server_close()
+        if capture_socket is not None:
+            capture_socket.close()
+        return 1
     log.info("recording inform %d -> %d and web %d -> %d into %s",
              args.inform_listen, args.inform_target, args.https_listen, args.https_target, args.out)
 
-    if args.udp_capture:
-        udp_worker = threading.Thread(target=capture_udp, args=(args.out, args.max_mb))
+    if capture_socket is not None:
+        udp_worker = threading.Thread(target=capture_udp, args=(args.out, args.max_mb, lambda: capture_socket))
         udp_worker.daemon = True
         udp_worker.start()
 

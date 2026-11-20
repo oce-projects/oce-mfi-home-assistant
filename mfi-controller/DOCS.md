@@ -89,7 +89,7 @@ switch:
 
 - The **Map** tab needs Adobe Flash Player, which browsers dropped in 2021: the map is not shown. The Data, Events, Rules, Scenes and Energy tabs and the Admin panel are HTML and open (tested with Chromium 140, 0 JavaScript errors, no devices).
 - Charts in the Data tab with real devices have not been tested.
-- MongoDB 2.4 listens only inside the container, on `127.0.0.1:37017`: it cannot be reached from the network.
+- MongoDB 2.4 listens on `127.0.0.1:37017`. Without the host network it is only inside the container. With the host network (passive UDP capture, see below) it is in the host's network namespace: it is not reachable from the local network through this address, but it shares the host's ports (UNVERIFIED on Home Assistant OS).
 - The controller checks for updates at `http://www.ubnt.com/downloads/mfi/updates/`. There are none any more.
 - Stopping takes 1.5 to 26 seconds (measured): the app allows up to 120 seconds.
 - Space used in `/data` right after the first start: 289 MB.
@@ -131,7 +131,13 @@ The capture is passive: the recorder only listens. It never answers, sends or in
 
 To receive packets that are not addressed to the add-on, the add-on uses the host network, and it needs the NET_RAW permission to open a raw AF_PACKET socket. Both settings are in the add-on configuration, not in the option: they apply also when `record_traffic` is off, although then nothing is captured. If the socket cannot be opened, the log writes `udp capture unavailable:` once, with the reason, and the TCP recording keeps working. Whether AF_PACKET works inside Home Assistant OS is UNVERIFIED.
 
+The recorder starts as root only to open this socket. Right after that it drops to user `mfi` and runs the proxies and the UDP parsing as that user. The change of user takes away the capability to open a raw socket, which is why the socket is opened first.
+
+Frames that the recorder cannot parse as Ethernet II are skipped: copies of its own outgoing packets on `lo` (packet type PACKET_OUTGOING) and frames whose link type is neither Ethernet nor loopback. The address fields used for this filter are UNVERIFIED on a device (see the comment on `frame_usable` in `recorder.py`).
+
 **Risk of the host network.** With the host network, the internal ports 16080 and 16443 that the controller uses while recording become reachable from the local network. A client that connects to them reaches the controller without passing through the recorder, so that exchange is not recorded. The 2.1.11 controller has no documented bind-address property that would limit these ports, so the add-on sets none. Whether the controller listens on all interfaces is UNVERIFIED with this add-on.
+
+With the host network, MongoDB (`127.0.0.1:37017`) and the internal ports 16080 and 16443 are in the host's network namespace too. They may clash with other services of the host that use the same port (UNVERIFIED: not tested on Home Assistant OS). If the controller fails to start, check the host's listening ports first.
 
 Rules for this option:
 
