@@ -5,7 +5,7 @@
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "mFi Server (new)"
-version: "0.33.0"
+version: "1.0.0"
 slug: "mfi_server"
 description: "New mFi controller written from scratch in pure Python, no Ubiquiti code. Recommended."
 url: "https://github.com/oce-projects/oce-mfi-home-assistant"
@@ -35,6 +35,11 @@ options:
   device_ssh_username: ""
   device_ssh_password: ""
   ssh_extra_options: "KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa;Ciphers=+aes128-cbc,3des-cbc"
+  allow_webshell: false
+  allow_browser_ssh: false
+  allow_upnp: false
+  allow_guest_page: false
+  allow_script_action: false
 schema:
   backup_file: "str?"
   log_level: "list(debug|info|warning|error)"
@@ -45,3 +50,8 @@ schema:
   device_ssh_username: "str?"
   device_ssh_password: "password?"
   ssh_extra_options: "str?"
+  allow_webshell: bool
+  allow_browser_ssh: bool
+  allow_upnp: bool
+  allow_guest_page: bool
+  allow_script_action: bool
