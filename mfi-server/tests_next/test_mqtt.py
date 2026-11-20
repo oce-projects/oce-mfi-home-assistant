@@ -144,6 +144,15 @@ class NoBrokerTest(unittest.TestCase):
         bridge.run(threading.Event())
         self.assertEqual(calls, [])
 
+    def test_invalid_port_does_not_start(self):
+        for bad in ("abc", 0, -1, 70000):
+            with self.subTest(port=bad):
+                calls = []
+                settings = {"mqtt_host": "broker.test", "mqtt_port": bad}
+                bridge = make_bridge(settings, client_factory=lambda: calls.append("connect"))
+                bridge.run(threading.Event())
+                self.assertEqual(calls, [])
+
     def test_tls_without_support_does_not_start(self):
         calls = []
         settings = {"mqtt_host": "broker.test", "mqtt_tls": True}

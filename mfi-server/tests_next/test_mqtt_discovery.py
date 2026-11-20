@@ -104,7 +104,7 @@ class TestOutlets(unittest.TestCase):
                 self.assertTrue(config["availability_topic"].startswith("home/"))
 
     def test_unknown_or_missing_model_gives_nothing(self):
-        for model in ("NOPE", None, 5):
+        for model in ("NOPE", None, 5, "p3e", ""):
             with self.subTest(model=model):
                 self.assertEqual(mqtt_discovery.discovery_messages({"mac": FAKE_MAC, "model": model}), [])
 
@@ -176,6 +176,19 @@ class TestMport(unittest.TestCase):
         ]
         self.assertEqual(discovery("M2M", sensors), [])
 
+    def test_sensor_port_out_of_range_is_skipped(self):
+        for port in (0, -1, 256, 300):
+            with self.subTest(port=port):
+                self.assertEqual(discovery("M2M", [{"port": port, "model": "THS"}]), [])
+
+    def test_duplicate_sensor_port_keeps_only_the_first(self):
+        messages = discovery("M2M", [{"port": 1, "model": "THS"}, {"port": 1, "model": "MSW"}])
+        self.assertEqual(len(by_component(messages, "sensor")), 2)
+        self.assertEqual(
+            [topic for topic, _ in by_component(messages, "binary_sensor")],
+            [f"{DISCOVERY}/binary_sensor/mfi_{FAKE_MAC}/alarm/config"],
+        )
+
     def test_outlet_model_ignores_sensors_list(self):
         messages = discovery("P1E", [{"port": 1, "model": "THS"}])
         self.assertEqual(len(by_component(messages, "sensor")), 5)
@@ -208,6 +221,14 @@ class TestState(unittest.TestCase):
             with self.subTest(value=value):
                 messages = mqtt_discovery.state_messages(device("P1E"), {1: {"output": value}})
                 self.assertEqual(messages, [(f"{MAC_TOPIC}/1/output", payload)])
+
+    def test_none_value_of_numeric_tag_is_skipped(self):
+        messages = mqtt_discovery.state_messages(device("P1E"), {1: {"active_pwr": None, "v_rms": 230}})
+        self.assertEqual(messages, [(f"{MAC_TOPIC}/1/v_rms", b"230")])
+        self.assertEqual(
+            mqtt_discovery.state_messages(device("P1E"), {1: {"output": None}}),
+            [(f"{MAC_TOPIC}/1/output", b"OFF")],
+        )
 
     def test_zero_of_other_tags_is_text(self):
         messages = mqtt_discovery.state_messages(device("P1E"), {1: {"energy_sum": 0, "pf": 0.0}})
