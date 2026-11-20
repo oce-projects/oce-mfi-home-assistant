@@ -35,7 +35,7 @@ class FakeSMTP:
     def __exit__(self, exc_type, exc, tb):
         return False
 
-    def starttls(self):
+    def starttls(self, context=None):
         pass
 
     def login(self, user, password):
@@ -85,6 +85,10 @@ class EventLogTest(unittest.TestCase):
         with self.store.transaction() as conn:
             return [row[0] for row in conn.execute("SELECT result FROM actionevent ORDER BY id").fetchall()]
 
+    def action_details(self):
+        with self.store.transaction() as conn:
+            return [row[0] for row in conn.execute("SELECT detail FROM actionevent ORDER BY id").fetchall()]
+
     def test_ca1_list_filters_by_device_and_interval(self):
         log = self.make_log()
         self.clock.value = 1000
@@ -126,6 +130,17 @@ class EventLogTest(unittest.TestCase):
         self.assertTrue(log.notify_email(settings, ADDR, "Power alarm", "Outlet 1 is off",
                                          key="power", hold_minutes=5))
         self.assertEqual(len(sent), 2)
+        self.assertEqual(self.action_results(), ["sent", "held", "sent"])
+
+    def test_ca2_hold_is_per_key(self):
+        sent = []
+        log = self.make_log(smtp_factory=make_factory(sent))
+        settings = smtp_settings()
+        self.clock.value = 10_000
+        self.assertTrue(log.notify_email(settings, ADDR, "A", "body", key="a", hold_minutes=5))
+        self.assertFalse(log.notify_email(settings, ADDR, "A", "body", key="a", hold_minutes=5))
+        self.assertTrue(log.notify_email(settings, ADDR, "B", "body", key="b", hold_minutes=5))
+        self.assertEqual(len(sent), 2)
 
     def test_ca3_dedup_skips_same_event_within_window(self):
         log = self.make_log()
@@ -141,7 +156,7 @@ class EventLogTest(unittest.TestCase):
 
     def test_ca4_smtp_failure_becomes_event_and_log_without_password(self):
         sent = []
-        error = OSError("authentication refused for the sender account")
+        error = OSError("authentication refused using password " + PASSWORD)
         log = self.make_log(smtp_factory=make_factory(sent, login_error=error))
         settings = smtp_settings()
         with self.assertLogs("mfi_server_next.events", level="ERROR") as captured:
@@ -159,6 +174,29 @@ class EventLogTest(unittest.TestCase):
         self.assertTrue(any(record.levelno == logging.ERROR for record in captured.records))
         self.assertNotIn(PASSWORD, "\n".join(captured.output))
         self.assertEqual(self.action_results(), ["error"])
+        self.assertNotIn(PASSWORD, self.action_details()[0] or "")
+
+    def test_header_injection_is_rejected(self):
+        settings = smtp_settings()
+        evil = "evil" + "@" + "x." + "example"
+        cases = [
+            ("Power alarm\r\nBcc: " + evil, ADDR),
+            ("Power alarm", ["ok" + "@" + "x." + "example", "inject\nRcpt"]),
+        ]
+        for subject, addr in cases:
+            with self.subTest(subject=subject):
+                sent = []
+                log = self.make_log(smtp_factory=make_factory(sent))
+                with self.store.transaction() as conn:
+                    conn.execute("DELETE FROM event")
+                    conn.execute("DELETE FROM actionevent")
+                with self.assertLogs("mfi_server_next.events", level="ERROR"):
+                    ok = log.notify_email(settings, addr, subject, "body", key="power")
+                self.assertFalse(ok)
+                self.assertEqual(sent, [])
+                failed = [r for r in log.list_events() if r["key"] == EMAIL_FAILED_KEY]
+                self.assertEqual(len(failed), 1)
+                self.assertEqual(self.action_results(), ["error"])
 
     def test_ca5_prune_removes_only_events_older_than_limit(self):
         log = self.make_log()
