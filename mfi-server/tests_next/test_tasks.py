@@ -170,5 +170,56 @@ class TestTaskQueueReplace(unittest.TestCase):
         self.assertIsNone(queue.pop_for_mac(MAC))
 
 
+class TestSystemCfg(unittest.TestCase):
+    """CA6: NTP and time zone settings reach the system_cfg of the setparam message."""
+
+    def test_ntp_and_timezone_lines(self):
+        text = tasks.build_system_cfg(ntp_server="pool.ntp.org", timezone="Europe/Rome")
+        self.assertIn("ntpclient.1.server=pool.ntp.org", text)
+        self.assertIn("system.timezone=Europe/Rome", text)
+        self.assertLess(text.index("ntpclient.1.server"), text.index("system.timezone"))
+
+    def test_exact_text_with_both_values(self):
+        self.assertEqual(
+            tasks.build_system_cfg(ntp_server="pool.ntp.org", timezone="Europe/Rome"),
+            "ntpclient.1.server=pool.ntp.org\nsystem.timezone=Europe/Rome",
+        )
+
+    def test_single_value_gives_one_line(self):
+        self.assertEqual(
+            tasks.build_system_cfg(timezone="Europe/Rome"),
+            "system.timezone=Europe/Rome",
+        )
+
+    def test_no_value_gives_empty_text(self):
+        self.assertEqual(tasks.build_system_cfg(), "")
+        self.assertEqual(tasks.build_system_cfg(ntp_server="", timezone=None), "")
+
+    def test_non_string_values_are_ignored(self):
+        self.assertEqual(tasks.build_system_cfg(ntp_server=None, timezone=123), "")
+
+    def test_setparam_without_arguments(self):
+        self.assertEqual(tasks.build_setparam(), {"_type": "setparam"})
+
+    def test_setparam_with_cfgversion_zero_keeps_it(self):
+        self.assertEqual(tasks.build_setparam(cfgversion=0), {"_type": "setparam", "cfgversion": 0})
+
+    def test_setparam_with_empty_system_cfg_omits_it(self):
+        self.assertEqual(tasks.build_setparam(system_cfg=""), {"_type": "setparam"})
+
+    def test_setparam_carries_ntp_and_timezone(self):
+        message = tasks.build_setparam(
+            cfgversion=5,
+            system_cfg=tasks.build_system_cfg(ntp_server="pool.ntp.org", timezone="Europe/Rome"),
+        )
+        self.assertEqual(message["_type"], "setparam")
+        self.assertEqual(message["cfgversion"], 5)
+        self.assertIn("ntpclient.1.server=pool.ntp.org", message["system_cfg"])
+        self.assertIn("system.timezone=Europe/Rome", message["system_cfg"])
+
+    def test_extra_fields_are_added(self):
+        self.assertEqual(tasks.build_setparam(port_cfg="x")["port_cfg"], "x")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -15,6 +15,8 @@ WAKEUP_PORT = 3478
 WAKEUP_LEN = 20
 OUTPUT_CMD = "mfi-output"
 MAX_QUEUE_PER_MAC = 64
+NTP_CFG_KEY = "ntpclient.1.server"
+TIMEZONE_CFG_KEY = "system.timezone"
 
 
 def build_wakeup() -> bytes:
@@ -26,6 +28,27 @@ def build_wakeup() -> bytes:
 def build_output_command(mac, port, val, **extra) -> dict:
     """Return the command that sets one port of a device to val (1 on, 0 off)."""
     return {"_type": "cmd", "cmd": OUTPUT_CMD, "mac": mac, "port": port, "val": val, **extra}
+
+
+def build_system_cfg(*, ntp_server=None, timezone=None) -> str:
+    """Return the system_cfg text of a setparam: one key=value line per given value, sorted by key."""
+    values = {}
+    if isinstance(ntp_server, str) and ntp_server:
+        values[NTP_CFG_KEY] = ntp_server
+    if isinstance(timezone, str) and timezone:
+        values[TIMEZONE_CFG_KEY] = timezone
+    return "\n".join(f"{key}={values[key]}" for key in sorted(values))
+
+
+def build_setparam(cfgversion=None, *, system_cfg=None, **extra) -> dict:
+    """Return a setparam message; cfgversion and system_cfg are added only when given."""
+    message = {"_type": "setparam"}
+    if cfgversion is not None:
+        message["cfgversion"] = cfgversion
+    if isinstance(system_cfg, str) and system_cfg:
+        message["system_cfg"] = system_cfg
+    message.update(extra)
+    return message
 
 
 def send_wakeup(sock: socket.socket, ip: str, port: int) -> None:
