@@ -25,6 +25,7 @@ UNSUPPORTED_START = {
     ">": "block scalars are not supported",
 }
 _INF = float("inf")
+MAX_DEPTH = 100
 
 
 class YamlError(ValueError):
@@ -53,6 +54,8 @@ def from_yaml(text: str) -> dict:
 
 
 def _write_block(value: dict | list, depth: int) -> list[str]:
+    if depth > MAX_DEPTH:
+        raise ValueError("nesting is too deep")
     pad = "  " * depth
     lines: list[str] = []
     if isinstance(value, list):
@@ -274,7 +277,10 @@ def _scalar(text: str, line: int) -> object:
     if text in ("true", "false"):
         return text == "true"
     if INT_RE.fullmatch(text):
-        return int(text)
+        try:
+            return int(text)
+        except ValueError:
+            raise YamlError(line, "number is out of range") from None
     if FLOAT_RE.fullmatch(text) and any(c in text for c in ".eE"):
         return float(text)
     return text
@@ -295,16 +301,23 @@ class _Reader:
     def __init__(self, tokens: list[list]) -> None:
         self.tokens = tokens
         self.pos = 0
+        self.depth = 0
 
     def block(self, indent: int) -> object:
         """Read the block that starts at the current token, indented by indent."""
         line, _, text = self.tokens[self.pos]
-        if _is_item(text):
-            return self.sequence(indent)
-        if _key_split(text) >= 0:
-            return self.mapping(indent)
-        self.pos += 1
-        return _scalar(text, line)
+        self.depth += 1
+        if self.depth > MAX_DEPTH:
+            raise YamlError(line, "nesting is too deep")
+        try:
+            if _is_item(text):
+                return self.sequence(indent)
+            if _key_split(text) >= 0:
+                return self.mapping(indent)
+            self.pos += 1
+            return _scalar(text, line)
+        finally:
+            self.depth -= 1
 
     def mapping(self, indent: int) -> dict:
         result: dict = {}
