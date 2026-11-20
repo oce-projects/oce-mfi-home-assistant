@@ -89,6 +89,16 @@ class TestImageCreateReadDelete(MapStoreTestCase):
         created = exact.create_map("Exact", image=PNG)
         self.assertIsNotNone(exact.get_map(created["id"]))
 
+    def test_create_map_rolls_back_image_when_save_fails(self):
+        def boom(*args, **kwargs):
+            raise OSError("disk full")
+        self.store.write_json = boom
+        with self.assertRaises(OSError):
+            self.maps.create_map("Ground floor", image=PNG)
+        maps_dir = self.folder / "maps"
+        remaining = list(maps_dir.iterdir()) if maps_dir.exists() else []
+        self.assertEqual(remaining, [])
+
     def test_hypothesis_fields_start_empty(self):
         created = self.maps.create_map("Ground floor")
         self.assertEqual(set(created), MAP_FIELDS)
@@ -118,6 +128,13 @@ class TestScaleAndLock(MapStoreTestCase):
     def test_ca2_unknown_scale_unit_is_refused(self):
         with self.assertRaises(ValueError):
             self.maps.create_map("Bad", scale_unit="leagues")
+        self.assertEqual(self.maps.list_maps(), [])
+
+    def test_non_finite_or_non_positive_scale_is_refused(self):
+        for bad in (float("nan"), float("inf"), float("-inf"), 0, -5, -2.5):
+            with self.subTest(scale=bad):
+                with self.assertRaises(ValueError):
+                    self.maps.create_map("Bad", scale=bad)
         self.assertEqual(self.maps.list_maps(), [])
 
     def test_invalid_inputs_are_refused(self):
@@ -158,6 +175,16 @@ class TestUpdateAndList(MapStoreTestCase):
             self.maps.update_map(created["id"], {"image": "map_x.png"})
         self.assertIsNone(self.maps.update_map("../maps.json", {"name": "x"}))
         self.assertIsNone(self.maps.get_map(created["id"])["image"])
+
+    def test_update_refuses_invalid_values_and_keeps_the_record(self):
+        created = self.maps.create_map("Roof", scale_unit="metres")
+        for changes in ({"name": ""}, {"scale_unit": "x"}, {"scale": float("inf")}):
+            with self.subTest(changes=changes):
+                with self.assertRaises(ValueError):
+                    self.maps.update_map(created["id"], changes)
+        stored = self.maps.get_map(created["id"])
+        self.assertEqual(stored["name"], "Roof")
+        self.assertEqual(stored["scale_unit"], "metres")
 
     def test_list_returns_every_map(self):
         self.maps.create_map("Ground floor", image=PNG)

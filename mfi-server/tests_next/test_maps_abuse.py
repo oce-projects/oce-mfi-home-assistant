@@ -162,6 +162,14 @@ class TestAdminHttp(MapsTestCase):
         self.assertEqual(status, 200)
         self.assertEqual(len(json.loads(data)["maps"]), 1)
 
+    def test_oversized_image_over_http_gives_413(self):
+        self.context.maps = maps.MapStore(self.store, max_image_bytes=10)
+        token = self.session("boss", ADMIN_PASSWORD)
+        body = json.dumps({"name": "Big", "image_base64": base64.b64encode(PNG).decode()}).encode("utf-8")
+        status, _, data = self.call("POST", "/api/v1/maps", body=body, cookie=token)
+        self.assertEqual(status, 413)
+        self.assertEqual(json.loads(data), {"error": "image_too_large"})
+
 
 if __name__ == "__main__":
     unittest.main()

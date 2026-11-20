@@ -221,8 +221,9 @@ def make_handler(context):
                     return
             try:
                 created = context.maps.create_map(name, scale=scale, scale_unit=scale_unit, image=image, icons=icons)
-            except ValueError:
-                self._send_json(400, {"error": "invalid"})
+            except ValueError as exc:
+                code = str(exc)
+                self._send_json(413 if code == "image_too_large" else 400, {"error": code})
                 return
             self._send_json(201, {"map": created})
 

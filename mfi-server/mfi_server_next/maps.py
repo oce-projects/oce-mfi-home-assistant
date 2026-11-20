@@ -7,8 +7,10 @@ the map name or the icons, so a request cannot choose a path or overwrite a file
 """
 from __future__ import annotations
 
+import math
 import os
 import pathlib
+import threading
 import time
 import uuid
 
@@ -28,6 +30,7 @@ class MapStore:
         self._store = store
         self._max_image_bytes = max_image_bytes
         self._now = now
+        self._lock = threading.Lock()
 
     def list_maps(self) -> list[dict]:
         """Return every map, sorted by creation time and then by id."""
@@ -63,11 +66,12 @@ class MapStore:
             "motion_fields": [],  # needs device test (R-WEB)
         }
         try:
-            if data is not None:
-                self._write_image(image_name, data)
-            maps = self._load()
-            maps[map_id] = record
-            self._save(maps)
+            with self._lock:
+                if data is not None:
+                    self._write_image(image_name, data)
+                maps = self._load()
+                maps[map_id] = record
+                self._save(maps)
         except BaseException:
             # Remove the image of a map that was not saved, so no orphan file stays in maps/.
             if image_name is not None:
@@ -77,31 +81,33 @@ class MapStore:
 
     def update_map(self, map_id, changes) -> dict | None:
         """Change name, scale, scale unit or icons of a stored map. Return the record, or None for an unknown id."""
-        maps = self._load()
-        record = self._stored(maps, map_id)
-        if record is None:
-            return None
-        if not isinstance(changes, dict):
-            raise ValueError("changes")
-        for field in changes:
-            if field not in self.UPDATABLE:
-                raise ValueError(f"unknown field: {field}")
-        merged = {field: changes.get(field, record[field]) for field in self.UPDATABLE}
-        name, scale, scale_unit, icons = self._checked(
-            merged["name"], merged["scale"], merged["scale_unit"], merged["icons"]
-        )
-        record.update(name=name, scale=scale, scale_unit=scale_unit, icons=icons)
-        self._save(maps)
+        with self._lock:
+            maps = self._load()
+            record = self._stored(maps, map_id)
+            if record is None:
+                return None
+            if not isinstance(changes, dict):
+                raise ValueError("changes")
+            for field in changes:
+                if field not in self.UPDATABLE:
+                    raise ValueError(f"unknown field: {field}")
+            merged = {field: changes.get(field, record[field]) for field in self.UPDATABLE}
+            name, scale, scale_unit, icons = self._checked(
+                merged["name"], merged["scale"], merged["scale_unit"], merged["icons"]
+            )
+            record.update(name=name, scale=scale, scale_unit=scale_unit, icons=icons)
+            self._save(maps)
         return record
 
     def delete_map(self, map_id) -> bool:
         """Remove the map and its image file. Return False when map_id is not stored."""
-        maps = self._load()
-        record = self._stored(maps, map_id)
-        if record is None:
-            return False
-        del maps[map_id]
-        self._save(maps)
+        with self._lock:
+            maps = self._load()
+            record = self._stored(maps, map_id)
+            if record is None:
+                return False
+            del maps[map_id]
+            self._save(maps)
         if record["image"] is not None:
             self._image_file(record["image"]).unlink(missing_ok=True)
         return True
@@ -145,7 +151,12 @@ class MapStore:
             raise ValueError("name")
         if scale_unit not in self.SCALE_UNITS:
             raise ValueError("scale_unit")
-        if scale is not None and (isinstance(scale, bool) or not isinstance(scale, (int, float))):
+        if scale is not None and (
+            isinstance(scale, bool)
+            or not isinstance(scale, (int, float))
+            or not math.isfinite(scale)
+            or scale <= 0
+        ):
             raise ValueError("scale")
         if icons is None:
             icons = []
