@@ -236,5 +236,53 @@ class TestSupportInfoScrub(unittest.TestCase):
         self.assertIn("***", info)
 
 
+class TestRefinements(unittest.TestCase):
+    def test_history_index_created_when_only_table_exists(self):
+        import sqlite3
+        from mfi_server_next import store
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / store.HISTORY_DB
+            conn = sqlite3.connect(db_path)
+            conn.execute(migrate.RAW_TABLE_DDL)
+            conn.commit()
+            conn.close()
+            migrate.migrate_all(tmp)
+            conn = sqlite3.connect(db_path)
+            row = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND name='raw_series'"
+            ).fetchone()
+            conn.close()
+            self.assertIsNotNone(row)
+
+    def test_missing_backup_path_raises_migrate_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(migrate.MigrateError):
+                migrate.import_backup(Path(tmp) / "nope.unf", data_dir=tmp)
+
+    def test_quoted_json_secret_and_bearer_are_scrubbed(self):
+        info = migrate.build_support_info(
+            version="0.25.0",
+            settings={"timezone": "Europe/Rome"},
+            log_lines=['"password": "hunter2secret"', "authorization: Bearer abcTOKENxyz"],
+        )
+        self.assertNotIn("hunter2secret", info)
+        self.assertNotIn("abcTOKENxyz", info)
+        self.assertIn("***", info)
+
+    def test_import_saves_previous_authkey_when_it_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            devices_file = Path(tmp) / "devices.json"
+            devices_file.write_text(json.dumps([
+                {"mac": "002722aabbcc", "model": "mPower", "name": "old",
+                 "x_authkey": "cd" * 16, "ports": [], "state": "online"}
+            ]), encoding="utf-8")
+            backup = Path(tmp) / "backup.unf"
+            backup.write_bytes(build_unf_bytes())
+            migrate.import_backup(backup, data_dir=tmp)
+            saved = json.loads(devices_file.read_text(encoding="utf-8"))
+            self.assertEqual(saved[0]["x_authkey"], "ab" * 16)
+            self.assertEqual(saved[0]["x_prev_authkey"], "cd" * 16)
+
+
 if __name__ == "__main__":
     unittest.main()
