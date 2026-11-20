@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.45.0 - 2026-11-20
+
+- mfi-server 1.0.0: EPIC-15 switches the add-on to the new server package `mfi_server_next` (same slug, so the add-on updates in place). It starts with `python3 -m mfi_server_next`, migrates the data at start, and shuts down cleanly on SIGTERM. Risky network functions are off by default.
+
 ## 0.44.0 - 2026-11-20
 
 - mfi-server 0.33.0: EPIC-19 import of the old controller rules from a `.unf` backup (`mfi_server_next/rules_import.py`) into Home Assistant format automations, with a converted/skipped report, idempotent by id, a backup copy of `automations.json`, script actions disabled by default, and the "Import old rules" action in the System view.
