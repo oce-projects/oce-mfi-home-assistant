@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.39.0 - 2026-11-20
+
+- mfi-server 0.28.0: EPIC-13 network and Wi-Fi tools (`mfi_server_next/network_tools.py`) all off by default - web shell to an adopted mPort Serial, SSH from the browser, UPnP announcements and the guest access page, each with its own setting and refused with 403 `disabled` when off; the web shell and browser SSH use only the stored device address, never a host/port from the request; `sensors.build_wifi_config` builds the device Wi-Fi block including RADIUS (Wi-Fi Enterprise) with the secret never logged; POST routes under `/api/v1/net/`; a `Risky functions` section in mfi-server/DOCS.md; abuse tests. Owner approval required before merge.
+
 ## 0.38.0 - 2026-11-20
 
 - mfi-server 0.27.0: EPIC-12 maps and dashboard (`mfi_server_next/maps.py`, `MapStore`) with the `/api/v1/maps` GET/POST routes: create/read/update/delete floor-plan maps, PNG and JPEG image upload stored under the data folder's maps/ subfolder with server-generated file names and a size limit, map scale in metres or feet, lockable icons, and location/geofence/liveview/widget/template hypotheses marked as needing a device test; abuse handling for non-images, oversized images, path-traversal names and read_only writes.
