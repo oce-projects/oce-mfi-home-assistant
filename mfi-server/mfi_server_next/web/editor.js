@@ -100,7 +100,7 @@
   }
 
   function newId(base) {
-    const stem = String(base).slice(0, 40).replace(/[^a-z0-9_]/g, "_");
+    const stem = String(base).toLowerCase().slice(0, 40).replace(/[^a-z0-9_]/g, "_");
     return stem + "_" + Date.now().toString(36);
   }
 
@@ -140,7 +140,7 @@
       const names = text.split(",").map((name) => name.trim()).filter((name) => name !== "");
       return names.length > 0 ? names : undefined;
     }
-    return raw;
+    return text;
   }
 
   // ---------------------------------------------------------------- messages
@@ -620,7 +620,7 @@
   async function loadTraces(id) {
     const host = $("editor-traces");
     host.replaceChildren();
-    if (!id) {
+    if (!id || id === "." || id === "..") {
       host.appendChild(el("p", "empty", t("editor_no_traces")));
       return;
     }
@@ -643,6 +643,7 @@
   function bindEvents() {
     $("editor-open").addEventListener("click", () => openEditor(null));
     $("editor-cancel").addEventListener("click", closeEditor);
+    $("editor-form").addEventListener("submit", (event) => event.preventDefault());
     $("editor-save").addEventListener("click", () => {
       saveDraft().catch(reportError);
     });
