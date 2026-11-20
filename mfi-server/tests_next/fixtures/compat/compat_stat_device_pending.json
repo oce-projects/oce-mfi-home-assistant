@@ -1,0 +1,12 @@
+{
+  "code": "R-WEB",
+  "source": "synthetic",
+  "owner_epic": "EPIC-17",
+  "handler": "mfi_server_next.compat_api.unverified_route",
+  "request": {},
+  "expected": {
+    "keys": {
+      "meta": "dict"
+    }
+  }
+}
