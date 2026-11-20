@@ -15,7 +15,7 @@ import threading
 import unittest
 from pathlib import Path
 
-from mfi_server_next.__main__ import main
+from mfi_server_next.__main__ import main, _settings, _parser, _Actions
 
 LOOPBACK = "127.0.0.1"
 SERVERS = ("inform", "web", "compat")
@@ -86,6 +86,68 @@ class TestStartFailures(unittest.TestCase):
 
             self.assertEqual(code, 2)
             self.assertIn("port", err.getvalue())
+
+
+class TestSettingsOrder(unittest.TestCase):
+    """A saved port/host is kept when its flag is absent; the flag overrides; else the default applies."""
+
+    def test_saved_settings_kept_when_flag_absent(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            Path(data_dir, "settings.json").write_text(
+                '{"host": "127.0.0.1", "web_port": 9000, "compat_port": 9001}', encoding="utf-8")
+            args = _parser().parse_args(["--data-dir", data_dir])
+            settings = _settings(args)
+            self.assertEqual(settings["host"], "127.0.0.1")
+            self.assertEqual(settings["web_port"], 9000)
+            self.assertEqual(settings["compat_port"], 9001)
+
+    def test_flag_overrides_saved_setting(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            Path(data_dir, "settings.json").write_text('{"web_port": 9000}', encoding="utf-8")
+            args = _parser().parse_args(["--data-dir", data_dir, "--web-port", "1234"])
+            self.assertEqual(_settings(args)["web_port"], 1234)
+
+    def test_default_when_neither_flag_nor_setting(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            args = _parser().parse_args(["--data-dir", data_dir])
+            settings = _settings(args)
+            self.assertEqual(settings["web_port"], 8099)
+            self.assertEqual(settings["compat_port"], 8100)
+            self.assertEqual(settings["host"], "0.0.0.0")
+            self.assertEqual(settings["mode"], "standalone")
+            for flag in ("allow_webshell", "allow_browser_ssh", "allow_upnp", "allow_guest_page", "allow_script_action"):
+                self.assertFalse(settings[flag])
+
+
+class _FakeRegistry:
+    def __init__(self, known):
+        self._known = known
+    def get(self, mac):
+        return {"mac": mac} if mac in self._known else None
+
+
+class TestActionsSetOutput(unittest.TestCase):
+    """set_output coerces bool to int, refuses a bad port or a value other than 0/1, and 404s an unknown device."""
+
+    def setUp(self):
+        self.calls = []
+        self.actions = _Actions(_FakeRegistry({"001122334455"}), None, lambda m, p, v: self.calls.append((m, p, v)))
+
+    def test_bool_true_becomes_one(self):
+        self.actions.set_output("001122334455", 1, True)
+        self.assertEqual(self.calls, [("001122334455", 1, 1)])
+
+    def test_unknown_device_raises_lookup_error(self):
+        with self.assertRaises(LookupError):
+            self.actions.set_output("ffffffffffff", 1, 1)
+
+    def test_bad_port_raises_value_error(self):
+        with self.assertRaises(ValueError):
+            self.actions.set_output("001122334455", 0, 1)
+
+    def test_bad_value_raises_value_error(self):
+        with self.assertRaises(ValueError):
+            self.actions.set_output("001122334455", 1, 2)
 
 
 if __name__ == "__main__":
