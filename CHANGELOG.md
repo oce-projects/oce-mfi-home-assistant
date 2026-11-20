@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.33.0 - 2026-11-20
+
+- mfi-server 0.22.0: EPIC-07 statistics (`mfi_server_next/stats.py`): per-minute/quarter-hour/hour/day aggregates over history.sqlite3, energy counter with reset handling, energy price and ISO currency, per-outlet monthly cost and 30-day retention.
+
 ## 0.32.0 - 2026-11-20
 
 - mfi-server 0.21.0: EPIC-06 event log, e-mail notifications (`notify.email`) with repeat-limit throttles, and the `mfi.event` rule action (`mfi_server_next/events.py`, `rules.py`), with tests in `mfi-server/tests_next`.
