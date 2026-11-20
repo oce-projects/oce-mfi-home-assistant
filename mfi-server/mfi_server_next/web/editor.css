@@ -1,0 +1,215 @@
+/* Automation editor: layout of the Rules tab. Colours, radii and spacing come from style.css; nothing is declared here. */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+@media (min-width: 600px) {
+  .editor {
+    padding: var(--space-5);
+  }
+}
+
+.editor > * {
+  min-width: 0;
+}
+
+.editor > h3 {
+  margin: 0;
+}
+
+.editor h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.editor__list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.editor__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.editor__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+#editor-open {
+  align-self: flex-end;
+}
+
+#editor-form {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.editor__field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.editor__field > span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.editor__field input {
+  width: 100%;
+  min-width: 0;
+}
+
+.editor__section {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--rule);
+}
+
+.editor__section > .button {
+  justify-self: start;
+}
+
+.editor__item {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+}
+
+.editor__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.editor__type {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.editor__fields {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 600px) {
+  .editor__fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.editor__nested {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-left: var(--space-4);
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--rule);
+}
+
+.editor__warning {
+  background: var(--warn-bg);
+  color: var(--ink);
+  border-left-color: var(--warn-edge);
+}
+
+.editor select {
+  width: 100%;
+  min-width: 0;
+}
+
+.errors {
+  margin: var(--space-1) 0 0;
+  font-size: 14px;
+  color: var(--state-lost-text);
+}
+
+[aria-invalid="true"] {
+  border-color: var(--state-lost);
+}
+
+#editor-yaml {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 320px;
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--ink-muted);
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+.editor__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--rule);
+}
+
+#editor-toggle-yaml {
+  margin-right: auto;
+}
+
+#editor-save {
+  order: 1;
+}
+
+@media (max-width: 599px) {
+  .editor__buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .editor__buttons > .button {
+    width: 100%;
+  }
+
+  #editor-toggle-yaml {
+    margin-right: 0;
+  }
+
+  #editor-save {
+    order: -1;
+  }
+}
+
+.editor__time {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
