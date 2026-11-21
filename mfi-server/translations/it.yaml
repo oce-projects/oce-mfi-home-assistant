@@ -1,7 +1,4 @@
 configuration:
-  backup_file:
-    name: "File di backup del controller"
-    description: "Percorso di un backup (.unf) del vecchio controller mFi. Viene importato a ogni avvio; l'importazione è idempotente, quindi ripeterla non cambia nulla."
   log_level:
     name: "Livello di log"
     description: "Quanto scrive il server nel log: debug, info, warning o error."

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 - 2026-11-21
+
+- Adopt and Repoint are wired in the new server: they run over SSH with the `ssh_extra_options` for old mFi devices and use `device_ssh_username` and `device_ssh_password` as the administrator credentials. A missing credential is refused with a message that names it.
+- The add-on reads `/data/options.json` at every start (log_level, server_address, device_ssh_username, device_ssh_password, ssh_extra_options and the other options). `log_level` now sets the log level at start.
+- In Home Assistant the MQTT broker is requested from the Supervisor when `mqtt_host` is not set.
+- The `backup_file` option is removed: the new server does not import a backup at startup. Import the backup from the web page (`POST api/v1/upload/backup`).
+
 ## 1.0.0 - 2026-11-20
 
 - The add-on now runs the new clean-room server `mfi_server_next` (`python3 -m mfi_server_next`). It keeps the same slug (`mfi_server`), so the update installs in place and the data folder is kept.
