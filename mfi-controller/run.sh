@@ -19,6 +19,8 @@
 #   0.3.1 - 2026-11-20 - recorder opens the raw socket as root, then runs as mfi (--user): UDP capture did not start in 0.3.0.
 #   0.3.2 - 2026-11-20 - Host header forwarded by the recorder; java and the recorder start without SUPERVISOR_TOKEN and HASSIO_TOKEN.
 #   0.3.3 - 2026-11-20 - no change to run.sh; recorder fix in recorder.py.
+#   0.4.0 - 2026-11-21 - no change to run.sh; passive TCP capture added to recorder.py.
+#   0.5.0 - 2026-11-21 - inform stays on 6080: the recorder captures 6080 passively and forwards 16080 to 6080.
 # =============================================================================
 set -u
 
@@ -81,11 +83,10 @@ write_recorder_properties() {
         fi
         {
             echo "$RECORDER_BEGIN"
-            echo "unifi.http.port=16080"
             echo "unifi.https.port=16443"
             echo "$RECORDER_END"
         } >> "$props" || return 1
-        log "compatibility recorder on: the controller uses ports 16080 and 16443 inside the add-on"
+        log "compatibility recorder on: the controller keeps inform on 6080 and moves the web UI to 16443 inside the add-on"
     else
         log "compatibility recorder off"
     fi
@@ -133,7 +134,9 @@ port_open() {
 # Runs in the background, started after java. Creates the self-signed
 # certificate once, waits up to 120 seconds for the controller ports, then
 # keeps recorder.py running: it opens the capture socket as root and then
-# drops to user mfi itself (restarted 5 seconds after an exit).
+# drops to user mfi itself (restarted 5 seconds after an exit). The recorder
+# captures port 6080 passively and forwards 16080 to 6080 for devices that
+# were already pointed at 16080.
 start_recorder() {
     local dir=/data/recorder
     local out=/share/mfi-recordings
@@ -151,17 +154,17 @@ start_recorder() {
     chmod 0700 "$out" || return 1
 
     deadline=$(( $(date +%s) + 120 ))
-    while ! { port_open 16080 && port_open 16443; } && [ "$(date +%s)" -lt "$deadline" ]; do
+    while ! { port_open 6080 && port_open 16443; } && [ "$(date +%s)" -lt "$deadline" ]; do
         sleep 2
     done
-    port_open 16080 || log "recording of port 6080 unavailable: the controller did not open 16080"
+    port_open 6080 || log "recording of port 6080 unavailable: the controller did not open 6080"
     https=1
     if ! port_open 16443; then
         log "https recording unavailable: the controller did not move to 16443"
         https=0
     fi
 
-    args=(--inform-listen 6080 --inform-target 16080 --out "$out" --max-mb "$RECORD_MAX_MB" --udp-capture --user mfi)
+    args=(--inform-listen 16080 --inform-target 6080 --tcp-capture 6080 --out "$out" --max-mb "$RECORD_MAX_MB" --udp-capture --user mfi)
     if [ "$https" = 1 ]; then
         args+=(--https-listen 6443 --https-target 16443 --cert "$dir/cert.pem" --key "$dir/key.pem")
     fi

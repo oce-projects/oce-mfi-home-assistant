@@ -55,10 +55,10 @@ class TestRunScript(unittest.TestCase):
         self.run_sh = (ADDON / "run.sh").read_text(encoding="utf-8")
 
     def test_recorder_markers_and_ports_are_written(self):
-        for needle in ("# mfi-recorder begin", "# mfi-recorder end",
-                       "unifi.http.port=16080", "unifi.https.port=16443"):
+        for needle in ("# mfi-recorder begin", "# mfi-recorder end", "unifi.https.port=16443"):
             with self.subTest(needle=needle):
                 self.assertIn(needle, self.run_sh)
+        self.assertNotIn("unifi.http.port", self.run_sh)
 
     def test_options_are_read_with_jq(self):
         for key in OPTION_KEYS:
@@ -68,7 +68,7 @@ class TestRunScript(unittest.TestCase):
     def test_old_block_is_removed_before_the_block_is_written(self):
         removed = self.run_sh.find(SED_DELETE)
         guard = self.run_sh.find(RECORD_ON)
-        port = self.run_sh.find("unifi.http.port=16080")
+        port = self.run_sh.find("unifi.https.port=16443")
         self.assertNotEqual(removed, -1, "the sed command that removes the old block is missing")
         self.assertNotEqual(guard, -1, "the block is not written under a record_traffic check")
         self.assertLess(removed, guard)
@@ -174,6 +174,20 @@ class TestUdpCapture(unittest.TestCase):
     def test_recorder_runs_as_user_mfi_after_dropping_from_root(self):
         arg_lines = [line for line in self.run_sh.splitlines() if line.strip().startswith("args=(")]
         self.assertIn("--user mfi", arg_lines[0])
+
+    def test_inform_is_forwarded_from_16080_to_6080(self):
+        arg_lines = [line for line in self.run_sh.splitlines() if line.strip().startswith("args=(")]
+        self.assertEqual(len(arg_lines), 1)
+        self.assertIn("--inform-listen 16080 --inform-target 6080", arg_lines[0])
+
+    def test_tcp_capture_of_6080_is_in_the_arguments(self):
+        arg_lines = [line for line in self.run_sh.splitlines() if line.strip().startswith("args=(")]
+        self.assertEqual(len(arg_lines), 1)
+        self.assertIn("--tcp-capture 6080", arg_lines[0])
+
+    def test_recorder_waits_for_the_controller_on_6080(self):
+        self.assertIn("port_open 6080 && port_open 16443", self.run_sh)
+        self.assertNotIn("port_open 16080", self.run_sh)
 
     def test_recorder_is_not_started_with_chuid(self):
         sep = self.run_sh.find("-- /recorder.py")

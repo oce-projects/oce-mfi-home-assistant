@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 - 2026-11-21
+
+- Change: the controller keeps the inform port on 6080 also while recording. With `record_traffic` on, the controller moves only its web UI to 16443; the `unifi.http.port=16080` line is removed from the recorder block of `system.properties`. The recorder captures port 6080 passively (`--tcp-capture 6080`) and listens on 16080, forwarding to 6080 (`--inform-listen 16080 --inform-target 6080`), so devices already pointed at 16080 are still recorded. Forwarded exchanges are not recorded twice: the TCP capture ignores connections from 127.x.
+- `run.sh`: `start_recorder` waits for `port_open 6080 && port_open 16443`; the log line for a missing inform port says `recording of port 6080 unavailable: the controller did not open 6080`. The message `https recording unavailable: the controller did not move to 16443` is unchanged.
+- `test_run_sh.py`: `test_recorder_markers_and_ports_are_written` and `test_old_block_is_removed_before_the_block_is_written` are adapted to the new behaviour (`unifi.http.port` is no longer written; the port the old-block test looks for is `unifi.https.port=16443`). Three new tests in `TestUdpCapture` cover the forward 16080 to 6080, the TCP capture of 6080 and the wait on 6080.
+- `DOCS.md` and `README.md`: the inform stays on 6080; the internal controller port while recording is 16443. UNVERIFIED on a device: that adopted devices return to 6080 by themselves.
+- Version 0.5.0 in `config.yaml`, `CHANGELOG.md` and `Dockerfile`.
+
 ## 0.4.0 - 2026-11-21
 
 - Feature: passive capture of the inform port in the recorder (`--tcp-capture PORT`, off by default). The raw socket reads the TCP segments of port 6080 and the recorder rebuilds each HTTP request and answer into one line of the day file, in the same format as the proxy lines. Chunked answers are decoded; an answer without length ends with the FIN of the server. It only listens: it never answers, resets or injects packets. Connections from 127.x (the proxy's own forwarding) are not recorded twice. Memory per connection is capped (1 MB), at most 256 connections are kept, idle ones are dropped after 120 seconds. UNVERIFIED on a device: no device test of the TCP capture yet.
