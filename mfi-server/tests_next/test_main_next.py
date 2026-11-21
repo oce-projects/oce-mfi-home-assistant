@@ -304,6 +304,20 @@ class TestAdoptAndRepoint(unittest.TestCase):
             self.actions(runner).repoint(MAC)
         self.assertEqual(runner.calls, [])
 
+    def test_adopt_logs_and_raises_when_save_fails(self):
+        runner = FakeRunner(FakeResult(0))
+        def _boom():
+            raise OSError("disk full")
+        self.registry.save = _boom
+        with self.assertRaises(OSError), self.assertLogs("mfi_server_next.__main__", level="WARNING") as caught:
+            self.actions(runner).adopt(MAC)
+        self.assertEqual(len(runner.calls), 1)
+        authkey = runner.calls[0][0][-1]
+        text = "\n".join(caught.output)
+        self.assertIn(MAC, text)
+        self.assertNotIn(authkey, text)
+        self.assertNotIn("pw", text)
+
 
 class TestLogLevel(unittest.TestCase):
     """CA10: the log_level setting sets the level of the root logger."""

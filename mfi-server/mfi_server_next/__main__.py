@@ -285,7 +285,15 @@ class _Actions:
             model=record.get("model"),
             ip=record["ip"],
         )
-        self._registry.save()
+        try:
+            self._registry.save()
+        except (OSError, sqlite3.Error):
+            logger.warning(
+                "device %s was pointed to this server with a new adoption key, "
+                "but the registry was not saved: run Adopt or Repoint again",
+                mac,
+            )
+            raise
 
     def repoint(self, mac):
         """Point an adopted device at this server again with the key it already has; no new key, no registry change."""
