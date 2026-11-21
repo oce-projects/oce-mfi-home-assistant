@@ -48,7 +48,6 @@ In add-on mode the server reads `/data/options.json` at every start, which holds
 
 | Option | Meaning |
 |---|---|
-| `backup_file` | Not read by this version: the server does not import a backup at startup. Import the backup from the web page, see [Import the keys from a controller backup](#import-the-keys-from-a-controller-backup). |
 | `log_level` | `debug`, `info`, `warning` or `error`. |
 | `mqtt_topic_prefix` | Prefix of the MQTT topics. Default `mfi`. |
 | `mqtt_discovery_prefix` | Prefix of the Home Assistant discovery topics. Default `homeassistant`. |
@@ -65,7 +64,7 @@ In add-on mode the server reads `/data/options.json` at every start, which holds
 
 ## Import the keys from a controller backup
 
-Import the backup (`.unf` file) from the web page: send the raw file to `POST api/v1/upload/backup`. The server does not import a backup at startup, so the `backup_file` option is not read by this version.
+Import the backup (`.unf` file) from the web page: send the raw file to `POST api/v1/upload/backup`. The server does not import a backup at startup.
 
 Or run, from the folder that contains `mfi_server`:
 
@@ -344,7 +343,7 @@ The address written into the device is the address of the machine where mfi-serv
 | `server_address` | IPv4 address of the host where mfi-server runs. Empty = automatic. |
 | `device_ssh_username` | Administrator name of the old controller. Used only to re-point devices. |
 | `device_ssh_password` | Administrator password of the old controller. Used only to re-point devices. It is never shown in the API or in the logs. |
-| `ssh_extra_options` | Extra SSH algorithm options, as `KEY=value` pairs separated by `;`. Allowed keys: `KexAlgorithms`, `HostKeyAlgorithms`, `Ciphers`, `MACs`, `PubkeyAcceptedAlgorithms`, `PubkeyAcceptedKeyTypes`. Other text is rejected. Default: `KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa;Ciphers=+aes128-cbc,3des-cbc`. This default allows the SSH negotiation with the old mFi devices. OpenSSH 10 has no DSA, so `ssh-dss` is not in the default. Before each ssh call the server removes from each `+` list the names that the local ssh does not know (`usable_options`), so options saved by older versions keep working; the saved options are not changed. |
+| `ssh_extra_options` | Extra SSH algorithm options, as `KEY=value` pairs separated by `;`. Allowed keys: `KexAlgorithms`, `HostKeyAlgorithms`, `Ciphers`, `MACs`, `PubkeyAcceptedAlgorithms`, `PubkeyAcceptedKeyTypes`. Other text is rejected. Default: `KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa;Ciphers=+aes128-cbc,3des-cbc`. This default allows the SSH negotiation with the old mFi devices. Measured against a real mFi device: without these algorithms the local ssh refuses the connection with `Unable to negotiate ...: no matching key exchange method found. Their offer: diffie-hellman-group1-sha1`. OpenSSH 10 has no DSA, so `ssh-dss` is not in the default. Before each ssh call the server removes from each `+` list the names that the local ssh does not know (`usable_options`), so options saved by older versions keep working; the saved options are not changed. |
 
 ### Factory adoption
 
