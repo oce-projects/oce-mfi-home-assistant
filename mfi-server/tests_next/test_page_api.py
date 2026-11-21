@@ -52,6 +52,9 @@ class FakeActions:
     def upgrade(self, mac):
         self._record("upgrade", mac)
 
+    def repoint(self, mac):
+        self._record("repoint", mac)
+
     def set_port(self, mac, port, data):
         self._record("set_port", mac, port, data)
 
@@ -149,6 +152,38 @@ class TestSessionRoutes(PageApiTestCase):
         status, _, data = self.call("GET", "/api/v1/comet?cursor=0", cookie=self.token_of(set_cookie))
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(data), {"cursor": 1, "messages": [{"kind": "test"}]})
+
+
+class TestRepoint(PageApiTestCase):
+    def test_admin_repoint_calls_actions_repoint(self):
+        _, set_cookie, _ = self.login("boss", ADMIN_PASSWORD)
+        status, _, data = self.call(
+            "POST", "/api/v1/devices/001122334455/repoint", cookie=self.token_of(set_cookie)
+        )
+        self.assertEqual(status, 202)
+        self.assertEqual(json.loads(data), {"result": "accepted"})
+        self.assertEqual(self.context.actions.calls, [("repoint", "001122334455")])
+
+    def test_repoint_without_session_is_401(self):
+        status, _, data = self.call("POST", "/api/v1/devices/001122334455/repoint")
+        self.assertEqual(status, 401)
+        self.assertEqual(json.loads(data), {"error": "unauthorized"})
+        self.assertEqual(self.context.actions.calls, [])
+
+
+class TestAdoptMissingCredential(PageApiTestCase):
+    def test_adopt_without_ssh_username_is_409_naming_the_setting(self):
+        class FailingAdoptActions(FakeActions):
+            def adopt(self, mac):
+                raise PermissionError("device_ssh_username is not set")
+
+        self.context.actions = FailingAdoptActions()
+        _, set_cookie, _ = self.login("boss", ADMIN_PASSWORD)
+        status, _, data = self.call(
+            "POST", "/api/v1/devices/001122334455/adopt", cookie=self.token_of(set_cookie)
+        )
+        self.assertEqual(status, 409)
+        self.assertIn("device_ssh_username", data.decode("utf-8"))
 
 
 if __name__ == "__main__":

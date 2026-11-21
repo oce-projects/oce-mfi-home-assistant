@@ -11,6 +11,7 @@ const STATE_KEYS = { connected: "state_connected", lost: "state_lost", unknown: 
 const STATES = ["connected", "lost", "unknown"];
 const DEVICE_ACTIONS = [
   { name: "adopt", labelKey: "action_adopt", className: "button button--primary" },
+  { name: "repoint", labelKey: "action_repoint", className: "button" },
   { name: "locate", labelKey: "action_locate", className: "button" },
   { name: "reboot", labelKey: "action_reboot", className: "button button--danger" },
   { name: "forget", labelKey: "action_forget", className: "button button--danger" },
@@ -421,7 +422,7 @@ function renderDeviceCard(device) {
   head.append(deviceIcon(), el("h3", "device-card__name", String(device.name || device.mac || "")), chip);
   const mac = el("p", "device-card__meta");
   mac.append(document.createTextNode(t("device_mac") + ": "), el("span", "mono", String(device.mac || "")));
-  const actions = el("div", "device-card__actions");
+  const actions = el("div", "device-card__actions device-card__footer");
   for (const action of DEVICE_ACTIONS) actions.appendChild(actionButton(device, action));
   card.append(
     head,
