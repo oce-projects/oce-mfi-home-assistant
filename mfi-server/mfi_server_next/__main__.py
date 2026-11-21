@@ -13,12 +13,15 @@ import http.server
 import logging
 import os
 import re
+import secrets
 import signal
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import threading
 import time
+import urllib.request
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -74,15 +77,15 @@ def _parser():
 
 def _settings(args):
     """Effective settings: the stored ones, then the command line; every risky function stays off by default."""
-    settings = dict(config.load_settings(args.data_dir))
+    mode = args.mode if args.mode is not None else DEFAULT_MODE
+    settings = dict(config.load_settings(args.data_dir, mode=mode))
+    settings["mode"] = mode
     if args.host is not None:
         settings["host"] = args.host
     if args.web_port is not None:
         settings["web_port"] = args.web_port
     if args.compat_port is not None:
         settings["compat_port"] = args.compat_port
-    if args.mode is not None:
-        settings["mode"] = args.mode
     if args.inform_port is not None:
         settings["inform_port"] = args.inform_port
     settings.setdefault("host", DEFAULT_HOST)
@@ -219,10 +222,38 @@ def _close_all(closers):
 class _Actions:
     """Device actions of the web page. Each one enqueues a command or refuses with the reason."""
 
-    def __init__(self, registry, queue, set_output):
+    def __init__(self, registry, queue, set_output, *, settings=None, runner=subprocess.run,
+                 address_for=devices.local_address_for):
         self._registry = registry
         self._queue = queue
         self._set_output = set_output
+        self._settings = settings or {}
+        self._runner = runner
+        self._address_for = address_for
+
+    def _ssh_credentials(self):
+        """The device administrator user and password from the settings; PermissionError names the one missing."""
+        username = self._settings.get("device_ssh_username", "")
+        if not username:
+            raise PermissionError("device_ssh_username is not set")
+        password = self._settings.get("device_ssh_password", "")
+        if not password:
+            raise PermissionError("device_ssh_password is not set")
+        return username, password
+
+    def _inform_url(self, device_ip):
+        """The inform URL the device must use: server_address, else the local address toward the device."""
+        host = self._settings.get("server_address", "")
+        if not host:
+            try:
+                host = self._address_for(device_ip)
+            except OSError as exc:
+                raise ValueError("server_address could not be determined automatically") from exc
+        return f"http://{host}:{self._settings.get('inform_port', 6080)}/inform"
+
+    def _options(self):
+        """The ssh extra options of the settings, keeping only the names the local ssh accepts."""
+        return devices.usable_options(devices.parse_extra_options(self._settings.get("ssh_extra_options", "")))
 
     def _known(self, mac):
         """The record of mac: ValueError for a malformed MAC, LookupError for an unknown device."""
@@ -232,8 +263,48 @@ class _Actions:
         return record
 
     def adopt(self, mac):
-        self._known(mac)
-        raise PermissionError("adoption needs the device administrator settings, not wired in this version")
+        record = self._known(mac)
+        if not record.get("ip"):
+            raise ValueError("device has no known address")
+        user, password = self._ssh_credentials()
+        authkey = secrets.token_hex(16)
+        devices.set_adopt(
+            record["ip"],
+            self._inform_url(record["ip"]),
+            authkey,
+            admin_user=user,
+            admin_password=password,
+            ssh_extra_options=tuple(self._options()),
+            runner=self._runner,
+        )
+        self._registry.adopt(
+            mac,
+            x_authkey=authkey,
+            cfgversion=record.get("cfgversion"),
+            portversion=record.get("portversion"),
+            model=record.get("model"),
+            ip=record["ip"],
+        )
+        self._registry.save()
+
+    def repoint(self, mac):
+        """Point an adopted device at this server again with the key it already has; no new key, no registry change."""
+        record = self._known(mac)
+        key = record.get("x_authkey")
+        if not isinstance(key, str) or devices.AUTHKEY_RE.fullmatch(key) is None:
+            raise ValueError("device has no adoption key")
+        if not record.get("ip"):
+            raise ValueError("device has no known address")
+        user, password = self._ssh_credentials()
+        devices.set_adopt(
+            record["ip"],
+            self._inform_url(record["ip"]),
+            key,
+            admin_user=user,
+            admin_password=password,
+            ssh_extra_options=tuple(self._options()),
+            runner=self._runner,
+        )
 
     def forget(self, mac):
         self._known(mac)
@@ -381,7 +452,7 @@ def build_application(settings, *, discovery=True):
             stats=aggregator,
             automations=automation_store,
             comet=comet.CometBuffer(),
-            actions=_Actions(registry, queue, set_output),
+            actions=_Actions(registry, queue, set_output, settings=settings),
             maps=maps.MapStore(db),
             rules_engine=engine,
             import_backup=lambda body: _import_backup(body, folder, db, registry),
@@ -438,6 +509,27 @@ def _restore_signal_handlers(previous):
         signal.signal(sig, handler if handler is not None else signal.SIG_DFL)
 
 
+def _apply_log_level(settings):
+    """Set the root logger level from the log_level setting; an unknown name keeps INFO."""
+    names = {"debug": logging.DEBUG, "info": logging.INFO, "warning": logging.WARNING, "error": logging.ERROR}
+    level = names.get(settings.get("log_level", "info"), logging.INFO)
+    logging.getLogger().setLevel(level)
+
+
+def _apply_supervisor_mqtt(settings, *, environ=os.environ, opener=urllib.request.urlopen):
+    """In add-on mode without mqtt_host, take the broker the Supervisor offers; otherwise settings stay as they are."""
+    if settings.get("mode") != "addon" or settings.get("mqtt_host"):
+        return
+    broker = config.supervisor_mqtt(environ, opener)
+    if not broker:
+        return
+    settings["mqtt_host"] = broker["host"]
+    settings["mqtt_port"] = broker["port"]
+    settings["mqtt_user"] = broker["username"]
+    settings["mqtt_password"] = broker["password"]
+    settings["mqtt_tls"] = broker["tls"]
+
+
 def main(argv=None, *, on_ready=None, discovery=True):
     """Run the server until SIGTERM or SIGINT and return 0; return 2 when the data or the settings cannot be used.
 
@@ -452,6 +544,8 @@ def main(argv=None, *, on_ready=None, discovery=True):
     except (ValueError, OSError) as exc:
         return _fail(_describe(exc))
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+    _apply_log_level(settings)
+    _apply_supervisor_mqtt(settings)
     try:
         migrate.migrate_all(settings["data_dir"])
     except (migrate.MigrateError, ValueError, OSError, sqlite3.Error) as exc:
