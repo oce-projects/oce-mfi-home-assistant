@@ -2,6 +2,11 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.47.0 - 2026-11-21
+
+- mfi-wifi-setup: the program has an icon in the Windows `.exe` file and in its window.
+- The icon is optional: if the icon file is missing, the program still starts without it.
+
 ## 0.46.6 - 2026-11-21
 
 - mfi-controller 0.5.0: the controller keeps the inform port 6080 also while recording; the recorder captures 6080 passively and forwards 16080 to 6080 (ticket T-MWQ69CWH). Version 0.46.6 because 0.46.5 is already the mfi-server 1.0.1 entry.
