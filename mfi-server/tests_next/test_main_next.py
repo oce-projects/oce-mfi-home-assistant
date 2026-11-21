@@ -8,14 +8,17 @@ Run from mfi-server: python3 -m unittest discover -s tests_next -v
 import contextlib
 import io
 import json
+import logging
 import os
+import re
 import signal
 import tempfile
 import threading
 import unittest
 from pathlib import Path
 
-from mfi_server_next.__main__ import main, _settings, _parser, _Actions
+from mfi_server_next import devices
+from mfi_server_next.__main__ import main, _settings, _parser, _Actions, _apply_log_level, _apply_supervisor_mqtt
 
 LOOPBACK = "127.0.0.1"
 SERVERS = ("inform", "web", "compat")
@@ -148,6 +151,208 @@ class TestActionsSetOutput(unittest.TestCase):
     def test_bad_value_raises_value_error(self):
         with self.assertRaises(ValueError):
             self.actions.set_output("001122334455", 1, 2)
+
+
+MAC = "001122334455"
+KNOWN_AUTHKEY = "0123456789abcdef0123456789abcdef"
+AUTHKEY_PATTERN = re.compile(r"[0-9a-f]{32}")
+
+
+class FakeResult:
+    """What subprocess.run returns: the exit code and the stderr bytes."""
+
+    def __init__(self, returncode, stderr=b""):
+        self.returncode = returncode
+        self.stderr = stderr
+
+
+class FakeRunner:
+    """Stand-in for subprocess.run: records each call and answers with the scripted results in order."""
+
+    def __init__(self, *answers):
+        self.answers = list(answers)
+        self.calls = []
+
+    def __call__(self, command, **kwargs):
+        self.calls.append((list(command), kwargs))
+        if not self.answers:
+            raise AssertionError("unexpected ssh call")
+        return self.answers.pop(0)
+
+
+class FakeResponse:
+    """Stand-in for the Supervisor answer: a context manager with a status and a body."""
+
+    status = 200
+
+    def __init__(self, body):
+        self._body = body
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info):
+        return False
+
+
+class FakeSupervisor:
+    """Stand-in for urllib.request.urlopen that answers like the Supervisor and records each request."""
+
+    def __init__(self, body):
+        self.body = body
+        self.requests = []
+
+    def __call__(self, request, timeout=None):
+        self.requests.append(request)
+        return FakeResponse(self.body)
+
+
+class NeverCalled:
+    """An opener that fails the test if it is ever called."""
+
+    def __call__(self, request, timeout=None):
+        raise AssertionError("the Supervisor must not be asked")
+
+
+SUPERVISOR_BODY = json.dumps({
+    "data": {"host": "broker.local", "port": 1883, "username": "u", "password": "SecretPw-42", "ssl": False},
+}).encode("utf-8")
+
+
+class TestAdoptAndRepoint(unittest.TestCase):
+    """CA4-CA6: Adopt and Repoint call set-adopt through the runner; Repoint reuses the key the device already has."""
+
+    def setUp(self):
+        saved = dict(devices._LOCAL_CACHE)
+        devices._LOCAL_CACHE.clear()
+        devices._LOCAL_CACHE["names"] = None
+        self.addCleanup(self._restore_cache, saved)
+        self.settings = {
+            "device_ssh_username": "mfiadmin",
+            "device_ssh_password": "pw",
+            "ssh_extra_options": "",
+            "server_address": "192.0.2.5",
+            "inform_port": 6080,
+            "mode": "standalone",
+        }
+        self.registry = devices.DeviceRegistry()
+        self.registry.add(MAC, model="P1E", ip="192.0.2.10")
+
+    @staticmethod
+    def _restore_cache(saved):
+        devices._LOCAL_CACHE.clear()
+        devices._LOCAL_CACHE.update(saved)
+
+    def actions(self, runner, **overrides):
+        settings = {**self.settings, **overrides}
+        return _Actions(self.registry, None, lambda *args: None, settings=settings, runner=runner)
+
+    def test_adopt_runs_set_adopt_with_admin_user_and_server_address(self):
+        runner = FakeRunner(FakeResult(0))
+        self.actions(runner).adopt(MAC)
+        self.assertEqual(len(runner.calls), 1)
+        command = runner.calls[0][0]
+        self.assertEqual(command[command.index("-l") + 1], "mfiadmin")
+        self.assertIn("set-adopt", command)
+        self.assertIn("http://192.0.2.5:6080/inform", command)
+        self.assertIsNotNone(AUTHKEY_PATTERN.fullmatch(command[-1]))
+        record = self.registry.get(MAC)
+        self.assertTrue(record["adopted"])
+        self.assertEqual(record["x_authkey"], command[-1])
+
+    def test_adopt_without_known_address_is_refused(self):
+        registry = devices.DeviceRegistry()
+        registry.add("aabbccddeeff")
+        runner = FakeRunner()
+        actions = _Actions(registry, None, lambda *args: None, settings=self.settings, runner=runner)
+        with self.assertRaisesRegex(ValueError, "no known address"):
+            actions.adopt("aabbccddeeff")
+        self.assertEqual(runner.calls, [])
+
+    def test_missing_username_raises_naming_the_setting(self):
+        runner = FakeRunner()
+        with self.assertRaises(PermissionError) as caught:
+            self.actions(runner, device_ssh_username="").adopt(MAC)
+        self.assertIn("device_ssh_username", str(caught.exception))
+        self.assertEqual(runner.calls, [])
+        self.assertFalse(self.registry.get(MAC)["adopted"])
+
+    def test_missing_password_raises_naming_the_setting(self):
+        runner = FakeRunner()
+        with self.assertRaises(PermissionError) as caught:
+            self.actions(runner, device_ssh_password="").adopt(MAC)
+        self.assertIn("device_ssh_password", str(caught.exception))
+        self.assertEqual(runner.calls, [])
+
+    def test_repoint_reuses_the_known_key(self):
+        self.registry.adopt(MAC, x_authkey=KNOWN_AUTHKEY, cfgversion="c" * 16, portversion="d" * 16, ip="192.0.2.10")
+        runner = FakeRunner(FakeResult(0))
+        self.actions(runner).repoint(MAC)
+        self.assertEqual(len(runner.calls), 1)
+        command = runner.calls[0][0]
+        self.assertIn("set-adopt", command)
+        self.assertIn("http://192.0.2.5:6080/inform", command)
+        self.assertEqual(command[-1], KNOWN_AUTHKEY)
+        self.assertEqual(self.registry.get(MAC)["x_authkey"], KNOWN_AUTHKEY)
+
+    def test_repoint_without_key_is_refused(self):
+        runner = FakeRunner()
+        with self.assertRaisesRegex(ValueError, "no adoption key"):
+            self.actions(runner).repoint(MAC)
+        self.assertEqual(runner.calls, [])
+
+
+class TestLogLevel(unittest.TestCase):
+    """CA10: the log_level setting sets the level of the root logger."""
+
+    def test_each_level_name_maps_to_its_logging_level(self):
+        root = logging.getLogger()
+        previous = root.level
+        self.addCleanup(root.setLevel, previous)
+        expected = {"debug": logging.DEBUG, "info": logging.INFO, "warning": logging.WARNING, "error": logging.ERROR}
+        for name, level in expected.items():
+            with self.subTest(log_level=name):
+                _apply_log_level({"log_level": name})
+                self.assertEqual(root.level, level)
+
+
+class TestSupervisorMqtt(unittest.TestCase):
+    """CA11: in add-on mode the broker comes from the Supervisor unless mqtt_host is set; the password is never logged."""
+
+    def test_broker_from_supervisor_fills_the_settings(self):
+        opener = FakeSupervisor(SUPERVISOR_BODY)
+        settings = {"mode": "addon"}
+        _apply_supervisor_mqtt(settings, environ={"SUPERVISOR_TOKEN": "t"}, opener=opener)
+        self.assertEqual(settings["mqtt_host"], "broker.local")
+        self.assertEqual(settings["mqtt_port"], 1883)
+        self.assertEqual(settings["mqtt_user"], "u")
+        self.assertEqual(settings["mqtt_password"], "SecretPw-42")
+        self.assertFalse(settings["mqtt_tls"])
+        self.assertEqual(opener.requests[0].full_url, "http://supervisor/services/mqtt")
+        self.assertEqual(opener.requests[0].get_header("Authorization"), "Bearer t")
+
+    def test_without_token_the_host_is_not_set(self):
+        opener = FakeSupervisor(SUPERVISOR_BODY)
+        settings = {"mode": "addon"}
+        _apply_supervisor_mqtt(settings, environ={}, opener=opener)
+        self.assertNotIn("mqtt_host", settings)
+        self.assertEqual(opener.requests, [])
+
+    def test_configured_host_skips_the_supervisor(self):
+        settings = {"mode": "addon", "mqtt_host": "x"}
+        _apply_supervisor_mqtt(settings, environ={"SUPERVISOR_TOKEN": "t"}, opener=NeverCalled())
+        self.assertEqual(settings["mqtt_host"], "x")
+
+    def test_password_never_reaches_the_log(self):
+        settings = {"mode": "addon"}
+        with self.assertLogs(level="INFO") as caught:
+            _apply_supervisor_mqtt(settings, environ={"SUPERVISOR_TOKEN": "t"}, opener=FakeSupervisor(SUPERVISOR_BODY))
+        text = "\n".join(caught.output)
+        self.assertIn("broker.local", text)
+        self.assertNotIn("SecretPw-42", text)
 
 
 if __name__ == "__main__":
