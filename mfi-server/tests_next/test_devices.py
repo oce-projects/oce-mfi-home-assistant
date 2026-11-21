@@ -4,6 +4,8 @@ The SSH runner is always a fake: no network, no real ssh. Each test works in its
 temporary folder. Standard library only.
 """
 import os
+import re
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -282,6 +284,97 @@ class TestSave(unittest.TestCase):
         registry.adopt(MAC, x_authkey=AUTHKEY, cfgversion="c" * 16, portversion="d" * 16)
         registry.save()
         self.assertFalse((self.folder / "devices.json").exists())
+
+
+class TestSshOptionsAndLogs(unittest.TestCase):
+    DEFAULT_OPTIONS = (
+        "KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;"
+        "HostKeyAlgorithms=+ssh-rsa;Ciphers=+aes128-cbc,3des-cbc"
+    )
+    FAKE_NAMES = {
+        "kex": frozenset({"diffie-hellman-group14-sha1"}),
+        "key": frozenset({"ssh-rsa"}),
+        "sig": frozenset({"ssh-rsa"}),
+        "cipher": frozenset({"aes128-cbc", "3des-cbc"}),
+        "mac": frozenset(),
+    }
+
+    def setUp(self):
+        saved = dict(devices._LOCAL_CACHE)
+        devices._LOCAL_CACHE.clear()
+        self.addCleanup(self._restore_cache, saved)
+
+    @staticmethod
+    def _restore_cache(saved):
+        devices._LOCAL_CACHE.clear()
+        devices._LOCAL_CACHE.update(saved)
+
+    def use_local_names(self, names):
+        devices._LOCAL_CACHE["names"] = names
+
+    def test_unknown_name_is_removed_from_plus_list(self):
+        self.use_local_names(self.FAKE_NAMES)
+        usable = devices.usable_options(
+            ["KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1"]
+        )
+        self.assertEqual(usable, ["KexAlgorithms=+diffie-hellman-group14-sha1"])
+
+    def test_option_without_plus_is_unchanged(self):
+        self.use_local_names(self.FAKE_NAMES)
+        self.assertEqual(
+            devices.usable_options(["HostKeyAlgorithms=ssh-ed25519"]),
+            ["HostKeyAlgorithms=ssh-ed25519"],
+        )
+
+    def test_option_with_no_known_name_is_dropped(self):
+        self.use_local_names(self.FAKE_NAMES)
+        self.assertEqual(devices.usable_options(["HostKeyAlgorithms=+ssh-dss"]), [])
+        self.assertEqual(devices.usable_options(["MACs=+hmac-sha1"]), [])
+
+    def test_no_local_names_means_no_filter(self):
+        self.use_local_names(None)
+        options = ["HostKeyAlgorithms=+ssh-dss"]
+        self.assertEqual(devices.usable_options(options), options)
+
+    def test_default_options_are_accepted(self):
+        self.assertEqual(len(devices.parse_extra_options(self.DEFAULT_OPTIONS)), 3)
+
+    def test_unknown_key_is_rejected(self):
+        with self.assertRaises(ValueError):
+            devices.parse_extra_options("Foo=bar")
+
+    def test_default_options_pass_real_ssh_parser(self):
+        if shutil.which("ssh") is None:
+            self.skipTest("ssh is not installed")
+        config = (Path(__file__).resolve().parent.parent / "config.yaml").read_text(encoding="utf-8")
+        match = re.search(r'^\s*ssh_extra_options:\s*"([^"]*)"', config, re.MULTILINE)
+        self.assertIsNotNone(match)
+        options = devices.usable_options(devices.parse_extra_options(match.group(1)))
+        command = ["ssh", "-G"]
+        for option in options:
+            command += ["-o", option]
+        command.append("192.0.2.1")
+        result = subprocess.run(
+            command, stdin=subprocess.DEVNULL, capture_output=True, timeout=10, check=False
+        )
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", errors="replace"))
+
+    def test_failed_ssh_logs_only_first_stderr_line_without_password(self):
+        runner = FakeRunner(FakeResult(1, b"line one with " + ADMIN_PASSWORD.encode() + b"\nline two\n"))
+        with self.assertLogs(level="WARNING") as cm:
+            with self.assertRaises(devices.AdoptionError):
+                devices.set_adopt(
+                    IP,
+                    INFORM_URL,
+                    AUTHKEY,
+                    admin_user=ADMIN_USER,
+                    admin_password=ADMIN_PASSWORD,
+                    runner=runner,
+                )
+        text = "\n".join(cm.output)
+        self.assertIn("line one", text)
+        self.assertNotIn(ADMIN_PASSWORD, text)
+        self.assertNotIn("line two", text)
 
 
 if __name__ == "__main__":

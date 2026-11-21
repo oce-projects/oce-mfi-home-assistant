@@ -3,10 +3,8 @@
 ## Quick start
 
 1. If you want the entities in Home Assistant, install the Mosquitto broker app.
-2. Copy the backup of the old controller (`.unf` file) into `/share`.
-3. Write its file name in the `backup_file` option (for example `backup.unf`).
-4. Start the app.
-5. Open "mFi" in the sidebar, open the Search tab and press Search, then press Re-point on your devices.
+2. Start the app. To keep the devices of the old controller, import its backup (`.unf` file) from the web page, see [Import the keys from a controller backup](#import-the-keys-from-a-controller-backup).
+3. Open "mFi" in the sidebar, open the Search tab and press Search, then press Re-point on your devices.
 
 Wi-Fi devices after a reset need the Windows program mFi Wi-Fi Setup first. The mFi page has a download box for it, which links to the latest release on GitHub.
 
@@ -44,11 +42,12 @@ To test a local change, copy the `mfi-server` folder into the local apps folder,
 as for `mfi-controller`: the `local_apps` share of the Samba app, or `/addons` in
 the Advanced SSH & Web Terminal app. Reload the store, then install the app.
 
+In add-on mode the server reads `/data/options.json` at every start, which holds the options below. The MQTT broker is asked to the Supervisor when `mqtt_host` is not set (see [MQTT and Home Assistant](#mqtt-and-home-assistant)).
+
 ## Options
 
 | Option | Meaning |
 |---|---|
-| `backup_file` | Path of an old controller backup, for example `/share/mfi/backup.unf`. A bare file name (for example `backup.unf`) is looked up in `/share`. Imported at every start; the import is idempotent. |
 | `log_level` | `debug`, `info`, `warning` or `error`. |
 | `mqtt_topic_prefix` | Prefix of the MQTT topics. Default `mfi`. |
 | `mqtt_discovery_prefix` | Prefix of the Home Assistant discovery topics. Default `homeassistant`. |
@@ -56,7 +55,7 @@ the Advanced SSH & Web Terminal app. Reload the store, then install the app.
 | `server_address` | IPv4 address of the host where mfi-server runs. Empty = automatic. See [Adopting and re-pointing devices](#adopting-and-re-pointing-devices). |
 | `device_ssh_username` | Administrator name of the old controller, used to re-point devices. |
 | `device_ssh_password` | Administrator password of the old controller, used to re-point devices. Never shown in the API or in the logs. |
-| `ssh_extra_options` | Extra SSH algorithm options. The default is UNVERIFIED, see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices). |
+| `ssh_extra_options` | Extra SSH algorithm options. The default allows the SSH negotiation with old mFi devices (measured); the server removes the names the local ssh does not know before using it, see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices). |
 | `allow_webshell` | Risky function, **off by default**: web shell to an adopted mPort Serial. See [Risky functions](#risky-functions). |
 | `allow_browser_ssh` | Risky function, **off by default**: SSH from the browser. See [Risky functions](#risky-functions). |
 | `allow_upnp` | Risky function, **off by default**: UPnP announcements. See [Risky functions](#risky-functions). |
@@ -65,7 +64,7 @@ the Advanced SSH & Web Terminal app. Reload the store, then install the app.
 
 ## Import the keys from a controller backup
 
-Copy the `.unf` file into `/share/mfi/`, set `backup_file` and restart the app.
+Import the backup (`.unf` file) from the web page: send the raw file to `POST api/v1/upload/backup`. The server does not import a backup at startup.
 
 Or run, from the folder that contains `mfi_server`:
 
@@ -108,7 +107,7 @@ An optional file `data/settings.json` may hold the same keys as the options.
 | `MFI_SERVER_ADDRESS` | empty (automatic) | Address of the server in the inform URL, see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices) |
 | `MFI_DEVICE_SSH_USERNAME` | empty | SSH user of the old controller, used to re-point devices |
 | `MFI_DEVICE_SSH_PASSWORD` | empty | SSH password of the old controller, never logged or shown in the API |
-| `MFI_SSH_EXTRA_OPTIONS` | see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices) | Extra SSH algorithm options (the default is UNVERIFIED) |
+| `MFI_SSH_EXTRA_OPTIONS` | see [Adopting and re-pointing devices](#adopting-and-re-pointing-devices) | Extra SSH algorithm options (the default allows the SSH negotiation with the old mFi devices; names the local ssh does not know are removed before use) |
 | `MFI_FIRMWARE_DIR` | /opt/mfi-server/firmware | Folder of the firmware archive, see [Firmware](#firmware) |
 
 Precedence: variable, then file, then default.
@@ -130,8 +129,9 @@ without a broker the bridge does not start and the server works as before.
 ### Add-on mode
 
 The add-on asks the Supervisor for the MQTT service (`services: mqtt:want`).
-Install an MQTT broker app, for example Mosquitto: Home Assistant passes the
-host, port, user and password to mfi-server, so nothing has to be typed. The
+Install an MQTT broker app, for example Mosquitto. When no MQTT host is set,
+the server asks the Supervisor for the broker host, port, user and password, so
+nothing has to be typed. The
 options change only the topic names:
 
 - `mqtt_topic_prefix` (default `mfi`): prefix of the state, command and availability topics.
@@ -190,7 +190,7 @@ found by the `api/v1/` part of the path, so the Home Assistant ingress prefix is
 | `api/v1/history` | GET | `mac`, `sensor_id`, `tag`, `from` and `to` (milliseconds); returns `points` as `[time_ms, value]` |
 | `api/v1/discovery` | GET | devices found on the network by the last UDP discovery scan, as `{"devices": [...]}`; each has `known` (already in the server) |
 | `api/v1/discovery/scan` | POST | run a new scan now (3 s by default) and return the devices found; 409 `scan_in_progress` if a scan is already running |
-| `api/v1/discovery/<mac>/adopt` | POST | adopt a factory-default device over SSH; 202 `{"result": "sent"}` |
+| `api/v1/devices/<mac>/adopt` | POST | adopt a factory-default device over SSH; 202 `{"result": "accepted"}` |
 | `api/v1/devices/<mac>/repoint` | POST | re-point a known device over SSH; optional body `{"ip": "..."}`; 202 |
 
 History is kept for `history_days` (default 30) in `history.sqlite3` inside the data folder.
@@ -237,7 +237,6 @@ The page shows:
 - the ON/OFF switch of each outlet;
 - the measurements of each outlet: power, voltage, current, power factor and energy;
 - a chart of the last 24 hours, drawn as SVG, with the minimum and maximum values;
-- a message at the top of the page when the backup in `backup_file` fails to import (with the error), has no devices, or, when no backup is set and there are no devices, asks to set `backup_file`;
 - a section of the devices found on the network by UDP discovery (port 10001, see [Network](#network)), with a search button that starts a new scan. The main table shows only the mFi devices, with name, MAC (with colons), IP, model, firmware and a state: factory default, on this server, or not on this server. Adopt is shown only for factory-default devices, and Repoint only for devices already on this server. The other Ubiquiti devices found are listed below the table in a closed section, without buttons. The server also scans once at startup. The results are kept in memory only.
 - a box "New Wi-Fi device?" with a link to the latest GitHub release, where the Windows program mFi Wi-Fi Setup can be downloaded: Wi-Fi devices after a reset must be joined to the home network with it before they appear in discovery. The link opens in a new tab and the page loads nothing from it.
 
@@ -329,7 +328,7 @@ An mFi device reaches a server in one of two ways:
 - **Adoption**: a device that is factory new or was reset is adopted. The server sets the device's inform address and a new authentication key over SSH.
 - **Re-pointing**: a device already adopted by an old controller is pointed at the new server over SSH. The device keeps the key it already has, so it does not have to be reset.
 
-Adopt a device from the discovery table of the web page with the **Adopt** button, or with `POST api/v1/discovery/<mac>/adopt`. Re-point a device with the **Repoint** button in the device list (for devices that are not connected), or with `POST api/v1/devices/<mac>/repoint`; the body may hold `{"ip": "..."}` to give the device address, otherwise the address from the last discovery scan is used.
+Adopt a device from the discovery table of the web page with the **Adopt** button, or with `POST api/v1/devices/<mac>/adopt`. Re-point a device with the **Repoint** button in the device list (for devices that are not connected), or with `POST api/v1/devices/<mac>/repoint`; the body may hold `{"ip": "..."}` to give the device address, otherwise the address from the last discovery scan is used.
 
 Adoption is refused with 409 `not_factory_default` when the discovery scan does not report the device as factory default. Re-pointing needs the device to be known (it must have an authentication key) and the two `device_ssh_*` options to be set.
 
@@ -344,7 +343,7 @@ The address written into the device is the address of the machine where mfi-serv
 | `server_address` | IPv4 address of the host where mfi-server runs. Empty = automatic. |
 | `device_ssh_username` | Administrator name of the old controller. Used only to re-point devices. |
 | `device_ssh_password` | Administrator password of the old controller. Used only to re-point devices. It is never shown in the API or in the logs. |
-| `ssh_extra_options` | Extra SSH algorithm options, as `KEY=value` pairs separated by `;`. Allowed keys: `KexAlgorithms`, `HostKeyAlgorithms`, `Ciphers`, `MACs`, `PubkeyAcceptedAlgorithms`, `PubkeyAcceptedKeyTypes`. Other text is rejected. Default: `KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa;Ciphers=+aes128-cbc,3des-cbc`. OpenSSH 10 has no DSA, so `ssh-dss` is not in the default. Before each ssh call, names in a `+` list that the local ssh does not know are removed, so options saved by older versions keep working; the saved options are not changed. The default is UNVERIFIED on a device: which old algorithms are really needed is known only from a test on a device (question 12 in docs/PROTOCOL.md). |
+| `ssh_extra_options` | Extra SSH algorithm options, as `KEY=value` pairs separated by `;`. Allowed keys: `KexAlgorithms`, `HostKeyAlgorithms`, `Ciphers`, `MACs`, `PubkeyAcceptedAlgorithms`, `PubkeyAcceptedKeyTypes`. Other text is rejected. Default: `KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1;HostKeyAlgorithms=+ssh-rsa;Ciphers=+aes128-cbc,3des-cbc`. This default allows the SSH negotiation with the old mFi devices. Measured against a real mFi device: without these algorithms the local ssh refuses the connection with `Unable to negotiate ...: no matching key exchange method found. Their offer: diffie-hellman-group1-sha1`. OpenSSH 10 has no DSA, so `ssh-dss` is not in the default. Before each ssh call the server removes from each `+` list the names that the local ssh does not know (`usable_options`), so options saved by older versions keep working; the saved options are not changed. |
 
 ### Factory adoption
 
@@ -352,7 +351,7 @@ Factory-new devices use the public factory credentials `ubnt` / `ubnt` (docs/PRO
 
 The server runs the system `ssh` program without a shell. Passwords never go on the command line: they are given through a temporary askpass script, removed after each call. The adoption command sends the inform address and the new key to the device (`/usr/bin/syswrapper.sh set-adopt`). The configuration of the device is not sent yet: that step follows once it has been tested on a real device.
 
-Errors, from the `api/v1/discovery/<mac>/adopt` and `api/v1/devices/<mac>/repoint` routes: 404 `not_found` for an unknown device, 400 `invalid_input` for a bad value, 409 for a device or a setting that does not allow the action, 502 with the reason (`ssh_not_installed`, `timeout`, `connection_failed`, `ssh_options_rejected` or `command_failed`). `ssh_options_rejected` means the local ssh refused the SSH options (for example "Bad key types"); the add-on log shows the first line of the ssh error at WARNING. The device state becomes `adopt_failed` when adoption fails.
+Errors, from the `api/v1/devices/<mac>/adopt` and `api/v1/devices/<mac>/repoint` routes: 404 `not_found` for an unknown device, 400 `invalid_input` for a bad value, 409 for a device or a setting that does not allow the action, 502 with the reason (`ssh_not_installed`, `timeout`, `connection_failed`, `ssh_options_rejected` or `command_failed`). `ssh_options_rejected` means the local ssh refused the SSH options (for example "Bad key types"); the add-on log shows the first line of the ssh error at WARNING. The device state becomes `adopt_failed` when adoption fails.
 
 ### SSH program
 

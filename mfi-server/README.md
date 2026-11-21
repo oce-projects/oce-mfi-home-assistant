@@ -12,9 +12,9 @@ Install **mFi Server (new)**: it is the recommended one. **Ubiquiti mFi Controll
 
 1. If you want the entities in Home Assistant, install the Mosquitto broker app.
 2. Copy the backup of the old controller (`.unf` file) into `/share`.
-3. Write its file name in the `backup_file` option (for example `backup.unf`).
-4. Start the app.
-5. Open "mFi" in the sidebar, open the Search tab and press Search, then press Re-point on your devices.
+3. Start the app.
+4. Open "mFi" in the sidebar and import the backup from the web page, see [Import the keys from a controller backup](DOCS.md#import-the-keys-from-a-controller-backup).
+5. Open the Search tab, press Search, then press Re-point on your devices.
 
 See [DOCS.md](DOCS.md) for the full documentation.
 

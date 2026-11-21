@@ -37,10 +37,9 @@ this repository (experimental, not yet tested with a real device).
 2. In Home Assistant: Settings, Apps, App store, menu (three dots), Repositories.
    Add the URL `https://github.com/oce-projects/oce-mfi-home-assistant`.
 3. Install the app `mFi Server (new)` from the store. The first build takes a few minutes.
-4. Copy the controller backup (`.unf`) into `/share` and write its path in the
-   `backup_file` option, for example `/share/backup.unf`.
+4. Copy the controller backup (`.unf`) into `/share`.
 5. Start the app.
-6. Open `mFi` in the sidebar.
+6. Open `mFi` in the sidebar and import the backup from the web page, see [mfi-server/DOCS.md](mfi-server/DOCS.md#import-the-keys-from-a-controller-backup).
 
 To test a local change, copy the add-on folder into the local apps folder of
 Home Assistant OS (the `local_apps` share of the Samba app, or `/addons` in the

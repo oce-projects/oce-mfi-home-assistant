@@ -5,7 +5,7 @@
 # No "image" key: the Supervisor builds the container locally from the Dockerfile.
 # =============================================================================
 name: "mFi Server (new)"
-version: "1.0.0"
+version: "1.0.1"
 slug: "mfi_server"
 description: "New mFi controller written from scratch in pure Python, no Ubiquiti code. Recommended."
 url: "https://github.com/oce-projects/oce-mfi-home-assistant"
@@ -26,7 +26,6 @@ services:
 map:
   - "share:ro"
 options:
-  backup_file: ""
   log_level: info
   mqtt_topic_prefix: mfi
   mqtt_discovery_prefix: homeassistant
@@ -41,7 +40,6 @@ options:
   allow_guest_page: false
   allow_script_action: false
 schema:
-  backup_file: "str?"
   log_level: "list(debug|info|warning|error)"
   mqtt_topic_prefix: str
   mqtt_discovery_prefix: str

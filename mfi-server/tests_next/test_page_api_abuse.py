@@ -48,6 +48,9 @@ class FakeActions:
     def upgrade(self, mac):
         self._record("upgrade", mac)
 
+    def repoint(self, mac):
+        self._record("repoint", mac)
+
     def set_port(self, mac, port, data):
         self._record("set_port", mac, port, data)
 
