@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0 - 2026-11-21
+
+- Feature: passive capture of the inform port in the recorder (`--tcp-capture PORT`, off by default). The raw socket reads the TCP segments of port 6080 and the recorder rebuilds each HTTP request and answer into one line of the day file, in the same format as the proxy lines. Chunked answers are decoded; an answer without length ends with the FIN of the server. It only listens: it never answers, resets or injects packets. Connections from 127.x (the proxy's own forwarding) are not recorded twice. Memory per connection is capped (1 MB), at most 256 connections are kept, idle ones are dropped after 120 seconds. UNVERIFIED on a device: no device test of the TCP capture yet.
+- `run.sh` does not change: the controller stays on 16080 and the TCP capture is not switched on (next ticket).
+- Version 0.4.0 in `config.yaml`, `CHANGELOG.md` and `Dockerfile`.
+
 ## 0.3.3 - 2026-11-20
 
 - Fix: the recorder sent the answer to the client before recording the exchange, so a client that closed the connection first (for example the browser on port 6443, `ssl.SSLEOFError`) stopped the exchange from being recorded and the log showed a traceback. The exchange is now recorded in every case; the log has one WARNING line (`closed the connection before the answer was sent`) instead of the traceback.

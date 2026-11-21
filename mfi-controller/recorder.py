@@ -9,6 +9,9 @@ exchange is appended as one JSON line to <out>/<YYYY-MM-DD>.jsonl. Sensitive
 headers and fields are replaced by REDACTED before the line is written.
 With --udp-capture the program also listens passively (raw socket, never answers)
 to UDP ports 10001 and 3478 and appends those packets to the same day file.
+With --tcp-capture PORT it also rebuilds the HTTP exchanges of the inform port from
+the passively captured TCP segments (same raw socket, never answers, never injects
+packets) and appends them as lines of port 6080. Both captures are off by default.
 
 Standard library only. Python 3.4: no f-strings, annotations, async or typing.
 """
@@ -50,6 +53,15 @@ ETHERTYPE_IPV4 = 0x0800
 IPV4_MIN_HEADER_LEN = 20
 IPPROTO_UDP = 17
 UDP_HEADER_LEN = 8
+IPPROTO_TCP = 6
+TCP_FIN = 0x01
+TCP_SYN = 0x02
+TCP_RST = 0x04
+TCP_MIN_HEADER_LEN = 20
+TCP_SEQ_MOD = 2 ** 32
+TCP_MAX_BYTES = 1048576  # bytes kept in memory per connection: both directions and waiting segments
+TCP_MAX_FLOWS = 256
+TCP_IDLE_SECONDS = 120
 PACKET_OUTGOING = 4  # packet type of a copy of an outgoing frame (linux/if_packet.h)
 ARPHRD_ETHER = 1  # hardware type Ethernet (linux/if_arp.h)
 ARPHRD_LOOPBACK = 772  # hardware type loopback (linux/if_arp.h)
@@ -262,6 +274,252 @@ def parse_ipv4_udp(frame):
             payload)
 
 
+def parse_ipv4_tcp(frame):
+    """Return (src_ip, src_port, dst_ip, dst_port, seq, flags, payload) of an Ethernet II frame with IPv4 and TCP, else None."""
+    if len(frame) < ETH_HEADER_LEN + IPV4_MIN_HEADER_LEN:
+        return None
+    if struct.unpack(">H", frame[12:14])[0] != ETHERTYPE_IPV4:
+        return None
+    ip = ETH_HEADER_LEN
+    if frame[ip] >> 4 != 4:
+        return None
+    ihl = (frame[ip] & 0x0F) * 4
+    if ihl < IPV4_MIN_HEADER_LEN:
+        return None
+    if frame[ip + 9] != IPPROTO_TCP:
+        return None
+    frag = struct.unpack(">H", frame[ip + 6:ip + 8])[0]
+    if frag & 0x1FFF:
+        return None
+    total_length = struct.unpack(">H", frame[ip + 2:ip + 4])[0]
+    tcp = ip + ihl
+    if len(frame) < tcp + TCP_MIN_HEADER_LEN:
+        return None
+    data_offset = (frame[tcp + 12] >> 4) * 4
+    if data_offset < TCP_MIN_HEADER_LEN or tcp + data_offset > ip + total_length or ip + total_length > len(frame):
+        return None
+    src_port, dst_port = struct.unpack(">HH", frame[tcp:tcp + 4])
+    seq = struct.unpack(">I", frame[tcp + 4:tcp + 8])[0]
+    flags = frame[tcp + 13]
+    payload = frame[tcp + data_offset:ip + total_length]
+    return (_dotted(frame[ip + 12:ip + 16]), src_port, _dotted(frame[ip + 16:ip + 20]), dst_port,
+            seq, flags, payload)
+
+
+def _check_start_line(start_line, is_request):
+    """Raise ValueError when the first line of an HTTP message is not a request or a status line."""
+    parts = start_line.split(" ")
+    if is_request:
+        if len(parts) != 3 or not parts[0] or not parts[1]:
+            raise ValueError("bad request line")
+    elif not start_line.startswith("HTTP/") or len(parts) < 2 or not parts[1].isdigit():
+        raise ValueError("bad status line")
+
+
+def _decode_chunked(data):
+    """Return (body, consumed) of a chunked body, None when it is not complete; ValueError on a bad chunk."""
+    chunks = []
+    pos = 0
+    while True:
+        line_end = data.find(b"\r\n", pos)
+        if line_end == -1:
+            return None
+        try:
+            size = int(data[pos:line_end].split(b";", 1)[0].strip(), 16)
+        except ValueError:
+            raise ValueError("bad chunk size")
+        if size < 0:
+            raise ValueError("negative chunk size")
+        pos = line_end + 2
+        if size == 0:
+            while True:
+                end = data.find(b"\r\n", pos)
+                if end == -1:
+                    return None
+                if end == pos:
+                    return b"".join(chunks), end + 2
+                pos = end + 2
+        if len(data) < pos + size + 2:
+            return None
+        if data[pos + size:pos + size + 2] != b"\r\n":
+            raise ValueError("bad chunk end")
+        chunks.append(data[pos:pos + size])
+        pos += size + 2
+
+
+def parse_http_message(data, is_request, closed=False):
+    """Return (start_line, headers, body, consumed) of the first HTTP message in data, None when it is not complete.
+
+    Raises ValueError when a line or a Content-Length is not valid. closed means the connection has
+    ended, so an answer without a length runs to the end of data.
+    """
+    head_end = data.find(b"\r\n\r\n")
+    if head_end == -1:
+        return None
+    lines = data[:head_end].split(b"\r\n")
+    start_line = lines[0].decode("latin-1")
+    _check_start_line(start_line, is_request)
+    headers = []
+    for raw in lines[1:]:
+        name, sep, value = raw.partition(b":")
+        if not sep or not name.strip():
+            raise ValueError("bad header line")
+        headers.append((name.decode("latin-1").strip(), value.decode("latin-1").strip()))
+    pos = head_end + 4
+    rest = data[pos:]
+    transfer = _header_value(headers, "Transfer-Encoding")
+    if transfer is not None and "chunked" in transfer.lower():
+        decoded = _decode_chunked(rest)
+        if decoded is None:
+            return None
+        body, used = decoded
+        return start_line, headers, body, pos + used
+    raw_length = _header_value(headers, "Content-Length")
+    if raw_length is not None:
+        length = int(raw_length)
+        if length < 0:
+            raise ValueError("negative Content-Length")
+        if len(rest) < length:
+            return None
+        return start_line, headers, rest[:length], pos + length
+    if is_request:
+        return start_line, headers, b"", pos
+    if not closed:
+        return None
+    return start_line, headers, rest, len(data)
+
+
+def _seq_delta(a, b):
+    """Distance from b to a in TCP sequence numbers, which wrap at 2**32; negative when a comes before b."""
+    return ((a - b + 2 ** 31) % TCP_SEQ_MOD) - 2 ** 31
+
+
+class _TcpStream:
+    """One direction of a TCP connection: the joined bytes and the segments that wait for a gap."""
+
+    def __init__(self):
+        self.next_seq = None
+        self.buffer = b""
+        self.pending = {}
+
+    def size(self):
+        return len(self.buffer) + sum(len(chunk) for chunk in self.pending.values())
+
+    def add(self, seq, payload):
+        if self.next_seq is None:
+            self.next_seq = seq
+        delta = _seq_delta(seq, self.next_seq)
+        if delta == 0:
+            self._append(payload)
+            while self.next_seq in self.pending:
+                self._append(self.pending.pop(self.next_seq))
+        elif delta > 0:
+            self.pending[seq] = payload
+        elif -delta < len(payload):
+            self._append(payload[-delta:])
+
+    def _append(self, chunk):
+        self.buffer += chunk
+        self.next_seq = (self.next_seq + len(chunk)) % TCP_SEQ_MOD
+
+
+class _TcpFlow:
+    """State of one connection to the inform port: last packet time, closed flag and both directions."""
+
+    def __init__(self, now):
+        self.last = now
+        self.closed = False
+        self.to_server = _TcpStream()
+        self.to_client = _TcpStream()
+
+    def size(self):
+        return self.to_server.size() + self.to_client.size()
+
+
+class TcpInformAssembler:
+    """Rebuilds the HTTP exchanges of the inform port from passively captured TCP segments; never answers.
+
+    Every complete request and answer is written with record_line, as the proxy does. Connections from
+    127.x are ignored: that is the proxy forwarding to the controller, already recorded by the proxy.
+    """
+
+    def __init__(self, out_dir, server_port, max_mb, clock=time.time):
+        self.out_dir = out_dir
+        self.server_port = int(server_port)
+        self.max_mb = max_mb
+        self.clock = clock
+        self.flows = {}
+
+    def feed(self, src_ip, src_port, dst_ip, dst_port, seq, flags, payload):
+        """Add one captured TCP segment; writes the exchanges that it completes."""
+        now = self.clock()
+        self._expire(now)
+        if dst_port == self.server_port:
+            to_server = True
+            client_ip, client_port, server_ip = src_ip, src_port, dst_ip
+        elif src_port == self.server_port:
+            to_server = False
+            client_ip, client_port, server_ip = dst_ip, dst_port, src_ip
+        else:
+            return
+        if client_ip.startswith("127."):
+            return
+        key = (client_ip, client_port, server_ip)
+        flow = self.flows.get(key)
+        if flow is None:
+            if len(self.flows) >= TCP_MAX_FLOWS:
+                self._drop_oldest()
+            flow = _TcpFlow(now)
+            self.flows[key] = flow
+        flow.last = now
+        stream = flow.to_server if to_server else flow.to_client
+        if flags & TCP_SYN:
+            stream.next_seq = (seq + 1) % TCP_SEQ_MOD
+        elif payload:
+            stream.add(seq, payload)
+        if flags & (TCP_FIN | TCP_RST):
+            flow.closed = True
+        if flow.size() > TCP_MAX_BYTES:
+            del self.flows[key]
+            log.warning("tcp flow from %s dropped: more than %d bytes", client_ip, TCP_MAX_BYTES)
+            return
+        try:
+            self._complete(client_ip, flow, flow.closed)
+        except ValueError as exc:
+            self.flows.pop(key, None)
+            log.debug("tcp flow from %s dropped: not HTTP (%s)", client_ip, exc)
+            return
+        if flow.closed:
+            self.flows.pop(key, None)
+
+    def _complete(self, client_ip, flow, closed):
+        """Write every exchange that is complete in the two buffers of the flow, then remove its bytes."""
+        while True:
+            request = parse_http_message(flow.to_server.buffer, True)
+            if request is None:
+                return
+            answer = parse_http_message(flow.to_client.buffer, False, closed)
+            if answer is None:
+                return
+            req_line, req_headers, req_body, req_used = request
+            resp_line, resp_headers, resp_body, resp_used = answer
+            method, path = req_line.split(" ")[0:2]
+            status = int(resp_line.split(" ")[1])
+            record_line(self.out_dir, INFORM_PORT, client_ip, method, path, req_headers, req_body, status,
+                        resp_headers, resp_body, _header_value(resp_headers, "Content-Type"), self.max_mb)
+            flow.to_server.buffer = flow.to_server.buffer[req_used:]
+            flow.to_client.buffer = flow.to_client.buffer[resp_used:]
+
+    def _expire(self, now):
+        for key in list(self.flows):
+            if now - self.flows[key].last > TCP_IDLE_SECONDS:
+                del self.flows[key]
+
+    def _drop_oldest(self):
+        oldest = min(self.flows, key=lambda key: self.flows[key].last)
+        del self.flows[oldest]
+
+
 def record_udp_line(out_dir, src_ip, src_port, dst_ip, dst_port, payload, max_mb):
     """Append one UDP line in the shared format; return False when the day's size limit is reached."""
     now = time.time()
@@ -319,11 +577,12 @@ def drop_privileges(name, getuid=os.getuid, getpwnam=pwd.getpwnam, setgroups=os.
     raise RuntimeError("not root and not user %s (uid %d)" % (name, current))
 
 
-def capture_udp(out_dir, max_mb, open_socket=None):
-    """Listen passively to UDP 10001 and 3478 and record those packets; never answers.
+def capture_udp(out_dir, max_mb, open_socket=None, record_udp=True, tcp=None):
+    """Listen passively to the raw link and record what is wanted; never answers.
 
-    When the socket cannot be opened it logs one warning and returns, so TCP
-    recording keeps working.
+    UDP 10001 and 3478 go to the day file when record_udp is True. TCP segments go to tcp (a
+    TcpInformAssembler) when it is not None. When the socket cannot be opened it logs one warning
+    and returns, so the recorder keeps running.
     """
     opener = open_socket or open_capture_socket
     try:
@@ -332,6 +591,7 @@ def capture_udp(out_dir, max_mb, open_socket=None):
         log.warning("udp capture unavailable: %s", exc)
         return
     logged_write_error = False
+    logged_tcp_error = False
     try:
         while True:
             try:
@@ -342,17 +602,30 @@ def capture_udp(out_dir, max_mb, open_socket=None):
             if not frame_usable(address):
                 continue
             parsed = parse_ipv4_udp(frame)
-            if parsed is None:
+            if parsed is not None:
+                if not record_udp:
+                    continue
+                src_ip, src_port, dst_ip, dst_port, payload = parsed
+                if not udp_port_wanted(src_port, dst_port):
+                    continue
+                try:
+                    record_udp_line(out_dir, src_ip, src_port, dst_ip, dst_port, payload, max_mb)
+                except OSError as exc:
+                    if not logged_write_error:
+                        log.error("udp recording failed (%s)", type(exc).__name__)
+                        logged_write_error = True
                 continue
-            src_ip, src_port, dst_ip, dst_port, payload = parsed
-            if not udp_port_wanted(src_port, dst_port):
+            if tcp is None:
+                continue
+            segment = parse_ipv4_tcp(frame)
+            if segment is None:
                 continue
             try:
-                record_udp_line(out_dir, src_ip, src_port, dst_ip, dst_port, payload, max_mb)
+                tcp.feed(*segment)
             except OSError as exc:
-                if not logged_write_error:
-                    log.error("udp recording failed (%s)", type(exc).__name__)
-                    logged_write_error = True
+                if not logged_tcp_error:
+                    log.error("tcp recording failed (%s)", type(exc).__name__)
+                    logged_tcp_error = True
     finally:
         sock.close()
 
@@ -493,18 +766,23 @@ def main(argv=None):
     parser.add_argument("--max-mb", type=int, default=200, help="size limit of each day file in MB (default 200)")
     parser.add_argument("--udp-capture", action="store_true",
                         help="passively record UDP ports 10001 and 3478 (needs NET_RAW)")
+    parser.add_argument("--tcp-capture", type=int, default=0,
+                        help="passively record TCP port PORT (inform); 0 = off (needs NET_RAW)")
     parser.add_argument("--user", default=RECORDER_USER,
                         help="user the recorder runs as after the capture socket is open (default mfi)")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="[mfi-recorder] %(asctime)s %(levelname)s %(message)s")
     capture_socket = None
-    if args.udp_capture:
+    if args.udp_capture or args.tcp_capture != 0:
         # Opened while still root: a change of user takes away the right to open a raw socket.
         try:
             capture_socket = open_capture_socket()
         except OSError as exc:
-            log.warning("udp capture unavailable: %s", exc)
+            if args.udp_capture:
+                log.warning("udp capture unavailable: %s", exc)
+            else:
+                log.warning("tcp capture unavailable: %s", exc)
     inform = build_proxy_server(LISTEN_HOST, args.inform_listen, "127.0.0.1", args.inform_target,
                                 args.out, INFORM_PORT, args.max_mb)
     web = build_proxy_server(LISTEN_HOST, args.https_listen, "127.0.0.1", args.https_target,
@@ -523,9 +801,14 @@ def main(argv=None):
              args.inform_listen, args.inform_target, args.https_listen, args.https_target, args.out)
 
     if capture_socket is not None:
-        udp_worker = threading.Thread(target=capture_udp, args=(args.out, args.max_mb, lambda: capture_socket))
-        udp_worker.daemon = True
-        udp_worker.start()
+        assembler = None
+        if args.tcp_capture != 0:
+            assembler = TcpInformAssembler(args.out, args.tcp_capture, args.max_mb)
+            log.info("passive tcp capture of port %d", args.tcp_capture)
+        capture_worker = threading.Thread(target=capture_udp, args=(args.out, args.max_mb, lambda: capture_socket),
+                                          kwargs={"record_udp": args.udp_capture, "tcp": assembler})
+        capture_worker.daemon = True
+        capture_worker.start()
 
     worker = threading.Thread(target=inform.serve_forever)
     worker.daemon = True

@@ -17,6 +17,7 @@
 #   0.3.1 - 2026-11-20 - recorder opens the raw socket as root and drops to mfi; BUILD_VERSION 0.3.1.
 #   0.3.2 - 2026-11-20 - recorder forwards the Host header; java starts without the Supervisor tokens; BUILD_VERSION 0.3.2.
 #   0.3.3 - 2026-11-20 - recorder records the exchange when the client closes the connection; BUILD_VERSION 0.3.3.
+#   0.4.0 - 2026-11-21 - passive TCP capture of the inform port in the recorder (off by default); BUILD_VERSION 0.4.0.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -48,7 +49,7 @@ RUN curl -fsSL --retry 3 -o /tmp/mFi.unix.zip "${MFI_URL}" \
 # -----------------------------------------------------------------------------
 FROM debian/eol:jessie@sha256:81cc60273fcd009665b917085e8edb4a44af01130e42a9349545bcaaf05236a2
 
-ARG BUILD_VERSION="0.3.3"
+ARG BUILD_VERSION="0.4.0"
 ARG BUILD_ARCH="amd64"
 
 RUN apt-get update \

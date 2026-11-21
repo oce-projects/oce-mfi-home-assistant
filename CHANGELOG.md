@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.46.4 - 2026-11-21
+
+- mfi-controller 0.4.0: passive capture of the inform port in the recorder (`--tcp-capture`, off by default); the HTTP exchanges are rebuilt from the TCP segments (ticket T-MWQ69CPR).
+
 ## 0.46.3 - 2026-11-20
 
 - mfi-wifi-setup 0.5.2: step-by-step guide corrections.

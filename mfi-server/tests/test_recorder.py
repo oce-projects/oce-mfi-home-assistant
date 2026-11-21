@@ -719,6 +719,7 @@ class TestMainOrder(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.calls = []
         self.given = []
+        self.given_kwargs = {}
         self.capture_done = threading.Event()
         self.sock = mock.Mock()
         self.open_error = None
@@ -739,8 +740,9 @@ class TestMainOrder(unittest.TestCase):
             if self.drop_error is not None:
                 raise self.drop_error
 
-        def capture(out_dir, max_mb, open_socket=None):
+        def capture(out_dir, max_mb, open_socket=None, record_udp=True, tcp=None):
             self.given.append(open_socket())
+            self.given_kwargs = {"record_udp": record_udp, "tcp": tcp}
             self.calls.append("capture")
             self.capture_done.set()
 
@@ -755,10 +757,12 @@ class TestMainOrder(unittest.TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def run_main(self, udp=True):
+    def run_main(self, udp=True, tcp=0):
         argv = ["--cert", "cert.pem", "--key", "key.pem", "--out", self.tmp]
         if udp:
             argv.append("--udp-capture")
+        if tcp:
+            argv += ["--tcp-capture", str(tcp)]
         return recorder.main(argv)
 
     def test_socket_opens_before_the_drop_and_capture_starts_after_it(self):
@@ -786,6 +790,24 @@ class TestMainOrder(unittest.TestCase):
             rc = self.run_main()
         self.assertEqual(rc, 1)
         self.assertEqual(self.calls, ["open", "build", "build", "drop:mfi", "close", "close"])
+
+    def test_tcp_capture_alone_opens_the_socket_and_passes_the_assembler(self):
+        self.assertEqual(self.run_main(udp=False, tcp=6080), 0)
+        self.assertTrue(self.capture_done.wait(5))
+        self.assertEqual(self.calls, ["open", "build", "build", "drop:mfi", "capture"])
+        self.assertEqual(self.given, [self.sock])
+        self.assertIs(self.given_kwargs["record_udp"], False)
+        self.assertIsInstance(self.given_kwargs["tcp"], recorder.TcpInformAssembler)
+        self.assertEqual(self.given_kwargs["tcp"].server_port, 6080)
+
+    def test_tcp_capture_unavailable_logs_tcp_warning(self):
+        self.open_error = PermissionError("operation not permitted")
+        with self.assertLogs("mfi-recorder", level="WARNING") as logs:
+            rc = self.run_main(udp=False, tcp=6080)
+        self.assertEqual(rc, 0)
+        messages = [r.getMessage() for r in logs.records if r.levelname == "WARNING"]
+        self.assertEqual(messages, ["tcp capture unavailable: operation not permitted"])
+        self.assertEqual(self.calls, ["open", "build", "build", "drop:mfi"])
 
 
 class TestDropPrivileges(unittest.TestCase):
@@ -879,6 +901,241 @@ class TestDropPrivileges(unittest.TestCase):
                                      getpwnam=lambda name: FakePasswd(500, 501),
                                      setgroups=setgroups, setgid=setgid, setuid=setuid)
         self.assertEqual(calls, [("setgroups", [])])
+
+
+TCP_DEVICE = "203.0.113.5"
+TCP_SERVER = "198.51.100.7"
+TCP_CLIENT_PORT = 40000
+CLIENT_ISN = 1000
+SERVER_ISN = 5000
+PSH_ACK = 0x18
+FIN_ACK = 0x11
+REQUEST_BODY = b"0123456789"
+REQUEST = b"POST /inform HTTP/1.1\r\nContent-Length: 10\r\n\r\n" + REQUEST_BODY
+RESPONSE = b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
+
+
+def ipv4_tcp_frame(src_ip, dst_ip, src_port, dst_port, seq, flags, payload=b"", data_offset=20):
+    """Build an Ethernet II frame with an IPv4 header and a TCP header of data_offset bytes, by hand."""
+    eth = bytes([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 2]) + struct.pack(">H", 0x0800)
+    options = b"\x00" * (data_offset - 20)
+    tcp = struct.pack(">HHIIBBHHH", src_port, dst_port, seq, 0, (data_offset // 4) << 4, flags, 65535, 0, 0)
+    tcp += options + payload
+    ip = struct.pack(">BBHHHBBH", 0x45, 0, 20 + len(tcp), 0, 0, 64, 6, 0)
+    ip += bytes(int(part) for part in src_ip.split("."))
+    ip += bytes(int(part) for part in dst_ip.split("."))
+    return eth + ip + tcp
+
+
+class TestTcpParse(unittest.TestCase):
+    def test_segment_with_payload_is_decoded(self):
+        frame = ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN, PSH_ACK, b"POST /inform")
+        self.assertEqual(recorder.parse_ipv4_tcp(frame),
+                         (TCP_DEVICE, TCP_CLIENT_PORT, TCP_SERVER, 6080, CLIENT_ISN, PSH_ACK, b"POST /inform"))
+
+    def test_padding_after_total_length_is_trimmed(self):
+        frame = ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN, PSH_ACK, b"abc")
+        frame += b"\x00" * 12
+        self.assertEqual(recorder.parse_ipv4_tcp(frame),
+                         (TCP_DEVICE, TCP_CLIENT_PORT, TCP_SERVER, 6080, CLIENT_ISN, PSH_ACK, b"abc"))
+
+    def test_udp_frame_is_none(self):
+        frame = ipv4_udp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, b"abc")
+        self.assertIsNone(recorder.parse_ipv4_tcp(frame))
+
+    def test_data_offset_below_20_is_none(self):
+        frame = ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN, PSH_ACK, b"abc",
+                               data_offset=16)
+        self.assertIsNone(recorder.parse_ipv4_tcp(frame))
+
+    def test_truncated_frame_is_none(self):
+        frame = ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN, PSH_ACK, b"abcdef")
+        self.assertIsNone(recorder.parse_ipv4_tcp(frame[:-3]))
+        self.assertIsNone(recorder.parse_ipv4_tcp(frame[:40]))
+
+
+class TestTcpAssembler(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.now = [1000.0]
+        self.assembler = recorder.TcpInformAssembler(self.tmp, 6080, 200, clock=lambda: self.now[0])
+
+    def from_device(self, seq, payload, flags=PSH_ACK):
+        self.assembler.feed(TCP_DEVICE, TCP_CLIENT_PORT, TCP_SERVER, 6080, seq, flags, payload)
+
+    def from_server(self, seq, payload, flags=PSH_ACK):
+        self.assembler.feed(TCP_SERVER, 6080, TCP_DEVICE, TCP_CLIENT_PORT, seq, flags, payload)
+
+    def recorded_bodies(self):
+        return [base64.b64decode(line["req_body_b64"]) for line in read_lines(self.tmp)]
+
+    def test_split_request_and_response_give_one_line(self):
+        request = b"POST /inform HTTP/1.1\r\nHost: ha.example:6080\r\nContent-Length: 4\r\n\r\nABCD"
+        cut = len(request) - 2
+        self.from_device(CLIENT_ISN, request[:cut])
+        self.from_device(CLIENT_ISN + cut, request[cut:])
+        self.from_server(SERVER_ISN, b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\n\r\nxyz")
+        lines = read_lines(self.tmp)
+        self.assertEqual(len(lines), 1)
+        line = lines[0]
+        self.assertEqual(sorted(line), sorted(["body_omitted", "client", "method", "path", "port",
+                                               "req_body_b64", "req_headers", "resp_body_b64",
+                                               "resp_headers", "status", "t"]))
+        self.assertEqual(line["port"], 6080)
+        self.assertEqual(line["client"], TCP_DEVICE)
+        self.assertEqual(line["method"], "POST")
+        self.assertEqual(line["path"], "/inform")
+        self.assertEqual(line["status"], 200)
+        self.assertEqual(base64.b64decode(line["req_body_b64"]), b"ABCD")
+        self.assertEqual(base64.b64decode(line["resp_body_b64"]), b"xyz")
+
+    def test_out_of_order_segments_give_the_same_body(self):
+        first, second, third = REQUEST[:10], REQUEST[10:20], REQUEST[20:]
+        self.from_device(CLIENT_ISN, first)
+        self.from_device(CLIENT_ISN + 20, third)
+        self.from_device(CLIENT_ISN + 10, second)
+        self.from_server(SERVER_ISN, RESPONSE)
+        self.assertEqual(self.recorded_bodies(), [REQUEST_BODY])
+
+    def test_retransmission_adds_no_bytes(self):
+        first, second, third = REQUEST[:10], REQUEST[10:20], REQUEST[20:]
+        self.from_device(CLIENT_ISN, first)
+        self.from_device(CLIENT_ISN + 10, second)
+        self.from_device(CLIENT_ISN, first)
+        self.from_device(CLIENT_ISN + 5, REQUEST[5:25])
+        self.from_device(CLIENT_ISN + 20, third)
+        self.from_server(SERVER_ISN, RESPONSE)
+        self.assertEqual(self.recorded_bodies(), [REQUEST_BODY])
+
+    def test_sequence_wrap_gives_the_same_body(self):
+        self.from_device(0xFFFFFFFE, REQUEST[:4])
+        self.from_device(2, REQUEST[4:])
+        self.from_server(SERVER_ISN, RESPONSE)
+        self.assertEqual(self.recorded_bodies(), [REQUEST_BODY])
+
+    def test_keep_alive_gives_two_lines(self):
+        req_a = b"GET /a HTTP/1.1\r\nHost: ha.example\r\n\r\n"
+        resp_a = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nAA"
+        req_b = b"GET /b HTTP/1.1\r\nHost: ha.example\r\n\r\n"
+        resp_b = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nBB"
+        self.from_device(CLIENT_ISN, req_a)
+        self.from_server(SERVER_ISN, resp_a)
+        self.from_device(CLIENT_ISN + len(req_a), req_b)
+        self.from_server(SERVER_ISN + len(resp_a), resp_b)
+        lines = read_lines(self.tmp)
+        self.assertEqual([line["path"] for line in lines], ["/a", "/b"])
+        self.assertEqual([base64.b64decode(line["resp_body_b64"]) for line in lines], [b"AA", b"BB"])
+
+    def test_fin_ends_a_response_without_length(self):
+        self.from_device(CLIENT_ISN, b"GET /stream HTTP/1.1\r\n\r\n")
+        response = b"HTTP/1.1 200 OK\r\n\r\nendless-body"
+        self.from_server(SERVER_ISN, response)
+        self.assertEqual(read_lines(self.tmp), [])
+        self.from_server(SERVER_ISN + len(response), b"", flags=FIN_ACK)
+        lines = read_lines(self.tmp)
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0]["status"], 200)
+        self.assertEqual(base64.b64decode(lines[0]["resp_body_b64"]), b"endless-body")
+        self.assertEqual(self.assembler.flows, {})
+
+    def test_chunked_answer_is_decoded(self):
+        self.from_device(CLIENT_ISN, b"POST /inform HTTP/1.1\r\nContent-Length: 0\r\n\r\n")
+        self.from_server(SERVER_ISN, b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n")
+        lines = read_lines(self.tmp)
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(base64.b64decode(lines[0]["resp_body_b64"]), b"hello")
+
+    def test_loopback_client_is_ignored(self):
+        self.assembler.feed("127.0.0.1", TCP_CLIENT_PORT, TCP_SERVER, 6080, CLIENT_ISN, PSH_ACK,
+                            b"POST /inform HTTP/1.1\r\nContent-Length: 0\r\n\r\n")
+        self.assembler.feed(TCP_SERVER, 6080, "127.0.0.1", TCP_CLIENT_PORT, SERVER_ISN, PSH_ACK,
+                            b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+        self.assertEqual(read_lines(self.tmp), [])
+        self.assertEqual(self.assembler.flows, {})
+
+    def test_other_port_is_ignored(self):
+        self.assembler.feed(TCP_DEVICE, TCP_CLIENT_PORT, TCP_SERVER, 8443, CLIENT_ISN, PSH_ACK,
+                            b"POST /x HTTP/1.1\r\nContent-Length: 0\r\n\r\n")
+        self.assertEqual(self.assembler.flows, {})
+        self.assertEqual(read_lines(self.tmp), [])
+
+    def test_bad_length_drops_flow(self):
+        self.from_device(CLIENT_ISN, b"POST /inform HTTP/1.1\r\nContent-Length: abc\r\n\r\n")
+        self.assertEqual(self.assembler.flows, {})
+        self.assertEqual(read_lines(self.tmp), [])
+
+    def test_size_limit_drops_flow_with_one_warning(self):
+        with mock.patch.object(recorder, "TCP_MAX_BYTES", 100):
+            with self.assertLogs("mfi-recorder", level="WARNING") as logs:
+                self.from_device(CLIENT_ISN, b"POST /inform HTTP/1.1\r\nContent-Length: 500\r\n\r\n" + b"x" * 150)
+        self.assertEqual(self.assembler.flows, {})
+        self.assertEqual(len(logs.records), 1)
+        self.assertEqual(logs.records[0].getMessage(),
+                         "tcp flow from %s dropped: more than %d bytes" % (TCP_DEVICE, 100))
+
+    def test_idle_flow_is_removed(self):
+        self.from_device(CLIENT_ISN, b"POST /inform HTTP/1.1\r\nContent-Length: 9\r\n\r\nabc")
+        old_key = (TCP_DEVICE, TCP_CLIENT_PORT, TCP_SERVER)
+        self.assertIn(old_key, self.assembler.flows)
+        self.now[0] += recorder.TCP_IDLE_SECONDS + 1
+        self.assembler.feed(TCP_DEVICE, 40001, TCP_SERVER, 6080, CLIENT_ISN, PSH_ACK, b"")
+        self.assertNotIn(old_key, self.assembler.flows)
+        self.assertEqual(list(self.assembler.flows), [(TCP_DEVICE, 40001, TCP_SERVER)])
+
+    def test_cookie_is_redacted(self):
+        self.from_device(CLIENT_ISN, b"POST /inform HTTP/1.1\r\nCookie: session=cookie-secret-value\r\n"
+                                     b"Content-Length: 0\r\n\r\n")
+        self.from_server(SERVER_ISN, RESPONSE)
+        lines = read_lines(self.tmp)
+        self.assertEqual(len(lines), 1)
+        self.assertIn(["Cookie", "REDACTED"], lines[0]["req_headers"])
+        with open(str(day_file(self.tmp))) as handle:
+            self.assertNotIn("cookie-secret-value", handle.read())
+
+
+class TestTcpCapture(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.assembler = recorder.TcpInformAssembler(self.tmp, 6080, 200)
+
+    def frames(self):
+        return [
+            (ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN, PSH_ACK, REQUEST), UDP_ADDR),
+            (ipv4_tcp_frame(TCP_SERVER, TCP_DEVICE, 6080, TCP_CLIENT_PORT, SERVER_ISN, PSH_ACK, RESPONSE), UDP_ADDR),
+            (ipv4_udp_frame(UDP_SRC, UDP_DST, 40000, 10001, b"\x01\x00\x00\x00"), UDP_ADDR),
+            OSError("capture stopped by the test"),
+        ]
+
+    def test_tcp_and_udp_lines_are_both_written(self):
+        sock = mock.Mock()
+        sock.recvfrom.side_effect = self.frames()
+        with self.assertLogs("mfi-recorder", level="ERROR"):
+            recorder.capture_udp(self.tmp, 200, open_socket=lambda: sock, record_udp=True, tcp=self.assembler)
+        lines = read_lines(self.tmp)
+        self.assertEqual(sorted(str(line["port"]) for line in lines), ["6080", "udp10001"])
+
+    def test_record_udp_false_writes_only_the_tcp_line(self):
+        sock = mock.Mock()
+        sock.recvfrom.side_effect = self.frames()
+        with self.assertLogs("mfi-recorder", level="ERROR"):
+            recorder.capture_udp(self.tmp, 200, open_socket=lambda: sock, record_udp=False, tcp=self.assembler)
+        lines = read_lines(self.tmp)
+        self.assertEqual([line["port"] for line in lines], [6080])
+
+    def test_tcp_write_error_is_logged_once(self):
+        sock = mock.Mock()
+        sock.recvfrom.side_effect = [
+            (ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN, PSH_ACK, b"x"), UDP_ADDR),
+            (ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN + 1, PSH_ACK, b"y"), UDP_ADDR),
+            OSError("capture stopped by the test"),
+        ]
+        with mock.patch.object(recorder.TcpInformAssembler, "feed", side_effect=OSError("disk full")):
+            with self.assertLogs("mfi-recorder", level="ERROR") as logs:
+                recorder.capture_udp(self.tmp, 200, open_socket=lambda: sock, tcp=self.assembler)
+        failed = [r for r in logs.records if "tcp recording failed" in r.getMessage()]
+        self.assertEqual(len(failed), 1)
 
 
 if __name__ == "__main__":
