@@ -37,7 +37,7 @@ SIMPLE_ROUTES = {
     "maps": ("maps", {"GET", "POST"}),
     "users": ("users_add", {"POST"}),
 }
-DEVICE_ACTIONS = ("adopt", "forget", "reboot", "locate", "upgrade")
+DEVICE_ACTIONS = ("adopt", "forget", "reboot", "locate", "upgrade", "repoint")
 EDITOR_POST = {"save", "validate", "to_yaml", "from_yaml"}
 # Fixed web page files served without a session; the request path is only matched against these names.
 STATIC_FILES = {
@@ -461,6 +461,7 @@ def make_handler(context):
                     "forget": actions.forget,
                     "reboot": actions.reboot,
                     "upgrade": actions.upgrade,
+                    "repoint": actions.repoint,
                 }
                 action = by_name[name]
                 self._run_action(lambda: action(mac))

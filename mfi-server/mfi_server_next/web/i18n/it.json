@@ -38,6 +38,7 @@
   "device_mac": "MAC",
   "device_last_seen": "Ultimo contatto",
   "action_adopt": "Adotta",
+  "action_repoint": "Ripunta",
   "action_forget": "Dimentica",
   "action_reboot": "Riavvia",
   "action_locate": "Individua",
