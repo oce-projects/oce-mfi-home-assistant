@@ -1079,6 +1079,14 @@ class TestTcpAssembler(unittest.TestCase):
         self.assertEqual(self.assembler.flows, {})
         self.assertEqual(read_lines(self.tmp), [])
 
+    def test_signed_or_underscored_length_drops_flow(self):
+        self.from_device(CLIENT_ISN, b"POST /inform HTTP/1.1\r\nContent-Length: +5\r\n\r\nABCDE")
+        self.assertEqual(self.assembler.flows, {})
+        self.assertEqual(read_lines(self.tmp), [])
+        self.from_device(CLIENT_ISN + 100, b"POST /inform HTTP/1.1\r\nContent-Length: 1_0\r\n\r\n0123456789")
+        self.assertEqual(self.assembler.flows, {})
+        self.assertEqual(read_lines(self.tmp), [])
+
     def test_size_limit_drops_flow_with_one_warning(self):
         with mock.patch.object(recorder, "TCP_MAX_BYTES", 100):
             with self.assertLogs("mfi-recorder", level="WARNING") as logs:

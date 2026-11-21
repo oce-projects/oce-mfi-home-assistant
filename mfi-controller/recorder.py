@@ -376,9 +376,9 @@ def parse_http_message(data, is_request, closed=False):
         return start_line, headers, body, pos + used
     raw_length = _header_value(headers, "Content-Length")
     if raw_length is not None:
+        if not raw_length.isdigit():
+            raise ValueError("non-numeric Content-Length")
         length = int(raw_length)
-        if length < 0:
-            raise ValueError("negative Content-Length")
         if len(rest) < length:
             return None
         return start_line, headers, rest[:length], pos + length
