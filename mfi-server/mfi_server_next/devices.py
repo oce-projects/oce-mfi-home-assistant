@@ -7,14 +7,18 @@ MFI_SSH_PASSWORD variable. The helper folder is removed when each call ends, als
 from __future__ import annotations
 
 import ipaddress
+import logging
 import os
 import re
 import shutil
+import socket
 import subprocess
 import tempfile
 import threading
 import time
 from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 FACTORY_SSH_USER = "ubnt"
 FACTORY_SSH_PASSWORD = "ubnt"
@@ -44,6 +48,21 @@ BASE_SSH_COMMAND = [
 ASKPASS_SCRIPT = "#!/bin/sh\nprintf '%s\\n' \"$MFI_SSH_PASSWORD\"\n"
 LOGIN_REFUSED_CODE = 255
 LOGIN_REFUSED_TEXT = "Permission denied"
+DISCOVERY_PORT = 10001
+QUERY_TIMEOUT_S = 10
+# Names each option key accepts, as listed by 'ssh -Q <query>'. HostKeyAlgorithms and
+# the public key options also take signature names, so both lists are read.
+KEY_QUERIES = {
+    "KexAlgorithms": ("kex",),
+    "HostKeyAlgorithms": ("key", "sig"),
+    "PubkeyAcceptedAlgorithms": ("key", "sig"),
+    "PubkeyAcceptedKeyTypes": ("key", "sig"),
+    "Ciphers": ("cipher",),
+    "MACs": ("mac",),
+}
+ALGORITHM_QUERIES = ("cipher", "key", "kex", "mac", "sig")
+# Names read from the local ssh, once per process. Empty until the first read.
+_LOCAL_CACHE: dict = {}
 
 
 class AdoptionError(Exception):
@@ -152,6 +171,105 @@ def _run_ssh(ip, username, password, inform_url, authkey, extra_options, runner,
         shutil.rmtree(folder, ignore_errors=True)
 
 
+def parse_extra_options(text: str) -> list[str]:
+    """Split the ';' separated ssh options; keep the allowed ones and raise ValueError on any other.
+
+    Empty entries are skipped. The rejected entry is not echoed: it may hold a secret typed by mistake.
+    """
+    options = []
+    for raw in text.split(";"):
+        entry = raw.strip()
+        if not entry:
+            continue
+        if EXTRA_OPTION_RE.fullmatch(entry) is None:
+            raise ValueError(
+                "ssh option not allowed: use KexAlgorithms, HostKeyAlgorithms, Ciphers, MACs, "
+                "PubkeyAcceptedAlgorithms or PubkeyAcceptedKeyTypes with a list of names"
+            )
+        options.append(entry)
+    return options
+
+
+def _read_local_algorithms() -> dict[str, frozenset[str]] | None:
+    """Run 'ssh -Q' once per query; None when ssh is missing, times out or exits with an error."""
+    names: dict[str, frozenset[str]] = {}
+    for query in ALGORITHM_QUERIES:
+        try:
+            result = subprocess.run(
+                ["ssh", "-Q", query],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                timeout=QUERY_TIMEOUT_S,
+                check=False,
+            )
+        except FileNotFoundError:
+            logger.warning("ssh is not installed: ssh_extra_options are not checked")
+            return None
+        except subprocess.TimeoutExpired:
+            logger.warning("ssh -Q %s timed out: ssh_extra_options are not checked", query)
+            return None
+        if result.returncode != 0:
+            logger.warning(
+                "ssh -Q %s exited with %d: ssh_extra_options are not checked", query, result.returncode
+            )
+            return None
+        names[query] = frozenset(_as_text(result.stdout).split())
+    return names
+
+
+def local_algorithms() -> dict[str, frozenset[str]] | None:
+    """Return the names the local ssh accepts, read once per process; None when they cannot be read."""
+    if "names" not in _LOCAL_CACHE:
+        _LOCAL_CACHE["names"] = _read_local_algorithms()
+    return _LOCAL_CACHE["names"]
+
+
+def usable_options(extra_options: list[str]) -> list[str]:
+    """Drop the '+' names the local ssh does not know; an option left with no name is dropped.
+
+    Settings saved by an older release can still name algorithms this ssh lacks (for example ssh-dss):
+    they are removed here so the connection is not refused. Options without '+' are kept as they are.
+    """
+    known = local_algorithms()
+    if known is None:
+        return list(extra_options)
+    usable = []
+    for option in extra_options:
+        key, _, value = option.partition("=")
+        if key not in KEY_QUERIES or not value.startswith("+"):
+            usable.append(option)
+            continue
+        accepted = frozenset().union(*(known[query] for query in KEY_QUERIES[key]))
+        names = value[1:].split(",")
+        kept = [name for name in names if name in accepted]
+        dropped = [name for name in names if name not in accepted]
+        if dropped:
+            logger.info("the local ssh does not know %s: removed from %s", ", ".join(dropped), key)
+        if kept:
+            usable.append(f"{key}=+{','.join(kept)}")
+    return usable
+
+
+def local_address_for(ip: str) -> str:
+    """Return the local address the system uses toward ip. A UDP connect only sets the route: no packet is sent."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        sock.connect((ip, DISCOVERY_PORT))
+        return sock.getsockname()[0]
+
+
+def _mask(text: str, password: str) -> str:
+    """Hide the password and every authkey in a text."""
+    if password:
+        text = text.replace(password, "***")
+    return AUTHKEY_RE.sub("***", text)
+
+
+def _first_line(text: str, password: str) -> str:
+    """Return the first non-empty line of text, masked; '(no stderr)' when there is none."""
+    line = next((item for item in text.splitlines() if item.strip()), "(no stderr)")
+    return _mask(line, password)
+
+
 def set_adopt(
     ip,
     inform_url,
@@ -178,6 +296,7 @@ def set_adopt(
     if result.returncode == 0:
         return "admin"
     if not _is_login_refused(result):
+        logger.warning("set-adopt failed: %s", _first_line(_as_text(result.stderr), admin_password))
         raise AdoptionError(f"set-adopt failed with exit code {result.returncode}")
 
     result = _run_ssh(
@@ -185,6 +304,7 @@ def set_adopt(
     )
     if result.returncode == 0:
         return "factory"
+    logger.warning("set-adopt failed: %s", _first_line(_as_text(result.stderr), FACTORY_SSH_PASSWORD))
     if _is_login_refused(result):
         raise AdoptionError("login refused with the administrator and the factory credentials")
     raise AdoptionError(f"set-adopt failed with exit code {result.returncode}")
