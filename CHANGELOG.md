@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.47.1 - 2026-11-21
+
+- The repository version file now matches the newest changelog entry; no add-on behaviour changes.
+
 ## 0.47.0 - 2026-11-21
 
 - mfi-wifi-setup: the program has an icon in the Windows `.exe` file and in its window.
