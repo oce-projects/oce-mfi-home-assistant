@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.46.6 - 2026-11-21
+
+- mfi-controller 0.5.0: the controller keeps the inform port 6080 also while recording; the recorder captures 6080 passively and forwards 16080 to 6080 (ticket T-MWQ69CWH). Version 0.46.6 because 0.46.5 is already the mfi-server 1.0.1 entry.
+
 ## 0.46.5 - 2026-11-21
 
 - mfi-server 1.0.1: Adopt and Repoint are wired in the new server, the add-on reads `/data/options.json`, the MQTT broker comes from the Supervisor, and the unused `backup_file` option is removed.

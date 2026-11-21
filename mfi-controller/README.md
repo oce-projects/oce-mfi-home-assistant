@@ -10,7 +10,7 @@ Home Assistant talks to the controller through the `mfi` integration, which is s
 
 - **Architecture:** `amd64` only.
 - **Ports:** 6080 (inform, used by the devices) and 6443 (web UI and API, HTTPS). With `record_traffic` on, the recorder also listens passively on UDP 10001 (discovery) and 3478 (wake-up); it never answers or sends packets.
-- **Network:** the add-on uses the host network (`host_network: true`). Do not run it together with mFi Server, because both use port 6080. Keep the devices on an isolated network. With host networking the internal controller ports 16080 and 16443 may also be reachable from the LAN, bypassing the recorder (UNVERIFIED).
+- **Network:** the add-on uses the host network (`host_network: true`). Do not run it together with mFi Server, because both use port 6080. Keep the devices on an isolated network. With host networking the controller's internal port 16443 may also be reachable from the LAN, bypassing the recorder, and so may the recorder's forwarding port 16080 (UNVERIFIED).
 - **License:** the Ubiquiti software is not in this repository. The `Dockerfile` downloads it from `dl.ubnt.com` at build time and checks the sha256.
 - **Status:** experimental. Built and tested with Docker on an amd64 Linux host; **not yet installed on Home Assistant OS**. The software is from 2015 and gets no security updates: keep it on the local network, never expose it to the internet.
 
