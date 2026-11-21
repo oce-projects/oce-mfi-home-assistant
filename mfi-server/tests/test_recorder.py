@@ -915,15 +915,18 @@ REQUEST = b"POST /inform HTTP/1.1\r\nContent-Length: 10\r\n\r\n" + REQUEST_BODY
 RESPONSE = b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
 
 
-def ipv4_tcp_frame(src_ip, dst_ip, src_port, dst_port, seq, flags, payload=b"", data_offset=20):
-    """Build an Ethernet II frame with an IPv4 header and a TCP header of data_offset bytes, by hand."""
+def ipv4_tcp_frame(src_ip, dst_ip, src_port, dst_port, seq, flags, payload=b"", data_offset=20,
+                   ip_options=b"", frag=0):
+    """Build an Ethernet II frame with an IPv4 header (optional options) and a TCP header of data_offset bytes, by hand."""
     eth = bytes([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 2]) + struct.pack(">H", 0x0800)
-    options = b"\x00" * (data_offset - 20)
+    tcp_options = b"\x00" * (data_offset - 20)
     tcp = struct.pack(">HHIIBBHHH", src_port, dst_port, seq, 0, (data_offset // 4) << 4, flags, 65535, 0, 0)
-    tcp += options + payload
-    ip = struct.pack(">BBHHHBBH", 0x45, 0, 20 + len(tcp), 0, 0, 64, 6, 0)
+    tcp += tcp_options + payload
+    ver_ihl = 0x40 | ((20 + len(ip_options)) // 4)
+    ip = struct.pack(">BBHHHBBH", ver_ihl, 0, 20 + len(ip_options) + len(tcp), 0, frag, 64, 6, 0)
     ip += bytes(int(part) for part in src_ip.split("."))
     ip += bytes(int(part) for part in dst_ip.split("."))
+    ip += ip_options
     return eth + ip + tcp
 
 
@@ -952,6 +955,17 @@ class TestTcpParse(unittest.TestCase):
         frame = ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN, PSH_ACK, b"abcdef")
         self.assertIsNone(recorder.parse_ipv4_tcp(frame[:-3]))
         self.assertIsNone(recorder.parse_ipv4_tcp(frame[:40]))
+
+    def test_ipv4_header_options_are_skipped(self):
+        frame = ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN, PSH_ACK,
+                               b"POST /inform", ip_options=b"\x00\x00\x00\x00")
+        self.assertEqual(recorder.parse_ipv4_tcp(frame),
+                         (TCP_DEVICE, TCP_CLIENT_PORT, TCP_SERVER, 6080, CLIENT_ISN, PSH_ACK, b"POST /inform"))
+
+    def test_ip_fragment_after_the_first_is_none(self):
+        frame = ipv4_tcp_frame(TCP_DEVICE, TCP_SERVER, TCP_CLIENT_PORT, 6080, CLIENT_ISN, PSH_ACK,
+                               b"abc", frag=0x0001)
+        self.assertIsNone(recorder.parse_ipv4_tcp(frame))
 
 
 class TestTcpAssembler(unittest.TestCase):
@@ -1083,6 +1097,20 @@ class TestTcpAssembler(unittest.TestCase):
         self.assertNotIn(old_key, self.assembler.flows)
         self.assertEqual(list(self.assembler.flows), [(TCP_DEVICE, 40001, TCP_SERVER)])
 
+    def test_max_flows_drops_the_oldest(self):
+        req = b"POST /inform HTTP/1.1\r\nContent-Length: 9\r\n\r\nabc"
+        with mock.patch.object(recorder, "TCP_MAX_FLOWS", 2):
+            self.now[0] = 1000.0
+            self.assembler.feed(TCP_DEVICE, 40001, TCP_SERVER, 6080, CLIENT_ISN, PSH_ACK, req)
+            self.now[0] = 1001.0
+            self.assembler.feed(TCP_DEVICE, 40002, TCP_SERVER, 6080, CLIENT_ISN, PSH_ACK, req)
+            self.now[0] = 1002.0
+            self.assembler.feed(TCP_DEVICE, 40003, TCP_SERVER, 6080, CLIENT_ISN, PSH_ACK, req)
+        self.assertEqual(len(self.assembler.flows), 2)
+        self.assertNotIn((TCP_DEVICE, 40001, TCP_SERVER), self.assembler.flows)
+        self.assertIn((TCP_DEVICE, 40002, TCP_SERVER), self.assembler.flows)
+        self.assertIn((TCP_DEVICE, 40003, TCP_SERVER), self.assembler.flows)
+
     def test_cookie_is_redacted(self):
         self.from_device(CLIENT_ISN, b"POST /inform HTTP/1.1\r\nCookie: session=cookie-secret-value\r\n"
                                      b"Content-Length: 0\r\n\r\n")
@@ -1136,6 +1164,7 @@ class TestTcpCapture(unittest.TestCase):
                 recorder.capture_udp(self.tmp, 200, open_socket=lambda: sock, tcp=self.assembler)
         failed = [r for r in logs.records if "tcp recording failed" in r.getMessage()]
         self.assertEqual(len(failed), 1)
+        self.assertEqual(sock.recvfrom.call_count, 3)
 
 
 if __name__ == "__main__":
