@@ -9,6 +9,10 @@ schema and map) and the English and Italian translations.
 """
 from __future__ import annotations
 
+import os
+import shutil
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -196,6 +200,86 @@ class TestUdpCapture(unittest.TestCase):
         self.assertNotEqual(begin, -1, "start-stop-daemon for the recorder is missing")
         command = self.run_sh[begin:sep]
         self.assertNotIn("--chuid", command)
+
+
+class TestRecorderPropertiesCleanup(unittest.TestCase):
+    @unittest.skipUnless(shutil.which("bash"), "bash not available")
+    def test_stray_ports_without_markers_are_removed_when_on(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            props = Path(data_dir) / "system.properties"
+            props.write_text("unifi.http.port=16080\nunifi.https.port=16443\nother.key=1\n")
+            rc, stdout, content = self._run_write(data_dir, "true")
+            self.assertEqual(rc, 0)
+            self.assertNotIn("unifi.http.port", content)
+            self.assertEqual(content.count("unifi.https.port=16443"), 1)
+            self.assertIn("other.key=1", content)
+            self.assertIn("# mfi-recorder begin", content)
+            self.assertIn("# mfi-recorder end", content)
+            self.assertIn("removed recorder port lines left outside the markers", stdout)
+
+    def test_stray_ports_are_removed_when_off(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            props = Path(data_dir) / "system.properties"
+            props.write_text("unifi.http.port=16080\nunifi.https.port=16443\nother.key=1\n")
+            rc, stdout, content = self._run_write(data_dir, "false")
+            self.assertNotIn("16080", content)
+            self.assertNotIn("16443", content)
+            self.assertIn("other.key=1", content)
+            self.assertNotIn("# mfi-recorder begin", content)
+
+    def test_two_starts_give_the_same_file(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            props = Path(data_dir) / "system.properties"
+            props.write_text("unifi.http.port=16080\nunifi.https.port=16443\nother.key=1\n")
+            _, _, content1 = self._run_write(data_dir, "true")
+            _, _, content2 = self._run_write(data_dir, "true")
+            self.assertEqual(content1, content2)
+
+    def test_hand_written_port_is_kept(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            props = Path(data_dir) / "system.properties"
+            props.write_text("unifi.http.port=7080\n")
+            rc, stdout, content = self._run_write(data_dir, "true")
+            self.assertIn("unifi.http.port=7080", content)
+
+    def test_old_block_with_markers_is_still_replaced(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            props = Path(data_dir) / "system.properties"
+            props.write_text("# mfi-recorder begin\nunifi.http.port=16080\nunifi.https.port=16443\n# mfi-recorder end\n")
+            rc, stdout, content = self._run_write(data_dir, "true")
+            self.assertNotIn("unifi.http.port", content)
+            self.assertEqual(content.count("unifi.https.port=16443"), 1)
+
+    def test_ports_left_are_logged(self):
+        with tempfile.TemporaryDirectory() as data_dir:
+            props = Path(data_dir) / "system.properties"
+            props.write_text("unifi.https.port=16443\n")
+            _, stdout, _ = self._run_write(data_dir, "true")
+            self.assertIn("ports in system.properties:", stdout)
+
+    @staticmethod
+    def _function_text(run_sh: str) -> str:
+        start = run_sh.find("write_recorder_properties() {")
+        end = run_sh.find("\n}\n", start + 1)
+        return run_sh[start:end + 2]
+
+    def _run_write(self, data_dir: str, record: str) -> tuple[int, str, str]:
+        run_sh = (ADDON / "run.sh").read_text(encoding="utf-8")
+        func_text = self._function_text(run_sh)
+        script = (
+            'log() { echo "$*"; }\n'
+            'chown() { :; }\n'
+            'RECORDER_BEGIN="# mfi-recorder begin"\n'
+            'RECORDER_END="# mfi-recorder end"\n'
+            + func_text + "\n"
+            + "write_recorder_properties\n"
+        )
+        env = os.environ.copy()
+        env["DATA_DIR"] = data_dir
+        env["RECORD_TRAFFIC"] = record
+        result = subprocess.run(["bash", "-c", script], capture_output=True, text=True, env=env)
+        content = (Path(data_dir) / "system.properties").read_text(encoding="utf-8")
+        return (result.returncode, result.stdout, content)
 
 
 if __name__ == "__main__":

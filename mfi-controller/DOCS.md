@@ -127,6 +127,8 @@ If the controller does not move to 16443 within 120 seconds, the log says `https
 
 With versions 0.2.0 to 0.4.0, devices adopted while the recorder was on may have been pointed at port 16080. From 0.5.0 the recorder forwards those informs to 6080. **UNVERIFIED:** that the controller points such devices back to 6080 by itself (`docs/controller/device-lifecycle.md`). Before you turn `record_traffic` off, check in the controller that the devices use port 6080, or adopt them again: with the recorder off, port 16080 does not answer. On Home Assistant OS, after the start, the day file should contain lines with `"port": 6080`.
 
+Release 0.5.0 left the controller on 16080 when `system.properties` contained the line outside the markers (OBSERVED on Home Assistant OS on 2026-11-21: log `unifi.http.port = 16080` after the 0.5.0 start; the cause is UNVERIFIED); from 0.5.1 the add-on removes the 16080/16443 lines wherever they are and logs `ports in system.properties:`.
+
 When the browser closes a connection before the answer is sent, the log says `client ... closed the connection before the answer was sent` and the exchange is still recorded (from 0.3.3).
 
 ### Passive UDP capture
