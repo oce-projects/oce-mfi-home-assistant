@@ -2,6 +2,10 @@
 
 All notable changes to this repository. Each add-on has its own CHANGELOG.md.
 
+## 0.47.2 - 2026-11-21
+
+- `VERSION` was left at 0.47.0 after the 0.47.1 entry was written by the automatic release; now it matches the newest changelog entry again. No add-on behaviour changes.
+
 ## 0.47.1 - 2026-11-21
 
 - The repository version file now matches the newest changelog entry; no add-on behaviour changes.

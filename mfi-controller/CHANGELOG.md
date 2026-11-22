@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1 - 2026-11-21
+
+- Fix: `run.sh` removes recorder port lines (16080/16443) also outside the markers of `system.properties`; with 0.5.0 the controller stayed on 16080. The add-on logs `ports in system.properties:` at each start. New test class `TestRecorderPropertiesCleanup` in `mfi-server/tests/test_run_sh.py` executes the function with bash on temporary files.
+- Version 0.5.1 in `config.yaml`, `CHANGELOG.md` and `Dockerfile`.
+
 ## 0.5.0 - 2026-11-21
 
 - Change: the controller keeps the inform port on 6080 also while recording. With `record_traffic` on, the controller moves only its web UI to 16443; the `unifi.http.port=16080` line is removed from the recorder block of `system.properties`. The recorder captures port 6080 passively (`--tcp-capture 6080`) and listens on 16080, forwarding to 6080 (`--inform-listen 16080 --inform-target 6080`), so devices already pointed at 16080 are still recorded. Forwarded exchanges are not recorded twice: the TCP capture ignores connections from 127.x.

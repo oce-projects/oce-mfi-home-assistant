@@ -21,6 +21,7 @@
 #   0.3.3 - 2026-11-20 - no change to run.sh; recorder fix in recorder.py.
 #   0.4.0 - 2026-11-21 - no change to run.sh; passive TCP capture added to recorder.py.
 #   0.5.0 - 2026-11-21 - inform stays on 6080: the recorder captures 6080 passively and forwards 16080 to 6080.
+#   0.5.1 - 2026-11-21 - recorder port lines are removed also outside the markers of system.properties: with 0.5.0 the controller stayed on 16080.
 # =============================================================================
 set -u
 
@@ -76,6 +77,11 @@ write_recorder_properties() {
     if grep -q "^# mfi-recorder begin$" "$props" && grep -q "^# mfi-recorder end$" "$props"; then
         sed -i "/^# mfi-recorder begin$/,/^# mfi-recorder end$/d" "$props" || return 1
     fi
+    local stray='^[[:space:]]*unifi\.https?\.port[[:space:]]*[=:][[:space:]]*(16080|16443)[[:space:]]*$'
+    if grep -Eq "$stray" "$props"; then
+        sed -i -E "/$stray/d" "$props" || return 1
+        log "removed recorder port lines left outside the markers in $props"
+    fi
     if [ "$RECORD_TRAFFIC" = true ]; then
         # Make sure the file ends with a newline, so the marker starts its own line.
         if [ -s "$props" ] && [ -n "$(tail -c1 "$props")" ]; then
@@ -90,6 +96,7 @@ write_recorder_properties() {
     else
         log "compatibility recorder off"
     fi
+    log "ports in system.properties: $(grep -E '^[[:space:]]*unifi\.https?\.port' "$props" | tr '\n' ' ')"
     chown mfi:mfi "$props"
 }
 write_recorder_properties || { log "cannot write the recorder settings to $DATA_DIR/system.properties"; exit 1; }
